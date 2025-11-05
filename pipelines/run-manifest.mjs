@@ -6,6 +6,7 @@
  */
 
 import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
 // TODO: Import yaml parser when implementing manifest parsing
 // import { parse } from 'yaml';
 
@@ -21,7 +22,8 @@ async function runManifest(manifestPath) {
 }
 
 // Main entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMainModule) {
   const manifestPath = process.argv[2] || './a2a_manifest.yml';
   runManifest(manifestPath).catch(console.error);
 }
