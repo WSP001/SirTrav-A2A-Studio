@@ -6,7 +6,8 @@
  */
 
 import { readFile } from 'fs/promises';
-import { parse } from 'yaml';
+// TODO: Import yaml parser when implementing manifest parsing
+// import { parse } from 'yaml';
 
 async function runManifest(manifestPath) {
   console.log('Loading manifest:', manifestPath);
