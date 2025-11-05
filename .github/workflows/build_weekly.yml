@@ -1,0 +1,12 @@
+name: Build Weekly Recap
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "Weekly recap build placeholder"

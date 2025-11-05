@@ -1,0 +1,21 @@
+# A2A Manifest Configuration
+# Doc-to-Agent video automation pipeline manifest
+
+version: "1.0"
+pipeline:
+  name: "D2A Video Automation"
+  description: "Automate cinematic video production from raw media"
+
+stages:
+  - name: "ingest"
+    description: "Ingest raw media and documents"
+  
+  - name: "process"
+    description: "Process and transform content"
+  
+  - name: "render"
+    description: "Render final video output"
+
+output:
+  format: "mp4"
+  quality: "high"
