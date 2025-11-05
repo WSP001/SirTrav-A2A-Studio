@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Main App Component
- * SirTrav A2A Studio - D2A Video Automation Pipeline UI
+ * SirTrav Memory Channel - D2A Video Automation Pipeline UI
  */
 
 function App() {
