@@ -1,4 +1,6 @@
 import React from 'react';
+import VideoGenerator from './components/VideoGenerator';
+import './App.css';
 
 /**
  * Main App Component
@@ -8,11 +10,13 @@ import React from 'react';
 function App() {
   return (
     <div className="app">
-      <header className="app-header">
+      <header className="app__header">
         <h1>SirTrav Memory Channel</h1>
+        <p>Agent-to-Agent Studio pipeline controls for cinematic recaps.</p>
       </header>
-      <main className="app-main">
-        {/* TODO: Add upload interface and pipeline controls */}
+
+      <main className="app__main">
+        <VideoGenerator />
       </main>
     </div>
   );
