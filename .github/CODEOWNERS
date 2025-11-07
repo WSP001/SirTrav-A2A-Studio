@@ -1,0 +1,17 @@
+# Security review for publish policies & CI changes
+netlify/functions/publish.ts @WSP001/security-team
+pipelines/scripts/lufs_check.mjs @WSP001/security-team
+.github/workflows/ @WSP001/security-team
+scripts/preflight.sh @WSP001/security-team
+
+# Media/Audio lead for quality gates & manifest changes
+pipelines/a2a_manifest.yml @WSP001/media-leads
+pipelines/scripts/ @WSP001/media-leads
+
+# DevEx for core infrastructure
+netlify.toml @WSP001/devex-team
+package.json @WSP001/devex-team
+
+# Public artifacts can be self-approved
+public/ @WSP001
+src/ @WSP001

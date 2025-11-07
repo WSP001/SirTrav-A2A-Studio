@@ -1,0 +1,32 @@
+.app {
+  background: radial-gradient(circle at top, #111827 0%, #020617 55%, #000 100%);
+  color: #f8fafc;
+  min-height: 100vh;
+  padding: 3rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.app__header {
+  text-align: center;
+  max-width: 720px;
+}
+
+.app__header h1 {
+  font-size: clamp(2.25rem, 3vw, 3.25rem);
+  margin-bottom: 0.75rem;
+}
+
+.app__header p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.app__main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 4rem;
+}

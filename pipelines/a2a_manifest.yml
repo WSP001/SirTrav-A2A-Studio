@@ -1,0 +1,45 @@
+# SirTrav A2A Studio - Doc-to-Agent Manifest
+
+version: "1.0"
+pipeline:
+  name: "D2A Video Automation"
+  description: "Automate cinematic video production from raw media"
+  stages:
+    - name: "ingest"
+      description: "Ingest raw media and documents"
+    - name: "process"
+      description: "Process and transform content"
+    - name: "render"
+      description: "Render final video output"
+
+steps:
+  - name: "ingest_media"
+    stage: "ingest"
+    endpoint: "${env.URL}/.netlify/functions/intake-upload"
+    input:
+      projectId: "${project.id}"
+      source: "${project.source_root}"
+    output: "tmp/${project.id}/intake.json"
+
+  - name: "publish_artifacts"
+    stage: "render"
+    endpoint: "${env.URL}/.netlify/functions/publish"
+    input:
+      projectId: "${project.id}"
+      lufs_ok: "${steps.audio_lufs_gate.output.ok}"
+      metadata:
+        pipeline_version: "${manifest.version}"
+        build_timestamp: "${run.start_time}"
+        correlation_id: "${run.correlation_id}"
+      artifacts:
+        - localPath: "tmp/${project.id}/FINAL_RECAP_${project.id}.mp4"
+          type: "video"
+        - localPath: "tmp/${project.id}/master_audio.wav"
+          type: "audio"
+        - localPath: "tmp/${project.id}/project_summary.json"
+          type: "metadata"
+    output: "tmp/${project.id}/publish_result.json"
+
+output:
+  format: "mp4"
+  quality: "high"
