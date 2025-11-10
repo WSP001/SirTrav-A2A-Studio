@@ -24,16 +24,29 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **SirTrav-A2A-Studio** | Public engine, UI, pipelines | `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio` | PUBLIC |
 | **Sir-TRAV-scott** | Memory vault, raw media | `C:\Users\Roberto002\Documents\GitHub\Sir-TRAV-scott` | PRIVATE |
 
-### Bridge Workflow
+### Bridge Workflow (Secure D2A Injection Model)
+
 ```
-Private Vault (intake/)
+Public UI (React Upload)
     ↓
-Sanitized Export Action
+User Click2Kick ("Upload & Build")
     ↓
-Public Studio (processes)
+Public Netlify Function (intake-upload.ts)
+    | 
+    | Uses GITHUB_PAT secret (secure bridge)
     ↓
-Published Video (storage)
+Private Vault (Sir-TRAV-scott/intake/)
+    |
+    | Git push triggers...
+    ↓
+Public GitHub Action (build_weekly.yml)
+    ↓
+A2A Agent Pipeline (manifest executor)
+    ↓
+Published Video (storage) + Memory Update
 ```
+
+**Security Model:** Only `intake-upload.ts` has the GITHUB_PAT key to write to the private vault. The private vault never "exports" - the public engine "injects" through this secure bridge.
 
 ---
 
@@ -46,6 +59,7 @@ User Click2Kick Button
          ↓
 ┌────────────────────────────────────────────┐
 │  1. DIRECTOR AGENT                         │
+│  - Reads: memory_index.json (learns)      │
 │  - Curates key shots from vault           │
 │  - Sets theme, mood, pacing               │
 │  - Output: curated_media.json             │
@@ -81,6 +95,7 @@ User Click2Kick Button
 │  - Uploads to storage                     │
 │  - Generates shareable link               │
 │  - Logs social metrics                    │
+│  - Writes: memory_index.json (learns)     │
 │  - Output: publish_result.json            │
 └────────────────────────────────────────────┘
          ↓
@@ -136,10 +151,10 @@ User Click2Kick Button
 ### ❌ Critical Functions (Need to Create)
 
 - [x] **`netlify/functions/progress.ts`** ✅ COMPLETE (filesystem + SSE fixed)
-- [ ] **`netlify/functions/curate-media.ts`** (Director Agent)
-- [ ] **`netlify/functions/narrate-project.ts`** (Writer Agent)
-- [ ] **`netlify/functions/text-to-speech.ts`** (Voice Agent - ElevenLabs)
-- [ ] **`netlify/functions/generate-music.ts`** (Composer Agent - Suno)
+- [x] **`netlify/functions/curate-media.ts`** ✅ COMPLETE (Director Agent with memory learning)
+- [x] **`netlify/functions/narrate-project.ts`** ✅ COMPLETE (Writer Agent)
+- [x] **`netlify/functions/text-to-speech.ts`** ✅ COMPLETE (Voice Agent - placeholder mode)
+- [x] **`netlify/functions/generate-music.ts`** ✅ COMPLETE (Composer Agent - placeholder mode)
 - [ ] **`netlify/functions/correlate.ts`** (Timing correlation)
 - [ ] **`netlify/functions/evals.ts`** (Quality evaluation)
 - [ ] **`netlify/functions/healthcheck.ts`** (System health)
@@ -148,7 +163,7 @@ User Click2Kick Button
 ### ❌ UI Components (Need to Create)
 
 - [ ] **`src/components/PipelineProgress.tsx`** - Real-time agent progress with SSE
-- [ ] **`src/components/CreativeHub.tsx`** - Multi-step workflow wizard
+- [x] **`src/components/CreativeHub.tsx`** ✅ COMPLETE - Multi-step workflow wizard
 - [ ] **`src/components/Upload.tsx`** - File upload interface
 - [ ] **`src/components/ResultsPreview.tsx`** - Video player with download/share
 - [ ] **`src/components/AnalyticsDashboard.tsx`** - Cost tracking and metrics
@@ -162,18 +177,25 @@ User Click2Kick Button
 
 ### ✅ Already Complete
 
-- [x] `pipelines/run-manifest.mjs` ✅ NEW (YAML parser, variable interpolation, step execution, progress logging)
-- [x] `netlify/functions/progress.ts` ✅ NEW (SSE streaming + /tmp storage)
+- [x] `pipelines/run-manifest.mjs` ✅ (YAML parser, variable interpolation, step execution, progress logging)
+- [x] `netlify/functions/progress.ts` ✅ (SSE streaming + /tmp storage)
+- [x] `netlify/functions/curate-media.ts` ✅ NEW (Director Agent with memory learning)
+- [x] `netlify/functions/narrate-project.ts` ✅ NEW (Writer Agent)
+- [x] `netlify/functions/text-to-speech.ts` ✅ NEW (Voice Agent - placeholder mode)
+- [x] `netlify/functions/generate-music.ts` ✅ NEW (Composer Agent - placeholder mode)
 - [x] `netlify/functions/intake-upload.ts` (stub - basic structure)
-- [x] `netlify/functions/publish.ts` (COMPLETE - quality gates, multi-artifact upload)
+- [x] `netlify/functions/publish.ts` (quality gates, multi-artifact upload)
 - [x] `netlify/functions/lib/storage.ts` (storage abstraction)
-- [x] `src/components/VideoGenerator.jsx` (COMPLETE - API key mgmt, Click2Kick concept)
+- [x] `src/components/CreativeHub.tsx` ✅ NEW (Multi-step AI workflow wizard)
+- [x] `src/components/CreativeHub.css` ✅ NEW (Creative Hub styling)
+- [x] `src/components/VideoGenerator.jsx` (API key mgmt, Click2Kick concept)
 - [x] `src/App.jsx` (main app shell)
-- [x] `src/main.jsx` ✅ NEW (React entry point)
-- [x] `index.html` ✅ NEW (Vite entry point)
-- [x] `vite.config.js` ✅ NEW (Vite + React config)
-- [x] `package.json` ✅ UPDATED (added dev dependencies and scripts)
+- [x] `src/main.jsx` ✅ (React entry point)
+- [x] `index.html` ✅ (Vite entry point)
+- [x] `vite.config.js` ✅ (Vite + React config)
+- [x] `package.json` ✅ (dev dependencies and scripts)
 - [x] `pipelines/a2a_manifest.yml` (manifest schema)
+- [x] `MASTER.md` ✅ UPDATED (refined with EGO-Prompt learning loop and secure bridge workflow)
 
 ---
 
