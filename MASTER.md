@@ -131,6 +131,47 @@ User Click2Kick Button
 
 ---
 
+## 📋 TODO Checklist - What's Missing
+
+### ❌ Critical Functions (Need to Create)
+
+- [x] **`netlify/functions/progress.ts`** ✅ COMPLETE (filesystem + SSE fixed)
+- [ ] **`netlify/functions/curate-media.ts`** (Director Agent)
+- [ ] **`netlify/functions/narrate-project.ts`** (Writer Agent)
+- [ ] **`netlify/functions/text-to-speech.ts`** (Voice Agent - ElevenLabs)
+- [ ] **`netlify/functions/generate-music.ts`** (Composer Agent - Suno)
+- [ ] **`netlify/functions/correlate.ts`** (Timing correlation)
+- [ ] **`netlify/functions/evals.ts`** (Quality evaluation)
+- [ ] **`netlify/functions/healthcheck.ts`** (System health)
+- [ ] **`netlify/functions/mcp.ts`** (MCP server integration)
+
+### ❌ UI Components (Need to Create)
+
+- [ ] **`src/components/PipelineProgress.tsx`** - Real-time agent progress with SSE
+- [ ] **`src/components/CreativeHub.tsx`** - Multi-step workflow wizard
+- [ ] **`src/components/Upload.tsx`** - File upload interface
+- [ ] **`src/components/ResultsPreview.tsx`** - Video player with download/share
+- [ ] **`src/components/AnalyticsDashboard.tsx`** - Cost tracking and metrics
+
+### ❌ Pipeline Scripts (Need to Complete)
+
+- [ ] **`pipelines/run-manifest.mjs`** - YAML parser + executor (currently stub)
+- [ ] **`pipelines/scripts/audio_mix.mjs`** - Audio mixing with FFmpeg
+- [ ] **`pipelines/scripts/ffmpeg_compile.mjs`** - Video compilation
+- [ ] **`pipelines/scripts/lufs_check.mjs`** - LUFS quality gate
+
+### ✅ Already Complete
+
+- [x] `netlify/functions/progress.ts` ✅ NEW (SSE streaming + /tmp storage)
+- [x] `netlify/functions/intake-upload.ts` (stub - basic structure)
+- [x] `netlify/functions/publish.ts` (COMPLETE - quality gates, multi-artifact upload)
+- [x] `netlify/functions/lib/storage.ts` (storage abstraction)
+- [x] `src/components/VideoGenerator.jsx` (COMPLETE - API key mgmt, Click2Kick concept)
+- [x] `src/App.jsx` (main app shell)
+- [x] `pipelines/a2a_manifest.yml` (manifest schema)
+
+---
+
 ## 🐛 Critical Issues to Fix FIRST
 
 ### Issue #1: Progress Tracking Fails (Read-Only Filesystem)
