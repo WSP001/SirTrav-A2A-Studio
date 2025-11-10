@@ -1,10 +1,10 @@
 # MASTER.md - SirTrav A2A Studio Build Plan
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Last Updated:** 2025-11-10  
-**Status:** Active Development
+**Status:** Active Development - Pipeline Build Phase
 
-> **v1.2 Updates:** Added 7th Attribution Agent, User Feedback Loop (👍/👎), Fallback Logic, Core Architectural Principles, and Manifest-as-Design-Doc approach.
+> **v1.3 Focus:** Streamlined for action. Agent-specific specs, clear sprint priorities, and separation of "build now" vs "optimize later."
 
 > **This document serves as the central planning and coordination guide for building the SirTrav A2A Studio - a D2A (Doc-to-Agent) automated video production platform for the Commons Good.**
 
@@ -16,6 +16,36 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ### Core Principle
 **"Build the memory before the masterpiece."**
+
+---
+
+## 🚦 CURRENT SPRINT FOCUS (Week of Nov 10, 2025)
+
+### Goal: First End-to-End Video Render
+
+**This Week's Deliverables:**
+
+- [ ] **Wire CreativeHub to App.jsx** - Integrate the multi-step wizard into main app
+- [ ] **Test 4 Agent Endpoints Locally** - Verify Director, Writer, Voice, Composer respond correctly
+- [ ] **Complete run-manifest.mjs Integration** - Sequential agent orchestration working
+- [ ] **Generate ONE Test Video** - Full pipeline from upload → preview (placeholder audio/music OK)
+
+**Definition of Done:**
+- User uploads files via CreativeHub
+- All 7 agent steps execute sequentially
+- Final video file generated in `/tmp/`
+- User sees preview in ResultsPreview modal
+
+**Blocked Until Complete:**
+- All "future features" (telemetry, cost tracking, etc.)
+- Real API integrations (use placeholder mode)
+- Advanced optimizations (CAS, vector DB, etc.)
+
+**Next Sprint (After Basic Pipeline Works):**
+- Real ElevenLabs integration
+- Real Suno integration
+- Editor agent (FFmpeg) with LUFS gates
+- Publisher agent (S3 upload)
 
 ---
 
@@ -130,6 +160,42 @@ User Click2Kick Button
 │ [Loop continues with richer data]        │
 └──────────────────────────────────────────┘
 ```
+
+---
+
+## 📂 Agent-Specific Specifications
+
+### Purpose: Prevent Context Window Overload
+
+Each agent has a dedicated specification document with complete implementation details. This enables:
+- **Focused AI assistance** - Pass one spec to AI without overwhelming context
+- **Clear contracts** - Input/output schemas prevent integration issues
+- **Parallel development** - Team members can work on agents independently
+- **Easy debugging** - Single source of truth for each agent's behavior
+
+| Agent | Spec File | Status | Implementation | Slash Command |
+|-------|-----------|--------|----------------|---------------|
+| **Director** | `docs/agents/DIRECTOR_SPEC.md` | ✅ Complete | `curate-media.ts` | `/slash-director` |
+| **Writer** | `docs/agents/WRITER_SPEC.md` | ✅ Complete | `narrate-project.ts` | `/slash-writer` |
+| **Voice** | `docs/agents/VOICE_SPEC.md` | 🟡 Placeholder | `text-to-speech.ts` | `/slash-voice` |
+| **Composer** | `docs/agents/COMPOSER_SPEC.md` | 🟡 Placeholder | `generate-music.ts` | `/slash-composer` |
+| **Editor** | `docs/agents/EDITOR_SPEC.md` | ❌ Not Started | `ffmpeg_compile.mjs` | `/slash-editor` |
+| **Attribution** | `docs/agents/ATTRIBUTION_SPEC.md` | ❌ Not Started | `generate-attribution.ts` | `/slash-attribution` |
+| **Publisher** | `docs/agents/PUBLISHER_SPEC.md` | 🟡 Partial | `publish.ts` | `/slash-publisher` |
+
+### Spec File Template
+
+Each spec includes:
+1. **Purpose** - What this agent does and why it exists
+2. **Input Schema** - JSON schema with validation rules
+3. **Output Schema** - Expected response format
+4. **Memory Integration** - How it reads/writes `memory_index.json`
+5. **API Requirements** - External services needed (if any)
+6. **Error Handling** - Fallback strategies for failures
+7. **Testing** - curl commands and expected responses
+8. **Example Payloads** - Real request/response samples
+
+**TODO:** Create all 7 spec files before building remaining agents.
 
 ---
 
@@ -661,9 +727,100 @@ npm run lint                 # ESLint
 
 ---
 
+## 🔮 Future Roadmap (Post-MVP)
+
+### Phase 4: Observability & Optimization (After 50+ Successful Runs)
+
+**Prerequisites:** Pipeline must generate 50+ videos successfully with real APIs.
+
+#### Telemetry Layer
+- **Purpose:** Aggregate system-level metrics (agent runtimes, costs, error patterns)
+- **Implementation:** `netlify/functions/telemetry.ts` + dashboard
+- **Why Deferred:** Nothing to measure until pipeline runs consistently
+- **Target:** v1.4.0
+
+#### Cost Tracking Dashboard
+- **Purpose:** Real-time per-agent cost display, budget alerts
+- **Implementation:** `src/components/CostMeter.tsx` + cost aggregation
+- **Why Deferred:** Agents in placeholder mode = $0 costs
+- **Target:** v1.4.0
+
+#### LUFS Quality Gates
+- **Purpose:** Enforce audio standards (-18 to -12 LUFS) before publish
+- **Implementation:** `pipelines/scripts/lufs_check.mjs` + FFmpeg integration
+- **Why Deferred:** Need working Editor agent first
+- **Target:** v1.4.0
+
+#### Service Level Objectives (SLOs)
+- Pipeline success ≥ 99.0% weekly
+- P50 wall time ≤ 120s; P95 ≤ 180s
+- Cost per video ≤ $1.00 at P95
+- Error budget: 1% of runs per week
+- **Why Deferred:** Need baseline data from production runs
+- **Target:** v1.4.0
+
+---
+
+### Phase 5: Advanced Features (After User Feedback & Scale Validation)
+
+**Prerequisites:** 500+ videos generated, active user feedback, proven cost model.
+
+#### Content-Addressable Storage (CAS)
+- **Purpose:** Perfect reproducibility via input hashing
+- **Implementation:** `pipelines/lib/cas.mjs` + `a2a_manifest.lock.json`
+- **Why Deferred:** Sophisticated optimization before validating basics
+- **Target:** v1.5.0
+
+#### Vector Database for Memory
+- **Purpose:** Semantic search in `memory_index.json` (Pinecone/pgvector)
+- **Why Deferred:** JSON sufficient until >10MB or semantic queries needed
+- **Target:** v1.5.0
+
+#### Dynamic Manifest Generation
+- **Purpose:** Director generates custom workflow per project
+- **Why Deferred:** Adds debugging complexity; validate static workflow first
+- **Target:** v1.5.0
+
+#### Partial Re-runs ("Director's Cut")
+- **Purpose:** UI buttons to re-run single agents (e.g., "Change music")
+- **Implementation:** `--resume-from=<step>` in run-manifest.mjs
+- **Why Deferred:** Requires sophisticated state management and proven caching
+- **Target:** v1.5.0
+
+---
+
+### Phase 6: Scale & Governance (After Production Launch)
+
+**Prerequisites:** Multi-user production deployment, regulatory requirements.
+
+#### Multi-Tenant Security
+- **Purpose:** Secure control plane with `repository_dispatch` triggers
+- **Why Deferred:** Current single-tenant model is sufficient
+- **Target:** v1.6.0
+
+#### Automated Retention Policies
+- **Purpose:** 90-day cleanup script for private vault
+- **Implementation:** `cron_clean_vault.sh` + Git automation
+- **Why Deferred:** No 90 days of data yet
+- **Target:** v1.6.0
+
+#### Provenance Packs
+- **Purpose:** SHA-256 hashes + lineage tracking for reproducibility
+- **Implementation:** `netlify/functions/provenance.ts` + metadata
+- **Why Deferred:** Commons Good feature, but not blocking MVP
+- **Target:** v1.6.0
+
+#### Budget Guardrails
+- **Purpose:** Pre-flight cost estimation + abort if over limit
+- **Implementation:** `BUDGET_MAX_TTS_CHARS_PER_RUN` env vars + guard function
+- **Why Deferred:** No real costs in placeholder mode
+- **Target:** v1.6.0
+
+---
+
 ## 📝 Ideas Considered but Deferred
 
-These suggestions from external programmers were analyzed but NOT added to v1.2 (may revisit in future):
+These suggestions from external programmers were analyzed but NOT added to v1.3 (may revisit in future roadmap):
 
 ### ❌ Dynamic Manifest Generation (Deferred)
 **Idea:** Director Agent generates a custom `job-123.yml` manifest for each run.  
