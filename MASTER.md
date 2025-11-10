@@ -155,19 +155,24 @@ User Click2Kick Button
 
 ### ❌ Pipeline Scripts (Need to Complete)
 
-- [ ] **`pipelines/run-manifest.mjs`** - YAML parser + executor (currently stub)
+- [x] **`pipelines/run-manifest.mjs`** ✅ COMPLETE (YAML parser + executor + progress logging)
 - [ ] **`pipelines/scripts/audio_mix.mjs`** - Audio mixing with FFmpeg
 - [ ] **`pipelines/scripts/ffmpeg_compile.mjs`** - Video compilation
 - [ ] **`pipelines/scripts/lufs_check.mjs`** - LUFS quality gate
 
 ### ✅ Already Complete
 
+- [x] `pipelines/run-manifest.mjs` ✅ NEW (YAML parser, variable interpolation, step execution, progress logging)
 - [x] `netlify/functions/progress.ts` ✅ NEW (SSE streaming + /tmp storage)
 - [x] `netlify/functions/intake-upload.ts` (stub - basic structure)
 - [x] `netlify/functions/publish.ts` (COMPLETE - quality gates, multi-artifact upload)
 - [x] `netlify/functions/lib/storage.ts` (storage abstraction)
 - [x] `src/components/VideoGenerator.jsx` (COMPLETE - API key mgmt, Click2Kick concept)
 - [x] `src/App.jsx` (main app shell)
+- [x] `src/main.jsx` ✅ NEW (React entry point)
+- [x] `index.html` ✅ NEW (Vite entry point)
+- [x] `vite.config.js` ✅ NEW (Vite + React config)
+- [x] `package.json` ✅ UPDATED (added dev dependencies and scripts)
 - [x] `pipelines/a2a_manifest.yml` (manifest schema)
 
 ---
