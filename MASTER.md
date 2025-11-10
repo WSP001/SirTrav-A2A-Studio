@@ -1,8 +1,10 @@
 # MASTER.md - SirTrav A2A Studio Build Plan
 
-**Version:** 1.0.0  
-**Last Updated:** 2025-11-09  
+**Version:** 1.2.0  
+**Last Updated:** 2025-11-10  
 **Status:** Active Development
+
+> **v1.2 Updates:** Added 7th Attribution Agent, User Feedback Loop (👍/👎), Fallback Logic, Core Architectural Principles, and Manifest-as-Design-Doc approach.
 
 > **This document serves as the central planning and coordination guide for building the SirTrav A2A Studio - a D2A (Doc-to-Agent) automated video production platform for the Commons Good.**
 
@@ -50,9 +52,9 @@ Published Video (storage) + Memory Update
 
 ---
 
-## 🤖 Six-Agent Pipeline
+## 🤖 Seven-Agent Pipeline (Updated)
 
-### Sequential D2A Workflow
+### Sequential D2A Workflow with Commons Good Attribution
 
 ```
 User Click2Kick Button
@@ -91,16 +93,121 @@ User Click2Kick Button
 └────────────────────────────────────────────┘
          ↓
 ┌────────────────────────────────────────────┐
-│  6. PUBLISHER AGENT (S3/Storage)           │
-│  - Uploads to storage                     │
+│  6. ATTRIBUTION AGENT ✨ NEW               │
+│  - Reads all .json outputs (Steps 1-5)    │
+│  - Compiles credits.json (Suno, ElevenLabs)│
+│  - (Optional) Renders credits slate       │
+│  - FOR THE COMMONS GOOD attribution       │
+│  - Output: credits.json + final_package.zip│
+└────────────────────────────────────────────┘
+         ↓
+┌────────────────────────────────────────────┐
+│  7. PUBLISHER AGENT (S3/Storage)           │
+│  - Uploads video + credits to storage     │
 │  - Generates shareable link               │
 │  - Logs social metrics                    │
 │  - Writes: memory_index.json (learns)     │
 │  - Output: publish_result.json            │
 └────────────────────────────────────────────┘
          ↓
-    User Preview
+    User Preview (with 👍/👎 Feedback Loop)
 ```
+
+### 🔁 Complete EGO-Prompt Learning Loop
+
+```
+┌──────────────────────────────────────────┐
+│ AI LEARNS (Director reads memory)        │
+│ ↓                                        │
+│ AI CREATES (6-agent pipeline)            │
+│ ↓                                        │
+│ AI LOGS (Publisher writes metrics)       │
+│ ↓                                        │
+│ 👤 USER EVALUATES (👍/👎 buttons)        │ ← CLOSES THE LOOP!
+│ ↓                                        │
+│ MEMORY UPDATED (submit-evaluation.ts)    │
+│ ↓                                        │
+│ [Loop continues with richer data]        │
+└──────────────────────────────────────────┘
+```
+
+---
+
+## 🏛️ Core Architectural Principles
+
+### 1. **"Global Rules, Local Roles"** Philosophy
+
+The entire system follows this principle:
+
+- **Global Rules** = `a2a_manifest.yml` blueprint + API contracts (schemas)
+  - Single source of truth for workflow
+  - Non-negotiable interfaces between agents
+- **Local Roles** = Specialist agents (Director, Writer, Voice, etc.)
+  - Each agent is a "perfect" pluggable expert
+  - Only knows how to do ONE job well
+
+**Practice:** When iterating, ask: *"Should this change the blueprint (global rule) or improve a specialist (local role)?"*
+
+### 2. **The Manifest is the Master Agent**
+
+Key insight: Move orchestration logic OUT of code and INTO a plain-text file.
+
+- **The Engine** (`run-manifest.mjs`) = "Dumb" but reliable executor
+  - Reads blueprint
+  - Executes steps sequentially
+  - Handles retries and caching
+  - **Treat as "feature complete"**
+
+- **The Brain** (`a2a_manifest.yml`) = The actual "Master Agent"
+  - All workflow changes happen here
+  - User-editable "Beautiful API"
+  - Human-readable design document
+
+### 3. **Caching for Tight Iteration Loops**
+
+Performance enabler for rapid development:
+
+```javascript
+// run-manifest.mjs caching logic
+const inputHash = sha256(JSON.stringify(stepInputs));
+const cacheKey = `${step.name}_${inputHash}`;
+
+if (cacheExists(cacheKey)) {
+  console.log(`✅ Using cached result for ${step.name}`);
+  return loadCache(cacheKey);
+}
+```
+
+**Benefit:** Re-run 10-step pipeline in 5 seconds to test Step 10 changes (Steps 1-9 use cache).
+
+### 4. **Graceful Degradation over Hard Failures**
+
+Non-critical agent failures should NOT crash the entire pipeline:
+
+```javascript
+// Fallback strategy example
+try {
+  result = await executeAgent('composer', inputs);
+} catch (error) {
+  if (isNonCritical('composer')) {
+    logWarning('Composer failed, using fallback music');
+    result = await loadFallbackAsset('default_music.wav');
+  } else {
+    throw error; // Critical agents must succeed
+  }
+}
+```
+
+**Critical Agents:** Director, Writer, Editor, Publisher  
+**Non-Critical Agents:** Composer, Voice (can use text overlays)
+
+### 5. **Human-in-the-Loop (HITL) Learning**
+
+The AI shouldn't learn in isolation - the user (Travis) is the "EGO" in "EGO-Prompt":
+
+- AI creates → User evaluates (👍/👎) → AI learns from feedback
+- This closes the learning loop and teaches the system what "good" means
+- Each iteration gets smarter based on USER preferences, not just metrics
 
 ---
 
@@ -155,6 +262,8 @@ User Click2Kick Button
 - [x] **`netlify/functions/narrate-project.ts`** ✅ COMPLETE (Writer Agent)
 - [x] **`netlify/functions/text-to-speech.ts`** ✅ COMPLETE (Voice Agent - placeholder mode)
 - [x] **`netlify/functions/generate-music.ts`** ✅ COMPLETE (Composer Agent - placeholder mode)
+- [ ] **`netlify/functions/generate-attribution.ts`** ✨ NEW - 7th Agent for Commons Good credits
+- [ ] **`netlify/functions/submit-evaluation.ts`** ✨ NEW - User feedback loop (👍/👎)
 - [ ] **`netlify/functions/correlate.ts`** (Timing correlation)
 - [ ] **`netlify/functions/evals.ts`** (Quality evaluation)
 - [ ] **`netlify/functions/healthcheck.ts`** (System health)
@@ -165,15 +274,20 @@ User Click2Kick Button
 - [ ] **`src/components/PipelineProgress.tsx`** - Real-time agent progress with SSE
 - [x] **`src/components/CreativeHub.tsx`** ✅ COMPLETE - Multi-step workflow wizard
 - [ ] **`src/components/Upload.tsx`** - File upload interface
-- [ ] **`src/components/ResultsPreview.tsx`** - Video player with download/share
+- [ ] **`src/components/ResultsPreview.tsx`** - Video player with download/share + **👍/👎 feedback buttons** ✨
 - [ ] **`src/components/AnalyticsDashboard.tsx`** - Cost tracking and metrics
 
 ### ❌ Pipeline Scripts (Need to Complete)
 
 - [x] **`pipelines/run-manifest.mjs`** ✅ COMPLETE (YAML parser + executor + progress logging)
+- [ ] **ENHANCE `run-manifest.mjs`** ✨ Add fallback logic for graceful degradation (non-critical failures use defaults)
 - [ ] **`pipelines/scripts/audio_mix.mjs`** - Audio mixing with FFmpeg
 - [ ] **`pipelines/scripts/ffmpeg_compile.mjs`** - Video compilation
 - [ ] **`pipelines/scripts/lufs_check.mjs`** - LUFS quality gate
+
+### 📄 Documentation (High Priority)
+
+- [ ] **`docs/A2A_MANIFEST_SCHEMA.md`** ✨ NEW - Document the `a2a_manifest.yml` as the "Beautiful API" design document for users
 
 ### ✅ Already Complete
 
@@ -313,7 +427,7 @@ const BUTTON_STATES = {
 };
 ```
 
-### User Journey Flow
+### User Journey Flow (Enhanced with Feedback Loop)
 
 1. User uploads media OR selects weekly recap
 2. User clicks **"Kick Off Video Production"**
@@ -324,10 +438,20 @@ const BUTTON_STATES = {
    ⏳ Voice: Synthesizing narration... (45% complete)
    ⏸️ Composer: Waiting...
    ⏸️ Editor: Waiting...
+   ⏸️ Attribution: Waiting...
    ⏸️ Publisher: Waiting...
    ```
 4. On completion: **"View Your Video"** button appears
-5. User previews, downloads, or publishes to social
+5. **ResultsPreview Modal Opens:**
+   - Video player with timeline
+   - **Download** button
+   - **Share to Social** button
+   - **👍 Keep (Good)** button ✨ NEW
+   - **👎 Discard (Bad)** button ✨ NEW
+6. User clicks 👍 or 👎:
+   - Triggers `submit-evaluation.ts`
+   - Writes `{"rating": "good", "theme": "reflective"}` to `memory_index.json`
+   - **Closes the EGO-Prompt learning loop!** 🔁
 
 ---
 
@@ -399,12 +523,20 @@ const BUTTON_STATES = {
 - [ ] **Implement proper SSE streaming** for real-time updates
 - [ ] **Test progress tracking** end-to-end in Netlify
 
-### Priority 2: Complete Manifest Executor
+### Priority 2: Enhance Manifest Executor with Resilience
 
-- [ ] **Implement `run-manifest.mjs`** YAML parser
-- [ ] **Add agent orchestration logic**
-- [ ] **Handle errors and retries**
-- [ ] **Log progress events** to new storage
+- [x] **Implement `run-manifest.mjs`** YAML parser ✅
+- [x] **Add agent orchestration logic** ✅
+- [x] **Handle errors and retries** ✅
+- [ ] **Add fallback logic** ✨ NEW - Graceful degradation:
+  ```javascript
+  // Example: Composer fails? Use default music track
+  if (agent.agent === 'composer') {
+    logWarning('Using fallback music...');
+    await useFallbackMusic();
+  }
+  ```
+- [x] **Log progress events** to new storage ✅
 
 ### Priority 3: UI Enhancements
 
@@ -413,9 +545,12 @@ const BUTTON_STATES = {
 - [ ] **Add cost estimation** display
 - [ ] **Build results preview** modal
 
-### Priority 4: Agent Functions
+### Priority 4: Agent Functions & Learning Loop
 
-- [ ] **Complete all 6 agent implementations**
+- [x] **Complete 4/7 core agent implementations** ✅ (Director, Writer, Voice, Composer)
+- [ ] **Build Editor Agent** (FFmpeg compilation)
+- [ ] **Build Attribution Agent** ✨ NEW (7th agent for Commons Good)
+- [ ] **Build submit-evaluation.ts** ✨ NEW (User feedback loop)
 - [ ] **Add LUFS quality gates**
 - [ ] **Integrate ElevenLabs** (secure key storage!)
 - [ ] **Integrate Suno API**
@@ -524,6 +659,44 @@ npm run lint                 # ESLint
 
 ---
 
+---
+
+## 📝 Ideas Considered but Deferred
+
+These suggestions from external programmers were analyzed but NOT added to v1.2 (may revisit in future):
+
+### ❌ Dynamic Manifest Generation (Deferred)
+**Idea:** Director Agent generates a custom `job-123.yml` manifest for each run.  
+**Why Deferred:** Adds complexity before validating static manifest works. Would make debugging harder. Better to perfect the static workflow first.  
+**Future:** Consider for Phase 5 "advanced features" if users request adaptive workflows.
+
+### ❌ Vector Database for Memory (Deferred)
+**Idea:** Replace `memory_index.json` with vector DB (Pinecone, Supabase pgvector) for semantic search.  
+**Why Deferred:** Introduces external dependency and cost before proving the concept. JSON file is sufficient for MVP.  
+**Future:** Consider if `memory_index.json` grows beyond 10MB or users request semantic querying.
+
+### ❌ Secure Control Plane v1.2 (Deferred)
+**Idea:** Private repo's GitHub Action triggers public repo via `repository_dispatch`.  
+**Why Deferred:** Current `intake-upload.ts` bridge is simpler and already secure. No immediate benefit to adding another layer.  
+**Future:** Consider if we need audit trails or multi-tenant security.
+
+### ❌ Director's Cut UI with Partial Re-runs (Deferred)
+**Idea:** "Change the music" button that re-runs only Composer + Editor agents.  
+**Why Deferred:** Requires sophisticated state management and caching before UI exists. Build complete pipeline first.  
+**Future:** Great Phase 4 feature after caching is battle-tested.
+
+---
+
+## 📊 What DID Make It Into v1.2
+
+✅ **Attribution Agent** - Aligns with "Commons Good" mission  
+✅ **User Feedback Loop** - Closes the critical EGO-Prompt gap  
+✅ **Fallback Logic** - Production resilience best practice  
+✅ **Manifest as Design Doc** - User-facing "Beautiful API"  
+✅ **Architectural Principles** - Captures "Global Rules, Local Roles" philosophy  
+
+---
+
 **This is a living document. Update it after each sprint.**
 
-*Last updated: 2025-11-09 by Cascade AI*
+*Last updated: 2025-11-10 (v1.2) by Cascade AI*
