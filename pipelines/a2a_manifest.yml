@@ -1,45 +1,95 @@
 # SirTrav A2A Studio - Doc-to-Agent Manifest
+# Version 1.3.0 - Complete 7-Agent Pipeline
 
-version: "1.0"
+version: "1.3.0"
+
+project:
+  id: "week44"
+  source_root: "Sir-TRAV-scott/intake"
+  out_dir: "public/week44"
+
 pipeline:
-  name: "D2A Video Automation"
-  description: "Automate cinematic video production from raw media"
-  stages:
-    - name: "ingest"
-      description: "Ingest raw media and documents"
-    - name: "process"
-      description: "Process and transform content"
-    - name: "render"
-      description: "Render final video output"
+  name: "D2A Video Automation - Full 7-Agent Flow"
+  description: "Automate cinematic video production from raw media with EGO-Prompt learning"
 
 steps:
-  - name: "ingest_media"
-    stage: "ingest"
-    endpoint: "${env.URL}/.netlify/functions/intake-upload"
+  # AGENT 1: DIRECTOR - Curate media and set creative direction
+  - name: "curate_media"
+    agent: "director"
+    endpoint: "${env.URL}/.netlify/functions/curate-media"
     input:
       projectId: "${project.id}"
-      source: "${project.source_root}"
-    output: "tmp/${project.id}/intake.json"
+      vaultPrefix: "${project.source_root}"
+      maxAssets: 12
+    output: "tmp/${project.id}/curated.json"
 
-  - name: "publish_artifacts"
-    stage: "render"
+  # AGENT 2: WRITER - Generate narrative script
+  - name: "narrate_project"
+    agent: "writer"
+    endpoint: "${env.URL}/.netlify/functions/narrate-project"
+    input:
+      projectId: "${project.id}"
+      theme: "${steps.curate_media.output.theme}"
+      mood: "${steps.curate_media.output.mood}"
+      sceneCount: "${steps.curate_media.output.assetCount}"
+    output: "tmp/${project.id}/narrative.json"
+
+  # AGENT 3: VOICE - Synthesize narration with ElevenLabs
+  - name: "synthesize_voice"
+    agent: "voice"
+    endpoint: "${env.URL}/.netlify/functions/text-to-speech"
+    input:
+      projectId: "${project.id}"
+      text: "${steps.narrate_project.output.narrative}"
+      voice_id: "Rachel"
+    output: "tmp/${project.id}/narration.wav"
+
+  # AGENT 4: COMPOSER - Generate soundtrack with Suno
+  - name: "generate_music"
+    agent: "composer"
+    endpoint: "${env.URL}/.netlify/functions/generate-music"
+    input:
+      projectId: "${project.id}"
+      mood: "${steps.curate_media.output.mood}"
+      tempo: 85
+      genre: "ambient"
+    output: "tmp/${project.id}/music.json"
+
+  # AGENT 5: EDITOR - Compile video with FFmpeg
+  - name: "compile_video"
+    agent: "editor"
+    script: "pipelines/scripts/ffmpeg_compile.mjs"
+    input:
+      projectId: "${project.id}"
+      curated_file: "${steps.curate_media.output}"
+      narration_file: "${steps.synthesize_voice.output}"
+      music_file: "${steps.generate_music.output}"
+      out_mp4: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+    output: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+
+  # AGENT 6: ATTRIBUTION - Generate Commons Good credits
+  - name: "generate_attribution"
+    agent: "attribution"
+    endpoint: "${env.URL}/.netlify/functions/generate-attribution"
+    input:
+      projectId: "${project.id}"
+      curated_file: "tmp/${project.id}/curated.json"
+      music_file: "tmp/${project.id}/music.json"
+      video_file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+    output: "tmp/${project.id}/attribution.json"
+
+  # AGENT 7: PUBLISHER - Upload and update memory
+  - name: "publish_content"
+    agent: "publisher"
     endpoint: "${env.URL}/.netlify/functions/publish"
     input:
       projectId: "${project.id}"
-      lufs_ok: "${steps.audio_lufs_gate.output.ok}"
+      video_file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      attribution_file: "tmp/${project.id}/attribution.json"
       metadata:
         pipeline_version: "${manifest.version}"
         build_timestamp: "${run.start_time}"
-        correlation_id: "${run.correlation_id}"
-      artifacts:
-        - localPath: "tmp/${project.id}/FINAL_RECAP_${project.id}.mp4"
-          type: "video"
-        - localPath: "tmp/${project.id}/master_audio.wav"
-          type: "audio"
-        - localPath: "tmp/${project.id}/project_summary.json"
-          type: "metadata"
     output: "tmp/${project.id}/publish_result.json"
 
-output:
-  format: "mp4"
-  quality: "high"
+env:
+  URL: "https://sirtrav-a2a-studio.netlify.app"

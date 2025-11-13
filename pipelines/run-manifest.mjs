@@ -3,32 +3,330 @@
 /**
  * A2A Manifest Runner
  * Executes the D2A (Doc-to-Agent) video automation pipeline
+ * 
+ * ITERATION 2 COMPLETE:
+ * - YAML parsing with js-yaml
+ * - Variable interpolation (${env.*}, ${project.*}, ${manifest.*}, ${run.*})
+ * - Sequential step execution
+ * - Progress logging via progress.ts function
+ * - Error handling and retries
  */
 
-import { readFile } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-// TODO: Import yaml parser when implementing manifest parsing
-// import { parse } from 'yaml';
+import yaml from 'js-yaml';
 
-async function runManifest(manifestPath) {
-  console.log('Loading manifest:', manifestPath);
-  
-  // TODO: Implement manifest execution logic
-  const manifestContent = await readFile(manifestPath, 'utf-8');
-  console.log('Manifest loaded successfully');
-  
-  // Placeholder for pipeline execution
-  console.log('Pipeline execution not yet implemented');
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Generate unique correlation ID for this pipeline run
+ */
+function generateCorrelationId() {
+  return `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-// Main entry point
+/**
+ * Log progress event to progress tracking function
+ */
+async function logProgress(projectId, agent, status, message, progress, metadata = {}) {
+  const progressUrl = process.env.URL 
+    ? `${process.env.URL}/.netlify/functions/progress`
+    : 'http://localhost:8888/.netlify/functions/progress';
+
+  const event = {
+    projectId,
+    agent,
+    status,
+    message,
+    timestamp: new Date().toISOString(),
+    progress,
+    metadata,
+  };
+
+  try {
+    const response = await fetch(progressUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️  Progress logging failed: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.warn(`⚠️  Progress logging error: ${error.message}`);
+  }
+}
+
+/**
+ * Interpolate variables in strings
+ * Supports: ${env.*}, ${project.*}, ${manifest.*}, ${run.*}, ${steps.*}
+ */
+function interpolate(value, context) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value.replace(/\$\{([^}]+)\}/g, (match, path) => {
+    const parts = path.split('.');
+    let current = context;
+
+    for (const part of parts) {
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        console.warn(`⚠️  Variable not found: ${path}`);
+        return match; // Keep original if not found
+      }
+    }
+
+    return current;
+  });
+}
+
+/**
+ * Interpolate all values in an object recursively
+ */
+function interpolateObject(obj, context) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => interpolateObject(item, context));
+  }
+
+  if (obj && typeof obj === 'object') {
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = interpolateObject(value, context);
+    }
+    return result;
+  }
+
+  return interpolate(obj, context);
+}
+
+/**
+ * Execute a single step by calling its endpoint
+ */
+async function executeStep(step, context, retries = 3) {
+  const endpoint = interpolate(step.endpoint, context);
+  const input = interpolateObject(step.input || {}, context);
+
+  console.log(`\n🔄 Executing step: ${step.name}`);
+  console.log(`   Endpoint: ${endpoint}`);
+  console.log(`   Input:`, JSON.stringify(input, null, 2));
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${result.error || response.statusText}`);
+      }
+
+      console.log(`✅ Step completed: ${step.name}`);
+
+      // Save output if specified
+      if (step.output) {
+        const outputPath = interpolate(step.output, context);
+        const outputDir = dirname(outputPath);
+        
+        if (!existsSync(outputDir)) {
+          await mkdir(outputDir, { recursive: true });
+        }
+        
+        await writeFile(outputPath, JSON.stringify(result, null, 2));
+        console.log(`   Output saved: ${outputPath}`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`❌ Step failed (attempt ${attempt}/${retries}): ${error.message}`);
+      
+      if (attempt < retries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        console.log(`   Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// MAIN MANIFEST EXECUTION
+// ============================================================================
+
+async function runManifest(manifestPath, projectConfig = {}) {
+  const startTime = new Date().toISOString();
+  const correlationId = generateCorrelationId();
+  
+  console.log('\n╔═══════════════════════════════════════════════════════════╗');
+  console.log('║  SirTrav A2A Studio - Manifest Executor                  ║');
+  console.log('╚═══════════════════════════════════════════════════════════╝\n');
+  console.log(`📋 Manifest: ${manifestPath}`);
+  console.log(`🔑 Correlation ID: ${correlationId}`);
+  console.log(`⏰ Start time: ${startTime}\n`);
+
+  try {
+    // 1. Load and parse manifest
+    console.log('📖 Loading manifest...');
+    const manifestContent = await readFile(manifestPath, 'utf-8');
+    const manifest = yaml.load(manifestContent);
+    console.log(`✅ Manifest loaded: ${manifest.pipeline.name}`);
+    console.log(`   Version: ${manifest.version}`);
+    console.log(`   Stages: ${manifest.pipeline.stages.length}\n`);
+
+    // 2. Build execution context
+    const projectId = projectConfig.projectId || `project-${Date.now()}`;
+    const context = {
+      env: process.env,
+      project: {
+        id: projectId,
+        source_root: projectConfig.sourceRoot || './intake',
+        ...projectConfig,
+      },
+      manifest: {
+        version: manifest.version,
+        name: manifest.pipeline.name,
+      },
+      run: {
+        start_time: startTime,
+        correlation_id: correlationId,
+      },
+      steps: {}, // Will be populated with step outputs
+    };
+
+    // 3. Log pipeline start
+    await logProgress(
+      projectId,
+      'system',
+      'started',
+      `Pipeline started: ${manifest.pipeline.name}`,
+      0,
+      { correlationId, stages: manifest.pipeline.stages.length }
+    );
+
+    // 4. Execute steps sequentially
+    const steps = manifest.steps || [];
+    const totalSteps = steps.length;
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const progress = (i + 1) / totalSteps;
+
+      try {
+        // Log step start
+        await logProgress(
+          projectId,
+          'system',
+          'progress',
+          `Executing: ${step.name}`,
+          progress,
+          { step: step.name, stage: step.stage }
+        );
+
+        // Execute step
+        const result = await executeStep(step, context);
+
+        // Store result in context for later steps
+        context.steps[step.name] = { output: result };
+
+        // Log step completion
+        await logProgress(
+          projectId,
+          'system',
+          'progress',
+          `Completed: ${step.name}`,
+          progress,
+          { step: step.name, success: true }
+        );
+      } catch (error) {
+        console.error(`\n❌ Pipeline failed at step: ${step.name}`);
+        console.error(`   Error: ${error.message}\n`);
+
+        // Log failure
+        await logProgress(
+          projectId,
+          'system',
+          'error',
+          `Failed at step: ${step.name}`,
+          progress,
+          { step: step.name, error: error.message }
+        );
+
+        throw error;
+      }
+    }
+
+    // 5. Pipeline completed successfully
+    const endTime = new Date().toISOString();
+    const duration = new Date(endTime) - new Date(startTime);
+
+    console.log('\n╔═══════════════════════════════════════════════════════════╗');
+    console.log('║  ✅ PIPELINE COMPLETED SUCCESSFULLY                       ║');
+    console.log('╚═══════════════════════════════════════════════════════════╝\n');
+    console.log(`⏱️  Duration: ${(duration / 1000).toFixed(2)}s`);
+    console.log(`📦 Project ID: ${projectId}`);
+    console.log(`🔑 Correlation ID: ${correlationId}\n`);
+
+    await logProgress(
+      projectId,
+      'system',
+      'completed',
+      'Pipeline completed successfully',
+      1,
+      { duration, correlationId }
+    );
+
+    return {
+      success: true,
+      projectId,
+      correlationId,
+      duration,
+      steps: Object.keys(context.steps),
+    };
+  } catch (error) {
+    console.error('\n╔═══════════════════════════════════════════════════════════╗');
+    console.error('║  ❌ PIPELINE FAILED                                       ║');
+    console.error('╚═══════════════════════════════════════════════════════════╝\n');
+    console.error(`Error: ${error.message}\n`);
+    
+    throw error;
+  }
+}
+
+// ============================================================================
+// CLI ENTRY POINT
+// ============================================================================
+
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMainModule) {
   const scriptDir = dirname(fileURLToPath(import.meta.url));
   const defaultManifest = join(scriptDir, 'a2a_manifest.yml');
   const manifestPath = process.argv[2] || defaultManifest;
-  runManifest(manifestPath).catch(console.error);
+  
+  // Parse CLI options
+  const projectId = process.argv[3] || `week-${new Date().toISOString().slice(0, 10)}`;
+  
+  runManifest(manifestPath, { projectId })
+    .then(result => {
+      console.log('Pipeline result:', result);
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('Pipeline error:', error);
+      process.exit(1);
+    });
 }
 
 export { runManifest };
