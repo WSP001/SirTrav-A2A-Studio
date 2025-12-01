@@ -1,32 +1,91 @@
-.app {
-  background: radial-gradient(circle at top, #111827 0%, #020617 55%, #000 100%);
-  color: #f8fafc;
-  min-height: 100vh;
-  padding: 3rem 1.5rem 4rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
+:root {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-border: #334155;
+  --spacing-md: 1rem;
+  --radius-md: 0.5rem;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
 }
 
 .app__header {
-  text-align: center;
-  max-width: 720px;
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-md);
 }
 
-.app__header h1 {
-  font-size: clamp(2.25rem, 3vw, 3.25rem);
-  margin-bottom: 0.75rem;
+.header__content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.app__header p {
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header__logo h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
   margin: 0;
-  color: rgba(248, 250, 252, 0.75);
 }
+
+.header__nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.icon { width: 24px; height: 24px; }
+.icon-sm { width: 18px; height: 18px; }
 
 .app__main {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding-bottom: 4rem;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 var(--spacing-md);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.panel {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
 }
