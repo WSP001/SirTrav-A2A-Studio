@@ -6,44 +6,79 @@ import "./App.css";
 
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [projectId, setProjectId] = useState("");
 
   return (
-    <div className="app">
-      <header className="app__header" role="banner">
-        <div className="header__content">
-          <div className="header__logo">
-            <LayoutDashboard className="icon" aria-hidden="true" />
-            <h1>SirTrav Memory Channel</h1>
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600/10 rounded-lg">
+              <LayoutDashboard className="w-6 h-6 text-blue-500" aria-hidden="true" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight">SirTrav Memory Channel</h1>
           </div>
-          <nav className="header__nav" role="navigation" aria-label="Main Navigation">
-            <button 
-              className={`nav-link ${activeTab === "dashboard" ? "active" : ""}`}
+          
+          <nav className="hidden md:flex items-center gap-1" role="navigation" aria-label="Main Navigation">
+            <button
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                activeTab === "dashboard" 
+                  ? "bg-[var(--color-bg-primary)] text-blue-500 shadow-sm" 
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]/50"
+              }`}
               onClick={() => setActiveTab("dashboard")}
               aria-current={activeTab === "dashboard" ? "page" : undefined}
             >
-              <Wand2 className="icon-sm" /> Studio
+              <Wand2 className="w-4 h-4" /> Studio
             </button>
-            <a href="/docs" className="nav-link">
-              <BookOpen className="icon-sm" /> Docs
+            <a href="/docs" className="px-4 py-2 rounded-md text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]/50 flex items-center gap-2 transition-colors">
+              <BookOpen className="w-4 h-4" /> Docs
             </a>
-            <a href="/vault" className="nav-link">
-              <Database className="icon-sm" /> Vault
+            <a href="/vault" className="px-4 py-2 rounded-md text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]/50 flex items-center gap-2 transition-colors">
+              <Database className="w-4 h-4" /> Vault
             </a>
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" className="nav-link" target="_blank" rel="noopener noreferrer">
-              <Github className="icon-sm" /> GitHub
+            <a 
+              href="https://github.com/WSP001/SirTrav-A2A-Studio" 
+              className="px-4 py-2 rounded-md text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]/50 flex items-center gap-2 transition-colors"
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <Github className="w-4 h-4" /> GitHub
             </a>
           </nav>
         </div>
       </header>
 
-      <main className="app__main" role="main">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8" role="main">
         {activeTab === "dashboard" && (
-          <div className="dashboard-grid">
-            <section className="panel creative-hub">
-              <CreativeHub />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Panel: Creative Hub (Input) */}
+            <section className="lg:col-span-5 space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 text-xs">1</span>
+                  Ingest & Context
+                </h2>
+              </div>
+              <CreativeHub onProjectIdChange={setProjectId} />
             </section>
-            <section className="panel video-gen">
-              <VideoGenerator />
+
+            {/* Right Panel: Video Generator (Output/Control) */}
+            <section className="lg:col-span-7 space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500/10 text-purple-500 text-xs">2</span>
+                  Generation Pipeline
+                </h2>
+                {projectId && (
+                  <span className="text-xs font-mono px-2 py-1 rounded bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                    Active: {projectId}
+                  </span>
+                )}
+              </div>
+              <VideoGenerator projectId={projectId} />
             </section>
           </div>
         )}

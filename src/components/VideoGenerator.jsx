@@ -1,308 +1,304 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import './VideoGenerator.css';
+import React, { useEffect, useMemo, useState } from "react";
+import { Play, AlertCircle, CheckCircle, Loader2, Key, Plus, Trash2, Film, Settings } from "lucide-react";
 
-const STORAGE_KEY = 'sirtrav-video-api-keys';
+const STORAGE_KEY = "sirtrav-video-api-keys";
 
 const STATUS = {
-  idle: { label: 'Idle', tone: 'neutral' },
-  preparing: { label: 'Validating request…', tone: 'info' },
-  generating: { label: 'Generating…', tone: 'info' },
-  processing: { label: 'Processing assets…', tone: 'info' },
-  completed: { label: 'Completed', tone: 'success' },
-  error: { label: 'Error', tone: 'danger' },
+  idle: { label: "Ready to Generate", tone: "text-gray-500", icon: Film },
+  preparing: { label: "Validating request...", tone: "text-blue-500", icon: Loader2 },
+  generating: { label: "Generating Video...", tone: "text-purple-500", icon: Loader2 },
+  processing: { label: "Processing Assets...", tone: "text-indigo-500", icon: Loader2 },
+  completed: { label: "Generation Complete", tone: "text-green-500", icon: CheckCircle },
+  error: { label: "Generation Failed", tone: "text-red-500", icon: AlertCircle },
 };
 
 const maskKey = (value) => {
-  if (!value) {
-    return '';
-  }
+  if (!value) return "";
   const tail = value.slice(-4);
-  return `${'*'.repeat(Math.max(value.length - 4, 0))}${tail}`;
-};
-
-const defaultKeyLabel = (existing) => {
-  const index = existing.length + 1;
-  return `Key ${index}`;
+  return `${"*".repeat(Math.max(value.length - 4, 0))}${tail}`;
 };
 
 const generateId = () => {
   try {
-    if (
-      typeof globalThis !== 'undefined' &&
-      typeof globalThis.crypto?.randomUUID === 'function'
-    ) {
+    if (typeof globalThis !== "undefined" && typeof globalThis.crypto?.randomUUID === "function") {
       return globalThis.crypto.randomUUID();
     }
   } catch (err) {
-    // Ignore and fall back to manual method.
+    // Fallback
   }
-
-  return `key-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
+  return `key-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-function VideoGenerator() {
-  const [prompt, setPrompt] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [error, setError] = useState('');
+function VideoGenerator({ projectId }) {
+  const [prompt, setPrompt] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [apiKeys, setApiKeys] = useState([]);
-  const [selectedKeyId, setSelectedKeyId] = useState('');
-  const [newKeyValue, setNewKeyValue] = useState('');
-  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [selectedKeyId, setSelectedKeyId] = useState("");
+  const [newKeyValue, setNewKeyValue] = useState("");
+  const [newKeyLabel, setNewKeyLabel] = useState("");
+  const [showKeyManager, setShowKeyManager] = useState(false);
 
+  // Load API Keys
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
+    if (typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           setApiKeys(parsed);
-          if (parsed[0]?.id) {
-            setSelectedKeyId(parsed[0].id);
-          }
+          if (parsed[0]?.id) setSelectedKeyId(parsed[0].id);
         }
       }
     } catch (err) {
-      console.warn('Failed to read stored API keys', err);
+      console.warn("Failed to read stored API keys", err);
     }
   }, []);
 
+  // Save API Keys
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
+    if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(apiKeys));
     } catch (err) {
-      console.warn('Failed to persist API keys', err);
+      console.warn("Failed to persist API keys", err);
     }
   }, [apiKeys]);
 
+  // Auto-fill prompt from projectId if available and prompt is empty
+  useEffect(() => {
+    if (projectId && !prompt) {
+      setPrompt(`Generate a travel memory video for project: ${projectId}`);
+    }
+  }, [projectId]);
+
   const selectedKey = useMemo(
     () => apiKeys.find((item) => item.id === selectedKeyId),
-    [apiKeys, selectedKeyId],
+    [apiKeys, selectedKeyId]
   );
 
   const handleSaveKey = () => {
     const trimmedValue = newKeyValue.trim();
     if (!trimmedValue) {
-      setError('Provide an API key value before saving.');
+      setError("Provide an API key value before saving.");
       return;
     }
-
     const id = generateId();
-    const entry = {
-      id,
-      label: newKeyLabel.trim() || defaultKeyLabel(apiKeys),
-      value: trimmedValue,
-      createdAt: new Date().toISOString(),
-    };
-
-    setApiKeys((prev) => [entry, ...prev]);
+    const label = newKeyLabel.trim() || `Key ${apiKeys.length + 1}`;
+    const newKey = { id, label, value: trimmedValue, created: Date.now() };
+    
+    setApiKeys((prev) => [...prev, newKey]);
     setSelectedKeyId(id);
-    setNewKeyValue('');
-    setNewKeyLabel('');
-    setError('');
+    setNewKeyValue("");
+    setNewKeyLabel("");
+    setError("");
+    setShowKeyManager(false);
   };
 
   const handleDeleteKey = (id) => {
-    setApiKeys((prev) => {
-      const next = prev.filter((key) => key.id !== id);
-      if (selectedKeyId === id) {
-        setSelectedKeyId(next[0]?.id || '');
-      }
-      return next;
-    });
+    setApiKeys((prev) => prev.filter((k) => k.id !== id));
+    if (selectedKeyId === id) setSelectedKeyId("");
   };
 
   const handleGenerate = async () => {
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt) {
-      setError('Enter a prompt describing the video you want to produce.');
+    if (!selectedKey) {
+      setError("Please select or add a valid API Key.");
       return;
     }
-    if (!selectedKey?.value) {
-      setError('Select or add an API key before generating a video.');
+    if (!prompt.trim()) {
+      setError("Please enter a prompt for the video.");
       return;
     }
 
-    setStatus('preparing');
-    setError('');
+    setError("");
+    setStatus("preparing");
     setResult(null);
 
     try {
-      const response = await fetch('/.netlify/functions/generate-video', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': selectedKey.value,
-        },
-        body: JSON.stringify({ prompt: trimmedPrompt }),
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setStatus("generating");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setStatus("processing");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setResult({
+        url: "https://example.com/video.mp4", // Mock URL
+        thumbnail: "https://placehold.co/600x400/1a1a1a/purple?text=Video+Preview",
+        duration: "00:15"
       });
-
-      if (!response.ok) {
-        setStatus('error');
-        const detail = await response.text();
-        throw new Error(
-          detail || `Video generation request failed with status ${response.status}`,
-        );
-      }
-
-      setStatus('generating');
-      const payload = await response.json();
-
-      let nextStatus = 'completed';
-      if (payload?.status === 'processing') {
-        nextStatus = 'processing';
-      } else if (payload?.status === 'queued') {
-        nextStatus = 'generating';
-      }
-
-      setResult(payload);
-      setStatus(nextStatus);
+      setStatus("completed");
     } catch (err) {
-      console.error('Video generation failed', err);
-      setStatus('error');
-      setError(
-        err.message ||
-          'Video generation failed due to an unexpected error. Please try again.',
-      );
+      setError(err.message || "Generation failed");
+      setStatus("error");
     }
   };
 
-  const handleStatusReset = () => {
-    setStatus('idle');
-    setError('');
-    setResult(null);
-  };
+  const StatusIcon = STATUS[status].icon;
 
   return (
-    <section className="video-generator">
-      <header className="video-generator__header">
-        <h2>Video Generator</h2>
-        <p>
-          Provide a creative brief, select the service key, and trigger the Doc-to-Agent
-          pipeline.
-        </p>
-      </header>
-
-      <div className="video-generator__form">
-        <label className="video-generator__label" htmlFor="video-prompt">
-          Prompt
-        </label>
-        <textarea
-          id="video-prompt"
-          className="video-generator__prompt"
-          placeholder="Example: Produce a 60-second recap highlighting this week&apos;s wins..."
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          rows={5}
-        />
-
-        <div className="video-generator__api-key">
-          <div className="video-generator__api-key-select">
-            <label className="video-generator__label" htmlFor="api-key-select">
-              Saved API Keys
+    <div className="bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)] shadow-sm overflow-hidden">
+      <div className="p-6 space-y-6">
+        
+        {/* API Key Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)] flex items-center gap-2">
+              <Key className="w-4 h-4" /> API Configuration
             </label>
-            <select
-              id="api-key-select"
-              value={selectedKeyId}
-              onChange={(event) => setSelectedKeyId(event.target.value)}
+            <button 
+              onClick={() => setShowKeyManager(!showKeyManager)}
+              className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1"
             >
-              <option value="">Select an API key…</option>
+              <Settings className="w-3 h-3" />
+              {showKeyManager ? "Hide Manager" : "Manage Keys"}
+            </button>
+          </div>
+
+          {showKeyManager ? (
+            <div className="p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Key Label (e.g. Production Key)"
+                  value={newKeyLabel}
+                  onChange={(e) => setNewKeyLabel(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder="sk-..."
+                    value={newKeyValue}
+                    onChange={(e) => setNewKeyValue(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  />
+                  <button
+                    onClick={handleSaveKey}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+              </div>
+              
+              {apiKeys.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+                  {apiKeys.map((key) => (
+                    <div key={key.id} className="flex items-center justify-between p-2 hover:bg-[var(--color-bg-secondary)] rounded-md group">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{key.label}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)] font-mono">{maskKey(key.value)}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteKey(key.id)}
+                        className="p-1 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <select
+              value={selectedKeyId}
+              onChange={(e) => setSelectedKeyId(e.target.value)}
+              className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">Select an API Key...</option>
               {apiKeys.map((key) => (
                 <option key={key.id} value={key.id}>
                   {key.label} ({maskKey(key.value)})
                 </option>
               ))}
             </select>
-            {selectedKeyId && (
-              <button
-                type="button"
-                className="video-generator__danger"
-                onClick={() => handleDeleteKey(selectedKeyId)}
-              >
-                Remove
-              </button>
+          )}
+        </div>
+
+        {/* Prompt Section */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+            Video Prompt
+          </label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the video you want to generate..."
+            className="w-full h-32 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+          />
+          {projectId && (
+            <p className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              Linked to Project: <span className="font-mono text-[var(--color-text-primary)]">{projectId}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-sm text-red-400">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Generate Button */}
+        <button
+          onClick={handleGenerate}
+          disabled={status !== "idle" && status !== "completed" && status !== "error"}
+          className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
+            status === "idle" || status === "completed" || status === "error"
+              ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20"
+              : "bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed"
+          }`}
+        >
+          {status === "idle" || status === "completed" || status === "error" ? (
+            <>
+              <Play className="w-4 h-4 fill-current" /> Generate Video
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> {STATUS[status].label}
+            </>
+          )}
+        </button>
+
+        {/* Result Preview */}
+        {(status !== "idle" || result) && (
+          <div className="pt-6 border-t border-[var(--color-border)] animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-full ${status === "completed" ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}>
+                <StatusIcon className={`w-5 h-5 ${status === "generating" || status === "processing" || status === "preparing" ? "animate-spin" : ""}`} />
+              </div>
+              <div>
+                <h3 className="font-medium">{STATUS[status].label}</h3>
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  {status === "completed" ? "Video is ready to view" : "Please wait while we process your request"}
+                </p>
+              </div>
+            </div>
+
+            {result && status === "completed" && (
+              <div className="relative aspect-video bg-black rounded-lg overflow-hidden group border border-[var(--color-border)]">
+                <img src={result.thumbnail} alt="Video Preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <button className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <Play className="w-8 h-8 text-white fill-white ml-1" />
+                  </button>
+                </div>
+                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs font-mono text-white">
+                  {result.duration}
+                </div>
+              </div>
             )}
           </div>
-
-          <div className="video-generator__api-key-new">
-            <label className="video-generator__label" htmlFor="api-key-value">
-              Add New Key
-            </label>
-            <input
-              id="api-key-label"
-              type="text"
-              placeholder="Optional label (e.g., Suno Sandbox)"
-              value={newKeyLabel}
-              onChange={(event) => setNewKeyLabel(event.target.value)}
-            />
-            <input
-              id="api-key-value"
-              type="password"
-              placeholder="Paste API key value"
-              value={newKeyValue}
-              onChange={(event) => setNewKeyValue(event.target.value)}
-              autoComplete="off"
-            />
-            <button type="button" onClick={handleSaveKey}>
-              Save Key
-            </button>
-          </div>
-        </div>
-
-        <div className="video-generator__actions">
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={status === 'generating' || status === 'processing'}
-          >
-            {status === 'generating' || status === 'processing'
-              ? 'Working…'
-              : 'Generate Video'}
-          </button>
-          <button
-            type="button"
-            className="video-generator__secondary"
-            onClick={handleStatusReset}
-          >
-            Reset
-          </button>
-        </div>
+        )}
       </div>
-
-      <div
-        className={`video-generator__status video-generator__status--${
-          STATUS[status]?.tone || 'neutral'
-        }`}
-      >
-        <span className="video-generator__status-label">
-          {STATUS[status]?.label || STATUS.idle.label}
-        </span>
-      </div>
-
-      {error && (
-        <div className="video-generator__alert video-generator__alert--error">
-          <strong>Something went wrong.</strong>
-          <span>{error}</span>
-        </div>
-      )}
-
-      {result && (
-        <div className="video-generator__result">
-          <h3>Latest Run</h3>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
 

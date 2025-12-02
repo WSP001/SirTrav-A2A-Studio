@@ -2,10 +2,17 @@ import React, { useState, useCallback } from "react";
 import { Upload, FileText, Music, Film, X } from "lucide-react";
 import "./CreativeHub.css";
 
-const CreativeHub = () => {
+const CreativeHub = ({ onProjectIdChange }) => {
   const [projectId, setProjectId] = useState(() => `PROJ-${Date.now()}`);
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Sync projectId with parent
+  React.useEffect(() => {
+    if (onProjectIdChange) {
+      onProjectIdChange(projectId);
+    }
+  }, [projectId, onProjectIdChange]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
