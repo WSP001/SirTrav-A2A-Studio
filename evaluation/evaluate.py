@@ -11,11 +11,12 @@ def main():
         print("Please set OPENAI_API_KEY in your .env file or environment.")
         return
 
-    # Configure Model
+    # Configure Model - OpenAI API requires base_url
     model_config = OpenAIModelConfiguration(
         type="openai",
-        model="gpt-4",
-        api_key=os.environ["OPENAI_API_KEY"]
+        model="gpt-4o-mini",
+        api_key=os.environ["OPENAI_API_KEY"],
+        base_url="https://api.openai.com/v1"
     )
 
     # Initialize Evaluators
