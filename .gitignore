@@ -7,3 +7,7 @@
 .kiro/steering/byterover-rules.md
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
+# Environment files
+.env
+.env.local
+.env.*.local
