@@ -1,0 +1,16 @@
+{
+  "title": "SirTrav Memory Channel - Test Video",
+  "created_at": "2025-12-03T00:00:00Z",
+  "pipeline_version": "1.5.0",
+  "credits": {
+    "director": "Vision Director Agent v2",
+    "writer": "Narrative Writer Agent",
+    "voice": "ElevenLabs TTS",
+    "composer": "Suno AI Music",
+    "editor": "FFmpeg Editor Agent",
+    "attribution": "Attribution Agent"
+  },
+  "assets_used": 5,
+  "duration_seconds": 15,
+  "note": "This is a test video for pipeline validation. Replace with real generated video once Editor agent is implemented."
+}
