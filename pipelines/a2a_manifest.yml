@@ -1,45 +1,125 @@
 # SirTrav A2A Studio - Doc-to-Agent Manifest
+# Full 7-Agent Pipeline for Commons Good Video Production
 
-version: "1.0"
+version: "1.3.0"
+project:
+  id: "${env.PROJECT_ID}"
+  source_root: "content/intake"
+  out_dir: "tmp/${project.id}"
+
 pipeline:
   name: "D2A Video Automation"
-  description: "Automate cinematic video production from raw media"
+  description: "Automate cinematic video production through 7 AI agents"
   stages:
-    - name: "ingest"
-      description: "Ingest raw media and documents"
-    - name: "process"
-      description: "Process and transform content"
-    - name: "render"
-      description: "Render final video output"
+    - name: "curate"
+      description: "Director curates media and sets creative direction"
+    - name: "create"
+      description: "Writer, Voice, and Composer create content"
+    - name: "compile"
+      description: "Editor assembles final video"
+    - name: "publish"
+      description: "Attribution and Publisher finalize delivery"
 
 steps:
-  - name: "ingest_media"
-    stage: "ingest"
-    endpoint: "${env.URL}/.netlify/functions/intake-upload"
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 1: DIRECTOR - Curates media, sets theme/mood
+  # ═══════════════════════════════════════════════════════════════
+  - name: "director"
+    agent: "director"
+    stage: "curate"
     input:
       projectId: "${project.id}"
-      source: "${project.source_root}"
-    output: "tmp/${project.id}/intake.json"
+      media_root: "${project.source_root}"
+      maxScenes: 12
+    output: "tmp/${project.id}/curated.json"
 
-  - name: "publish_artifacts"
-    stage: "render"
-    endpoint: "${env.URL}/.netlify/functions/publish"
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 2: WRITER - Generates first-person narrative script
+  # ═══════════════════════════════════════════════════════════════
+  - name: "writer"
+    agent: "writer"
+    stage: "create"
     input:
       projectId: "${project.id}"
-      lufs_ok: "${steps.audio_lufs_gate.output.ok}"
+      curated_media: "${steps.director.output.curated_media}"
+      theme: "${steps.director.output.theme}"
+      mood: "${steps.director.output.mood}"
+    output: "tmp/${project.id}/narrative.json"
+
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 3: VOICE - Synthesizes narration audio (ElevenLabs)
+  # ═══════════════════════════════════════════════════════════════
+  - name: "voice"
+    agent: "voice"
+    stage: "create"
+    input:
+      projectId: "${project.id}"
+      text: "${steps.writer.output.narrative}"
+      voice_id: "Rachel"
+    output: "tmp/${project.id}/narration.wav"
+
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 4: COMPOSER - Generates soundtrack with beat grid (Suno)
+  # ═══════════════════════════════════════════════════════════════
+  - name: "composer"
+    agent: "composer"
+    stage: "create"
+    input:
+      projectId: "${project.id}"
+      mood: "${steps.director.output.mood}"
+      tempo: 72
+      genre: "ambient"
+      duration: "${steps.voice.output.duration}"
+    output: "tmp/${project.id}/music.json"
+
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 5: EDITOR - Assembles final video with FFmpeg
+  # ═══════════════════════════════════════════════════════════════
+  - name: "editor"
+    agent: "editor"
+    stage: "compile"
+    input:
+      projectId: "${project.id}"
+      curated_file: "${steps.director.outputPath}"
+      narration_file: "${steps.voice.outputPath}"
+      music_file: "${steps.composer.outputPath}"
+    output: "tmp/${project.id}/FINAL_RECAP.mp4"
+
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 6: ATTRIBUTION - Compiles credits for Commons Good
+  # ═══════════════════════════════════════════════════════════════
+  - name: "attribution"
+    agent: "attribution"
+    stage: "publish"
+    input:
+      projectId: "${project.id}"
+      curated_file: "${steps.director.outputPath}"
+      music_file: "${steps.composer.outputPath}"
+      voice_file: "${steps.voice.outputPath}"
+      video_file: "${steps.editor.outputPath}"
+    output: "tmp/${project.id}/credits.json"
+
+  # ═══════════════════════════════════════════════════════════════
+  # AGENT 7: PUBLISHER - Uploads artifacts to storage
+  # ═══════════════════════════════════════════════════════════════
+  - name: "publisher"
+    agent: "publisher"
+    stage: "publish"
+    input:
+      projectId: "${project.id}"
+      lufs_ok: true
       metadata:
         pipeline_version: "${manifest.version}"
         build_timestamp: "${run.start_time}"
         correlation_id: "${run.correlation_id}"
       artifacts:
-        - localPath: "tmp/${project.id}/FINAL_RECAP_${project.id}.mp4"
+        - localPath: "${steps.editor.outputPath}"
           type: "video"
-        - localPath: "tmp/${project.id}/master_audio.wav"
-          type: "audio"
-        - localPath: "tmp/${project.id}/project_summary.json"
-          type: "metadata"
+        - localPath: "${steps.attribution.outputPath}"
+          type: "credits"
     output: "tmp/${project.id}/publish_result.json"
 
 output:
   format: "mp4"
   quality: "high"
+  lufs_range: [-18, -12]
