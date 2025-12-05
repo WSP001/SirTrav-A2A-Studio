@@ -4,6 +4,10 @@ import { Click2KickButton } from './Click2KickButton';
 import { PipelineProgress } from './PipelineProgress';
 import { useDropzone } from 'react-dropzone';
 
+// 🔥 VERSION TAG - Check this to verify deployment!
+const APP_VERSION = 'v1.7.0-POP';
+const BUILD_DATE = '2025-12-04';
+
 // Types
 type PipelineStatus = 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
 
@@ -147,6 +151,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/30">
           <Sparkles className="w-4 h-4 text-brand-400" />
           <span className="text-sm font-medium text-brand-300">7-Agent AI Pipeline Ready</span>
+          <span className="text-xs px-2 py-0.5 rounded bg-brand-500/30 text-brand-200 font-mono">{APP_VERSION}</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold">
           <span className="gradient-text-animated">Creative Hub</span>
@@ -154,6 +159,8 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
         <p className="text-lg text-gray-400 max-w-2xl mx-auto">
           Upload your content and watch our AI agents transform it into a cinematic masterpiece
         </p>
+        {/* Version indicator for deployment verification */}
+        <p className="text-xs text-gray-600">Build: {BUILD_DATE} | {APP_VERSION}</p>
       </div>
 
       {/* Agent Status Grid */}
