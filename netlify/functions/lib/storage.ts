@@ -1,7 +1,8 @@
-import { createReadStream, statSync } from 'fs';
+import { createReadStream, statSync, readFileSync } from 'fs';
 import path from 'path';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getStore } from '@netlify/blobs';
 
 export interface StorageResult {
   ok: boolean;
@@ -214,11 +215,209 @@ class NetlifyLMStorage {
 }
 
 /**
- * Factory function to create appropriate storage backend
- * Defaults to MockStorage for testing (no AWS required!)
+ * Netlify Blobs Storage - Modern key-value storage built into Netlify
+ * Best for: Videos, audio, images, JSON data
+ * No AWS setup required!
  */
-export function createStorage() {
-  const backend = (process.env.STORAGE_BACKEND || 'mock').toLowerCase();
+class NetlifyBlobsStorage {
+  private storeName: string;
+
+  constructor(storeName: string = 'sirtrav-media') {
+    this.storeName = storeName;
+  }
+
+  /**
+   * Upload a file to Netlify Blobs
+   */
+  async upload(
+    localPath: string,
+    key: string,
+    opts: { maxMb?: number; metadata?: Record<string, string> } = {}
+  ): Promise<StorageResult> {
+    const { maxMb = DEFAULT_MAX_MB, metadata = {} } = opts;
+
+    try {
+      const stats = statSync(localPath);
+      if (stats.size > maxMb * 1024 * 1024) {
+        return {
+          ok: false,
+          error: `File exceeds ${maxMb}MB limit (actual: ${(stats.size / (1024 * 1024)).toFixed(2)}MB)`,
+        };
+      }
+
+      const store = getStore(this.storeName);
+      const fileBuffer = readFileSync(localPath);
+      const contentType = resolveContentType(localPath);
+
+      // Store the file with metadata
+      await store.set(key, fileBuffer, {
+        metadata: {
+          ...metadata,
+          contentType,
+          size: String(stats.size),
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      const domain = process.env.URL || 'https://sirtrav-a2a-studio.netlify.app';
+      const publicUrl = `${domain}/.netlify/blobs/${this.storeName}/${key}`;
+
+      console.log(`[NetlifyBlobs] Uploaded ${key} (${(stats.size / 1024).toFixed(1)}KB)`);
+
+      return {
+        ok: true,
+        publicUrl,
+        metadata: { contentType, size: stats.size, key, backend: 'netlify_blobs' },
+      };
+    } catch (err) {
+      console.error('[NetlifyBlobs] Upload error:', err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Upload raw data (Buffer or string) directly
+   */
+  async uploadData(
+    key: string,
+    data: Buffer | string,
+    opts: { contentType?: string; metadata?: Record<string, string> } = {}
+  ): Promise<StorageResult> {
+    const { contentType = 'application/octet-stream', metadata = {} } = opts;
+
+    try {
+      const store = getStore(this.storeName);
+      const buffer = typeof data === 'string' ? Buffer.from(data) : data;
+
+      await store.set(key, buffer, {
+        metadata: {
+          ...metadata,
+          contentType,
+          size: String(buffer.length),
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      const domain = process.env.URL || 'https://sirtrav-a2a-studio.netlify.app';
+      const publicUrl = `${domain}/.netlify/blobs/${this.storeName}/${key}`;
+
+      console.log(`[NetlifyBlobs] Uploaded data ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+
+      return {
+        ok: true,
+        publicUrl,
+        metadata: { contentType, size: buffer.length, key, backend: 'netlify_blobs' },
+      };
+    } catch (err) {
+      console.error('[NetlifyBlobs] Upload data error:', err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Get a file from Netlify Blobs
+   */
+  async get(key: string): Promise<{ ok: boolean; data?: Buffer; metadata?: Record<string, string>; error?: string }> {
+    try {
+      const store = getStore(this.storeName);
+      const blob = await store.get(key, { type: 'arrayBuffer' });
+      
+      if (!blob) {
+        return { ok: false, error: 'File not found' };
+      }
+
+      const metadata = await store.getMetadata(key);
+
+      return {
+        ok: true,
+        data: Buffer.from(blob),
+        metadata: metadata?.metadata as Record<string, string>,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Delete a file from Netlify Blobs
+   */
+  async delete(key: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const store = getStore(this.storeName);
+      await store.delete(key);
+      console.log(`[NetlifyBlobs] Deleted ${key}`);
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * List all files in the store
+   */
+  async list(prefix?: string): Promise<{ ok: boolean; keys?: string[]; error?: string }> {
+    try {
+      const store = getStore(this.storeName);
+      const { blobs } = await store.list({ prefix });
+      const keys = blobs.map((b: { key: string }) => b.key);
+      return { ok: true, keys };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Get signed URL (Netlify Blobs are public by default, so this returns the public URL)
+   */
+  async getSignedUrl(
+    key: string,
+    expiresIn: number = DEFAULT_EXPIRY_SECONDS
+  ): Promise<StorageResult> {
+    const domain = process.env.URL || 'https://sirtrav-a2a-studio.netlify.app';
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+    return {
+      ok: true,
+      signedUrl: `${domain}/.netlify/blobs/${this.storeName}/${key}`,
+      publicUrl: `${domain}/.netlify/blobs/${this.storeName}/${key}`,
+      expiresAt,
+    };
+  }
+}
+
+// Pre-configured blob stores for different media types
+export const videoStore = new NetlifyBlobsStorage('sirtrav-videos');
+export const audioStore = new NetlifyBlobsStorage('sirtrav-audio');
+export const imageStore = new NetlifyBlobsStorage('sirtrav-images');
+export const creditsStore = new NetlifyBlobsStorage('sirtrav-credits');
+
+/**
+ * Factory function to create appropriate storage backend
+ * Priority: netlify_blobs > s3 > netlify_lm > mock
+ */
+export function createStorage(storeName?: string) {
+  const backend = (process.env.STORAGE_BACKEND || 'netlify_blobs').toLowerCase();
+  
+  // Netlify Blobs - RECOMMENDED for Netlify deployments (no AWS setup!)
+  if (backend === 'netlify_blobs' || backend === 'blobs') {
+    console.log('[Storage] Using Netlify Blobs backend');
+    return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
+  }
   
   if (backend === 's3' && process.env.AWS_ACCESS_KEY_ID) {
     console.log('[Storage] Using S3 backend');
@@ -230,9 +429,9 @@ export function createStorage() {
     return new NetlifyLMStorage();
   }
   
-  // Default: Mock storage for testing (no AWS required!)
-  console.log('[Storage] Using Mock backend (testing mode)');
-  return new MockStorage();
+  // Default: Netlify Blobs (works out of the box on Netlify!)
+  console.log('[Storage] Defaulting to Netlify Blobs backend');
+  return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
 }
 
 // Export appropriate storage based on environment
@@ -243,7 +442,10 @@ const hasS3Config = Boolean(
     process.env.AWS_SECRET_ACCESS_KEY
 );
 
-export const storage = isProduction && hasS3Config ? new S3Storage() : new MockStorage();
+// Default storage instance - uses Netlify Blobs on Netlify, Mock locally
+export const storage = isProduction 
+  ? (hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media'))
+  : new MockStorage();
 
-export { S3Storage, MockStorage, NetlifyLMStorage };
+export { S3Storage, MockStorage, NetlifyLMStorage, NetlifyBlobsStorage };
 
