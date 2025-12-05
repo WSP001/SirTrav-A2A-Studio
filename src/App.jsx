@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3 } from "lucide-react";
+import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink } from "lucide-react";
 import "./App.css";
 
 // Version for deployment verification
-const APP_VERSION = "v1.8.0";
+const APP_VERSION = "v1.9.0";
 const BUILD_DATE = "2025-12-04";
 
 // 7-Agent Configuration
@@ -24,6 +24,9 @@ function App() {
   const [agentStates, setAgentStates] = useState({});
   const [metrics, setMetrics] = useState({ cost: 0, time: 0 });
   const [logs, setLogs] = useState({});
+  const [videoResult, setVideoResult] = useState(null);
+  const [publishMode, setPublishMode] = useState('private'); // private, unlisted, public
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -74,6 +77,17 @@ function App() {
     }
 
     setPipelineStatus('completed');
+    
+    // Generate mock video result
+    setVideoResult({
+      videoUrl: `/api/videos/${projectId}/final.mp4`,
+      thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
+      duration: '2:34',
+      resolution: '1080p',
+      fileSize: '24.5 MB',
+      creditsUrl: `/api/videos/${projectId}/credits.json`,
+      generatedAt: new Date().toISOString(),
+    });
   };
 
   return (
@@ -291,6 +305,156 @@ function App() {
             </button>
           </div>
         </div>
+
+        {/* Results Panel - Shows after pipeline completion */}
+        {pipelineStatus === 'completed' && videoResult && (
+          <div className="mt-8 glass-card p-6 animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="section-title">
+                <Video className="w-5 h-5" /> Final Output
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Generated: {new Date(videoResult.generatedAt).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Video Preview */}
+              <div className="space-y-4">
+                <div className="relative aspect-video bg-black rounded-xl overflow-hidden group">
+                  <img 
+                    src={videoResult.thumbnailUrl} 
+                    alt="Video thumbnail" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-4 bg-white/20 rounded-full backdrop-blur-sm hover:bg-white/30 transition-colors">
+                      <Play className="w-8 h-8 text-white" />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/70 rounded text-xs text-white">
+                    {videoResult.duration}
+                  </div>
+                </div>
+
+                {/* Video Info */}
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-xs text-gray-500">Resolution</p>
+                    <p className="text-sm font-medium text-white">{videoResult.resolution}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-xs text-gray-500">Duration</p>
+                    <p className="text-sm font-medium text-white">{videoResult.duration}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-xs text-gray-500">File Size</p>
+                    <p className="text-sm font-medium text-white">{videoResult.fileSize}</p>
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">
+                  <span className="text-sm text-gray-400">Rate this output:</span>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors">
+                    <ThumbsUp className="w-4 h-4" /> Good
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors">
+                    <ThumbsDown className="w-4 h-4" /> Bad
+                  </button>
+                </div>
+              </div>
+
+              {/* Publishing Options */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-white">Publishing Options</h3>
+                
+                {/* Privacy Mode */}
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500 uppercase tracking-wide">Visibility</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => setPublishMode('private')}
+                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'private' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span className="text-xs">Private</span>
+                    </button>
+                    <button 
+                      onClick={() => setPublishMode('unlisted')}
+                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'unlisted' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="text-xs">Unlisted</span>
+                    </button>
+                    <button 
+                      onClick={() => setPublishMode('public')}
+                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'public' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span className="text-xs">Public</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Download Button */}
+                <button className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity">
+                  <Download className="w-5 h-5" />
+                  Download Video ({videoResult.fileSize})
+                </button>
+
+                {/* Social Media Publishing */}
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500 uppercase tracking-wide">Publish to Social Media</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button className="social-btn youtube">
+                      <Youtube className="w-5 h-5" />
+                      <span>YouTube</span>
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </button>
+                    <button className="social-btn tiktok">
+                      <span className="text-lg">📱</span>
+                      <span>TikTok</span>
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </button>
+                    <button className="social-btn instagram">
+                      <Instagram className="w-5 h-5" />
+                      <span>Instagram</span>
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </button>
+                    <button className="social-btn twitter">
+                      <Twitter className="w-5 h-5" />
+                      <span>X (Twitter)</span>
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Copy Link */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={`https://sirtrav.studio/v/${projectId}`}
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
+                    Copy
+                  </button>
+                </div>
+
+                {/* Credits Attribution */}
+                <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-teal-400 text-sm">
+                    <span>📜</span>
+                    <span>Commons Good Attribution included</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">All media sources properly credited in video description</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer */}
