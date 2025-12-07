@@ -1,19 +1,67 @@
 # MASTER.md - SirTrav A2A Studio Build Plan
 
-**Version:** 1.4.0
-**Last Updated:** 2025-12-01
-**Status:** Active Development – Pipeline + Observability Phase
+**Version:** 2.0.0
+**Last Updated:** 2025-12-07
+**Status:** Production Ready – Real Video Pipeline Complete
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc‑to‑Agent) automated video production platform for the Commons Good.
 
-## 🎯 Mission Statement
+## Mission Statement
 Build a production‑ready, user‑friendly video automation platform where users click a single **Click2Kick button** to trigger automated cinematic video production through sequential AI agent orchestration.
 
-**Core principle:** “Build the memory before the masterpiece.”
+**Core principle:** "Build the memory before the masterpiece."
 
 ---
 
-## 🆕 v1.4.0 Changelog (Since v1.3.0)
+## v2.0.0 Completion Checklist
+
+### Netlify Functions (All 7 Agents + Support)
+- [x] `curate-media.ts` - Director Agent
+- [x] `narrate-project.ts` - Writer Agent  
+- [x] `text-to-speech.ts` - Voice Agent (ElevenLabs)
+- [x] `generate-music.ts` - Composer Agent (Suno)
+- [x] `compile-video.ts` - Editor Agent (FFmpeg)
+- [x] `generate-attribution.ts` - Attribution Agent
+- [x] `publish.ts` - Publisher Agent
+- [x] `publish-youtube.ts` - YouTube API
+- [x] `publish-tiktok.ts` - TikTok API
+- [x] `publish-instagram.ts` - Instagram API
+- [x] `share-link.ts` - Shareable links + QR codes
+- [x] `progress.ts` - SSE streaming progress
+- [x] `correlate.ts` - Trace correlation
+- [x] `evals.ts` - Evaluation metrics
+- [x] `healthcheck.ts` - System health monitor
+- [x] `mcp.ts` - MCP gateway
+- [x] `intake-upload.ts` - File upload
+- [x] `submit-evaluation.ts` - User feedback
+- [x] `generate-video.ts` - Pipeline orchestrator
+
+### Storage (Netlify Blobs)
+- [x] `lib/storage.ts` - NetlifyBlobsStorage class
+- [x] Video store (`sirtrav-videos`)
+- [x] Audio store (`sirtrav-audio`)
+- [x] Media store (`sirtrav-media`)
+
+### Pipeline Scripts
+- [x] `run-manifest.mjs` - Manifest executor with fallback logic
+- [x] `audio_mix.mjs` - Audio mixing with LUFS normalization
+- [x] `ffmpeg_compile.mjs` - Video compilation with Ken Burns
+- [x] `lufs_check.mjs` - Loudness verification
+- [x] `test-7-agents.mjs` - Agent smoke test
+
+### UI Components
+- [x] `App.jsx` - Enterprise landing page
+- [x] `CreativeHub.tsx` - File upload + pipeline trigger
+- [x] `VideoGenerator.jsx` - Video generation UI
+- [x] `PipelineProgress.tsx` - SSE progress dashboard
+- [x] `ResultsPreview.tsx` - Video preview + feedback
+- [x] `Click2KickButton.tsx` - Pipeline trigger button
+- [x] `Upload.tsx` - Drag & drop file upload
+- [x] `AnalyticsDashboard.tsx` - Metrics visualization
+
+---
+
+## v1.4.0 Changelog (Since v1.3.0)
 The goal of v1.4.0 was to turn the plan into a working Studio: real Click2Kick UI, a closed learning loop, and basic tracing/evaluation.
 
 - **New Click2Kick Studio UI:** Refactored `App.jsx` into a two-panel Studio (CreativeHub + VideoGenerator) with header navigation and Project ID flow.
