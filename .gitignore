@@ -31,6 +31,9 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Embedded repos
+SirJames-A2A-Studio/
+
 # Byterover rules
 .clinerules/byterover-rules.md
 .kilocode/rules/byterover-rules.md
