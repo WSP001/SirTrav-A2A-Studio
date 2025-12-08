@@ -17,11 +17,16 @@ Go to: **Netlify Dashboard → Site Settings → Environment Variables**
 
 Add these variables:
 
-#### Core AI Services (REQUIRED for real video production)
+#### Core AI Services (ALL REQUIRED for real video production)
 
-```
+```env
+# 🔴 REQUIRED - Director & Writer Agents (GPT-4 Vision)
 OPENAI_API_KEY=sk-...your-openai-key...
+
+# 🔴 REQUIRED - Voice Agent (AI Narration)
 ELEVENLABS_API_KEY=...your-elevenlabs-key...
+
+# 🔴 REQUIRED - Composer Agent (AI Music)
 SUNO_API_KEY=...your-suno-key...
 SUNO_API_URL=https://api.suno.ai/v1
 ```
@@ -161,12 +166,13 @@ After verification, update MASTER.md:
 
 ## 🎯 PRIORITY ORDER
 
-1. **MUST DO:** Set `OPENAI_API_KEY` (required for Director/Writer)
-2. **SHOULD DO:** Set `ELEVENLABS_API_KEY` (for real voice synthesis)
-3. **SHOULD DO:** Set `SUNO_API_KEY` (for real music generation)
-4. **NICE TO HAVE:** Social publishing OAuth (YouTube, TikTok, Instagram)
+1. **🔴 REQUIRED:** Set `OPENAI_API_KEY` (Director/Writer agents)
+2. **🔴 REQUIRED:** Set `ELEVENLABS_API_KEY` (Voice agent - AI narration)
+3. **🔴 REQUIRED:** Set `SUNO_API_KEY` (Composer agent - AI music)
+4. **🟡 OPTIONAL:** Social publishing OAuth (YouTube, TikTok, Instagram)
 
-Without API keys, the pipeline runs in **placeholder mode** - it works but uses mock data.
+⚠️ **All three AI keys are REQUIRED for real video production.**
+Without them, the pipeline produces placeholder/mock output only.
 
 ---
 
