@@ -1,0 +1,18 @@
+# Audio & Music Assets
+
+## Caching Headers
+
+/music/*
+  Content-Type: audio/mpeg
+  Cache-Control: public, max-age=31536000, immutable
+  Accept-Ranges: bytes
+
+/test-assets/*
+  Cache-Control: public, max-age=604800
+
+## CORS for API Routes
+
+/.netlify/functions/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: Content-Type, Authorization
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
