@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "description": "SirTrav Suno Prompt Pack - Consistent music generation prompts",
+  "defaults": {
+    "bpm": 92,
+    "key": "D major",
+    "genre": "cinematic folk",
+    "mood": "warm, hopeful, adventurous",
+    "structure": "intro(4), A(8), A'(8), bridge(8), outro(4)",
+    "instruments": "acoustic guitar, hand drums, upright bass, light strings, glockenspiel sprinkles",
+    "mix_notes": "gentle low-end, no pumping, soft tape saturation",
+    "usage": "background bed for weekly recap voiceover; should never fight narration",
+    "ducking_cue": "allow 400ms space before phrases; avoid sharp transients at :00, :15, :30 marks"
+  },
+  "templates": [
+    {
+      "id": "weekly_reflective",
+      "title": "Weekly Reflective Bed",
+      "description": "Perfect for weekly recap videos with calm, thoughtful vibes",
+      "overrides": {
+        "bpm": 88,
+        "mood": "reflective, grateful, sunset",
+        "genre": "acoustic cinematic",
+        "instruments": "fingerstyle guitar, brushed kit, soft pads"
+      }
+    },
+    {
+      "id": "upbeat_rider",
+      "title": "Upbeat Rider Cut",
+      "description": "Energetic but not overwhelming, good for action sequences",
+      "overrides": {
+        "bpm": 104,
+        "mood": "confident, forward, light swagger",
+        "genre": "indie folk",
+        "instruments": "strummed acoustic, claps, tambourine, bass walk"
+      }
+    },
+    {
+      "id": "tender_moment",
+      "title": "Tender Moment",
+      "description": "Intimate and gentle, for emotional highlights",
+      "overrides": {
+        "bpm": 76,
+        "mood": "gentle, intimate, lullaby",
+        "genre": "piano ballad",
+        "instruments": "piano, soft strings, subtle bells"
+      }
+    },
+    {
+      "id": "adventure_theme",
+      "title": "Adventure Theme",
+      "description": "The main SirTrav adventure sound - hopeful and forward-moving",
+      "overrides": {
+        "bpm": 96,
+        "mood": "adventurous, hopeful, determined",
+        "genre": "cinematic adventure folk",
+        "instruments": "acoustic guitar, bodhrán, pennywhistle hints, upright bass, strings swell"
+      }
+    },
+    {
+      "id": "morning_calm",
+      "title": "Morning Calm",
+      "description": "Peaceful opener for dawn/morning scenes",
+      "overrides": {
+        "bpm": 72,
+        "mood": "peaceful, fresh, awakening",
+        "genre": "ambient folk",
+        "instruments": "fingerpicked guitar, soft pad, distant chimes, nature ambience hints"
+      }
+    },
+    {
+      "id": "sunset_glow",
+      "title": "Sunset Glow",
+      "description": "Warm closer for end-of-day reflections",
+      "overrides": {
+        "bpm": 84,
+        "mood": "warm, grateful, nostalgic",
+        "genre": "acoustic cinematic",
+        "instruments": "nylon guitar, light strings, gentle woodwinds, soft percussion"
+      }
+    },
+    {
+      "id": "playful_discovery",
+      "title": "Playful Discovery",
+      "description": "Light and curious, for exploration moments with kids",
+      "overrides": {
+        "bpm": 110,
+        "mood": "playful, curious, lighthearted",
+        "genre": "acoustic pop folk",
+        "instruments": "ukulele, glockenspiel, light claps, bouncy bass, whistle melody"
+      }
+    }
+  ],
+  "prompts": {
+    "prose": "Create a {genre} instrumental at {bpm} BPM in {key}.\nMood: {mood}. Use {instruments}. Structure: {structure}.\nMix: {mix_notes}. Usage: {usage}. {ducking_cue}.\nNo vocals, no chanting, no risers that drown spoken voice.",
+    "tags": "instrumental, {genre}, {mood}, bed, no vocals, background music, video score"
+  },
+  "sceneHarmony": {
+    "description": "Suggested template mappings for different scene types",
+    "mappings": [
+      { "scene": "opening", "template": "morning_calm", "bpm": 72 },
+      { "scene": "adventure", "template": "adventure_theme", "bpm": 96 },
+      { "scene": "middle", "template": "upbeat_rider", "bpm": 104 },
+      { "scene": "emotional", "template": "tender_moment", "bpm": 76 },
+      { "scene": "playful", "template": "playful_discovery", "bpm": 110 },
+      { "scene": "climax", "template": "upbeat_rider", "bpm": 104 },
+      { "scene": "outro", "template": "sunset_glow", "bpm": 84 },
+      { "scene": "reflection", "template": "weekly_reflective", "bpm": 88 }
+    ]
+  }
+}
