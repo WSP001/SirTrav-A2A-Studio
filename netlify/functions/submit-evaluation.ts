@@ -1,235 +1,322 @@
-import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
-
 /**
- * Submit Evaluation Agent
- * 
- * Closes the EGO-Prompt learning loop by recording user feedback (👍/👎)
- * and updating memory_index.json with preferences learned from each video.
- * 
- * This is the critical feedback mechanism that makes the AI learn what "good" means.
+ * Submit Evaluation Function
+ *
+ * Handles user feedback (👍/👎) for the EGO-Prompt learning loop.
+ * Updates memory_index.json with user preferences and video history.
+ *
+ * Version: 1.0.0
+ * Last Updated: 2025-12-09
  */
 
-interface EvaluationRequest {
+import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+/**
+ * User evaluation payload
+ */
+interface EvaluationPayload {
   projectId: string;
   rating: 'good' | 'bad';
-  theme?: string;
-  mood?: string;
-  music_style?: string;
   comments?: string;
+  metadata?: {
+    platform?: string;
+    theme?: string;
+    style?: string;
+  };
 }
 
+/**
+ * Video history entry
+ */
+interface VideoHistoryEntry {
+  projectId: string;
+  timestamp: string;
+  rating: 'good' | 'bad';
+  comments?: string;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * User preferences structure
+ */
+interface UserPreferences {
+  themes: Record<string, number>; // theme -> score (positive/negative)
+  styles: Record<string, number>;
+  pacing: Record<string, number>;
+  music_genres: Record<string, number>;
+  avg_rating: number;
+  total_videos: number;
+  good_videos: number;
+  bad_videos: number;
+}
+
+/**
+ * Memory index structure
+ */
 interface MemoryIndex {
   version: string;
   last_updated: string;
-  user_preferences: {
-    favorite_moods: string[];
-    disliked_music_styles: string[];
-    preferred_themes: string[];
-  };
-  video_history: Array<{
-    projectId: string;
-    rating: 'good' | 'bad';
-    theme?: string;
-    mood?: string;
-    music_style?: string;
-    timestamp: string;
-  }>;
-  projects?: Record<string, unknown>;
+  video_history: VideoHistoryEntry[];
+  user_preferences: UserPreferences;
+  learned_patterns: string[];
 }
 
-const MEMORY_PATH = process.env.MEMORY_PATH || join(process.cwd(), 'data', 'memory_index.json');
+const MEMORY_INDEX_PATH = path.join(
+  process.env.TMPDIR || '/tmp',
+  'memory_index.json'
+);
 
 /**
- * Load or initialize memory index
+ * Load existing memory index or create new one
  */
-async function loadMemory(): Promise<MemoryIndex> {
+async function loadMemoryIndex(): Promise<MemoryIndex> {
   try {
-    if (existsSync(MEMORY_PATH)) {
-      const content = await readFile(MEMORY_PATH, 'utf-8');
-      return JSON.parse(content);
-    }
-  } catch (err) {
-    console.warn('Could not load memory, initializing fresh:', err);
+    const data = await fs.readFile(MEMORY_INDEX_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    // Create new memory index if file doesn't exist
+    return {
+      version: '1.0.0',
+      last_updated: new Date().toISOString(),
+      video_history: [],
+      user_preferences: {
+        themes: {},
+        styles: {},
+        pacing: {},
+        music_genres: {},
+        avg_rating: 0,
+        total_videos: 0,
+        good_videos: 0,
+        bad_videos: 0,
+      },
+      learned_patterns: [],
+    };
   }
-
-  // Initialize fresh memory
-  return {
-    version: '1.0.0',
-    last_updated: new Date().toISOString(),
-    user_preferences: {
-      favorite_moods: [],
-      disliked_music_styles: [],
-      preferred_themes: []
-    },
-    video_history: [],
-    projects: {}
-  };
 }
 
 /**
- * Save memory index with atomic write
+ * Save memory index to disk
  */
-async function saveMemory(memory: MemoryIndex): Promise<void> {
-  memory.last_updated = new Date().toISOString();
-  
-  // Ensure directory exists
-  const dir = join(MEMORY_PATH, '..');
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true });
-  }
-
-  // Atomic write: write to temp file then rename
-  const tempPath = `${MEMORY_PATH}.tmp`;
-  await writeFile(tempPath, JSON.stringify(memory, null, 2));
-  await writeFile(MEMORY_PATH, JSON.stringify(memory, null, 2));
+async function saveMemoryIndex(memoryIndex: MemoryIndex): Promise<void> {
+  memoryIndex.last_updated = new Date().toISOString();
+  await fs.writeFile(
+    MEMORY_INDEX_PATH,
+    JSON.stringify(memoryIndex, null, 2),
+    'utf-8'
+  );
 }
 
 /**
- * Update preferences based on feedback
+ * Update user preferences based on evaluation
  */
-function updatePreferences(memory: MemoryIndex, evaluation: EvaluationRequest): void {
-  const { rating, theme, mood, music_style } = evaluation;
-  const prefs = memory.user_preferences;
+function updatePreferences(
+  preferences: UserPreferences,
+  evaluation: EvaluationPayload
+): UserPreferences {
+  const updated = { ...preferences };
 
-  if (rating === 'good') {
-    // Learn from positive feedback
-    if (mood && !prefs.favorite_moods.includes(mood)) {
-      prefs.favorite_moods.push(mood);
-      // Keep only last 10 favorites
-      if (prefs.favorite_moods.length > 10) {
-        prefs.favorite_moods.shift();
-      }
-    }
-    if (theme && !prefs.preferred_themes.includes(theme)) {
-      prefs.preferred_themes.push(theme);
-      if (prefs.preferred_themes.length > 10) {
-        prefs.preferred_themes.shift();
-      }
-    }
-    // Remove from disliked if previously disliked
-    if (music_style) {
-      const idx = prefs.disliked_music_styles.indexOf(music_style);
-      if (idx > -1) {
-        prefs.disliked_music_styles.splice(idx, 1);
-      }
-    }
+  // Update totals
+  updated.total_videos += 1;
+  if (evaluation.rating === 'good') {
+    updated.good_videos += 1;
   } else {
-    // Learn from negative feedback
-    if (music_style && !prefs.disliked_music_styles.includes(music_style)) {
-      prefs.disliked_music_styles.push(music_style);
-      if (prefs.disliked_music_styles.length > 10) {
-        prefs.disliked_music_styles.shift();
-      }
-    }
-    // Remove from favorites if previously liked
-    if (mood) {
-      const idx = prefs.favorite_moods.indexOf(mood);
-      if (idx > -1) {
-        prefs.favorite_moods.splice(idx, 1);
-      }
-    }
+    updated.bad_videos += 1;
   }
+
+  // Calculate average rating
+  updated.avg_rating = updated.good_videos / updated.total_videos;
+
+  // Update theme preferences
+  if (evaluation.metadata?.theme) {
+    const theme = evaluation.metadata.theme;
+    const score = evaluation.rating === 'good' ? 1 : -1;
+    updated.themes[theme] = (updated.themes[theme] || 0) + score;
+  }
+
+  // Update style preferences
+  if (evaluation.metadata?.style) {
+    const style = evaluation.metadata.style;
+    const score = evaluation.rating === 'good' ? 1 : -1;
+    updated.styles[style] = (updated.styles[style] || 0) + score;
+  }
+
+  return updated;
 }
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+/**
+ * Generate learned patterns from preferences
+ */
+function generateLearnedPatterns(preferences: UserPreferences): string[] {
+  const patterns: string[] = [];
+
+  // Identify preferred themes
+  const topThemes = Object.entries(preferences.themes)
+    .filter(([_, score]) => score > 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([theme]) => theme);
+
+  if (topThemes.length > 0) {
+    patterns.push(`Preferred themes: ${topThemes.join(', ')}`);
+  }
+
+  // Identify disliked themes
+  const worstThemes = Object.entries(preferences.themes)
+    .filter(([_, score]) => score < -2)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 2)
+    .map(([theme]) => theme);
+
+  if (worstThemes.length > 0) {
+    patterns.push(`Avoid themes: ${worstThemes.join(', ')}`);
+  }
+
+  // Identify preferred styles
+  const topStyles = Object.entries(preferences.styles)
+    .filter(([_, score]) => score > 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([style]) => style);
+
+  if (topStyles.length > 0) {
+    patterns.push(`Preferred styles: ${topStyles.join(', ')}`);
+  }
+
+  // Overall rating insight
+  if (preferences.avg_rating > 0.7) {
+    patterns.push('User is generally satisfied with current approach');
+  } else if (preferences.avg_rating < 0.4) {
+    patterns.push('User preferences require more calibration');
+  }
+
+  return patterns;
+}
+
+/**
+ * Main handler
+ */
+export const handler: Handler = async (
+  event: HandlerEvent,
+  context: HandlerContext
+) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json',
   };
 
-  // Handle preflight
+  // Handle OPTIONS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
+    return {
+      statusCode: 204,
+      headers,
+      body: '',
+    };
   }
 
+  // Only accept POST
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       headers,
-      body: JSON.stringify({ ok: false, error: 'Method not allowed' })
+      body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
 
   try {
-    const body: EvaluationRequest = JSON.parse(event.body || '{}');
-    
-    // Validate required fields
-    if (!body.projectId) {
+    // Parse request body
+    const evaluation: EvaluationPayload = JSON.parse(event.body || '{}');
+
+    // Validate payload
+    if (!evaluation.projectId) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ ok: false, error: 'projectId is required' })
+        body: JSON.stringify({ error: 'projectId is required' }),
       };
     }
 
-    if (!body.rating || !['good', 'bad'].includes(body.rating)) {
+    if (!['good', 'bad'].includes(evaluation.rating)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ ok: false, error: 'rating must be "good" or "bad"' })
+        body: JSON.stringify({ error: 'rating must be "good" or "bad"' }),
       };
     }
 
-    console.log(`[submit-evaluation] Processing ${body.rating} feedback for ${body.projectId}`);
-
-    // Load current memory
-    const memory = await loadMemory();
-
-    // Add to video history
-    memory.video_history.push({
-      projectId: body.projectId,
-      rating: body.rating,
-      theme: body.theme,
-      mood: body.mood,
-      music_style: body.music_style,
-      timestamp: new Date().toISOString()
+    console.log(`[Evaluation] Received feedback for ${evaluation.projectId}:`, {
+      rating: evaluation.rating,
+      hasComments: !!evaluation.comments,
     });
 
-    // Keep only last 100 entries
-    if (memory.video_history.length > 100) {
-      memory.video_history = memory.video_history.slice(-100);
+    // Load memory index
+    const memoryIndex = await loadMemoryIndex();
+
+    // Add to video history
+    const historyEntry: VideoHistoryEntry = {
+      projectId: evaluation.projectId,
+      timestamp: new Date().toISOString(),
+      rating: evaluation.rating,
+      comments: evaluation.comments,
+      metadata: evaluation.metadata,
+    };
+
+    memoryIndex.video_history.push(historyEntry);
+
+    // Limit history to last 100 entries
+    if (memoryIndex.video_history.length > 100) {
+      memoryIndex.video_history = memoryIndex.video_history.slice(-100);
     }
 
-    // Update preferences based on feedback
-    updatePreferences(memory, body);
+    // Update user preferences
+    memoryIndex.user_preferences = updatePreferences(
+      memoryIndex.user_preferences,
+      evaluation
+    );
 
-    // Save updated memory
-    await saveMemory(memory);
+    // Generate learned patterns
+    memoryIndex.learned_patterns = generateLearnedPatterns(
+      memoryIndex.user_preferences
+    );
 
-    console.log(`[submit-evaluation] ✅ Feedback recorded. Preferences updated.`);
+    // Save updated memory index
+    await saveMemoryIndex(memoryIndex);
 
+    console.log(`[Evaluation] Memory updated:`, {
+      totalVideos: memoryIndex.user_preferences.total_videos,
+      avgRating: memoryIndex.user_preferences.avg_rating.toFixed(2),
+      patterns: memoryIndex.learned_patterns.length,
+    });
+
+    // Return success response
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ok: true,
-        message: `Feedback recorded: ${body.rating}`,
-        data: {
-          projectId: body.projectId,
-          rating: body.rating,
-          preferences_updated: true,
-          total_history: memory.video_history.length
-        }
-      })
+        success: true,
+        message: 'Feedback recorded successfully',
+        stats: {
+          total_videos: memoryIndex.user_preferences.total_videos,
+          avg_rating: memoryIndex.user_preferences.avg_rating,
+          good_videos: memoryIndex.user_preferences.good_videos,
+          bad_videos: memoryIndex.user_preferences.bad_videos,
+        },
+        learned_patterns: memoryIndex.learned_patterns,
+      }),
     };
+  } catch (error) {
+    console.error('[Evaluation] Error processing feedback:', error);
 
-  } catch (err: any) {
-    console.error('[submit-evaluation] Error:', err);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        ok: false,
-        error: 'internal_error',
-        message: err.message
-      })
+        error: 'Failed to process feedback',
+        details: error instanceof Error ? error.message : String(error),
+      }),
     };
   }
 };
-
-export { handler };
