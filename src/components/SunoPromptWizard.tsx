@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { setTheme } from "../lib/theme";
 
 /**
- * SunoPromptWizard v1.0.0
+ * SunoPromptWizard v1.1.0-THEME
  * -------------------------------------------------------------
  * A compact React panel that:
  * 1) Renders copy-ready Suno prompts from a YAML-like config
@@ -10,6 +11,7 @@ import { useDropzone } from "react-dropzone";
  * 3) Generates a naive beat-grid in-browser (WebAudio) and lets you
  *    download the grid JSON **or** POST it to a Netlify function
  *    (/.netlify/functions/register-music) for auto-registration.
+ * 4) Persists theme attachment to localStorage for CreativeHub sync
  *
  * Usage: <SunoPromptWizard projectId={projectId} defaultTemplate="weekly_reflective" />
  * Tailwind recommended. No external UI deps required.
@@ -221,7 +223,17 @@ export default function SunoPromptWizard({
       beats: makeGrid(ctx.bpm, dur),
     };
     setGridJson(grid);
-    setStatus(`✅ Duration ≈ ${dur}s. Beat grid ready (${grid.beats.length} beats @ ${ctx.bpm} BPM).`);
+    
+    // v1.1.0-THEME: Persist theme attachment for CreativeHub sync
+    setTheme(projectId, {
+      url: `/music/${canonicalName}`,
+      filename: canonicalName,
+      bpm: ctx.bpm,
+      duration: dur,
+      grid,
+    });
+    
+    setStatus(`✅ Duration ≈ ${dur}s. Beat grid ready (${grid.beats.length} beats @ ${ctx.bpm} BPM). Theme attached!`);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -271,6 +283,16 @@ export default function SunoPromptWizard({
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      
+      // Update theme attachment with registered URL
+      setTheme(projectId, {
+        url: data.file || `/music/${canonicalName}`,
+        filename: canonicalName,
+        bpm: ctx.bpm,
+        duration: gridJson.duration,
+        grid: gridJson,
+      });
+      
       setStatus(`✅ Registered: ${data?.file || canonicalName}`);
       if (onMusicRegistered) {
         onMusicRegistered({ file: data.file, grid: data.grid, bpm: ctx.bpm });
