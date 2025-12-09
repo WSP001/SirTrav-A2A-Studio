@@ -1,24 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, FileText, Music, Video, Settings, AlertTriangle, X, Sparkles, Zap, Play, Home, Globe, Lock, Users } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Upload, FileText, Music, Video, Settings, AlertTriangle, X, Sparkles, Zap, Play, Link, Unlink } from 'lucide-react';
 import { Click2KickButton } from './Click2KickButton';
-import { PipelineProgress } from './PipelineProgress';
+import { Dashboard } from './Dashboard';
+import { PipelineStatus, PipelineStep } from '../types';
 import { useDropzone } from 'react-dropzone';
-
-// 🔥 VERSION TAG - Check this to verify deployment!
-const APP_VERSION = 'v1.8.0-FORMAT';
-const BUILD_DATE = '2025-12-08';
-
-// Types
-type PipelineStatus = 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
-type OutputObjective = 'personal' | 'social';
-type SocialPlatform = 'tiktok' | 'youtube_shorts' | 'instagram' | 'youtube_full';
-
-interface PipelineStep {
-  agent: string;
-  status: 'pending' | 'running' | 'completed' | 'error';
-  duration?: number;
-  output?: string;
-}
+import { getTheme, buildThemePreference, ThemeAttachment } from '../lib/theme';
 
 interface GenerateVideoResult {
   ok: boolean;
@@ -27,12 +13,6 @@ interface GenerateVideoResult {
   creditsUrl?: string;
   duration?: number;
   error?: string;
-  outputFormat?: {
-    objective: OutputObjective;
-    platform?: SocialPlatform;
-    aspectRatio: string;
-    maxDuration?: number;
-  };
 }
 
 interface CreativeHubProps {
@@ -41,49 +21,7 @@ interface CreativeHubProps {
   onStatusChange: (status: PipelineStatus) => void;
 }
 
-// Agent configuration with colors
-const AGENTS = [
-  { name: 'Director', icon: '🎬', color: 'from-purple-500 to-indigo-500' },
-  { name: 'Writer', icon: '✍️', color: 'from-blue-500 to-cyan-500' },
-  { name: 'Voice', icon: '🎙️', color: 'from-green-500 to-emerald-500' },
-  { name: 'Composer', icon: '🎵', color: 'from-yellow-500 to-orange-500' },
-  { name: 'Editor', icon: '🎞️', color: 'from-red-500 to-pink-500' },
-  { name: 'Attribution', icon: '📜', color: 'from-teal-500 to-cyan-500' },
-  { name: 'Publisher', icon: '🚀', color: 'from-violet-500 to-purple-500' },
-];
-
-// Platform configurations
-const PLATFORM_CONFIGS = {
-  tiktok: { 
-    name: 'TikTok', 
-    icon: '📱', 
-    aspectRatio: '9:16', 
-    maxDuration: 60,
-    color: 'from-pink-500 to-cyan-400'
-  },
-  youtube_shorts: { 
-    name: 'YouTube Shorts', 
-    icon: '▶️', 
-    aspectRatio: '9:16', 
-    maxDuration: 60,
-    color: 'from-red-500 to-red-600'
-  },
-  instagram: { 
-    name: 'Instagram Reels', 
-    icon: '📸', 
-    aspectRatio: '9:16', 
-    maxDuration: 90,
-    color: 'from-purple-500 to-pink-500'
-  },
-  youtube_full: { 
-    name: 'YouTube', 
-    icon: '🎬', 
-    aspectRatio: '16:9', 
-    maxDuration: null,
-    color: 'from-red-600 to-red-700'
-  },
-};
-
+// v1.9.0-THEME - Added theme attachment toggle (default ON)
 export const CreativeHub: React.FC<CreativeHubProps> = ({ 
   onPipelineStart, 
   onPipelineComplete,
@@ -92,503 +30,312 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
   const [status, setStatus] = useState<PipelineStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
   const [chaosMode, setChaosMode] = useState(false);
-  const [currentStep, setCurrentStep] = useState<number>(0);
-  const [steps, setSteps] = useState<PipelineStep[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
   
-  // NEW: Output format selection
-  const [outputObjective, setOutputObjective] = useState<OutputObjective>('personal');
-  const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>('tiktok');
+  // Theme Attachment State - default ON
+  const [projectId] = useState(() => `project-${Date.now()}`);
+  const [attachTheme, setAttachTheme] = useState(true);
+  const [theme, setThemeState] = useState<ThemeAttachment | null>(() => getTheme(projectId));
 
-  // File drop handler
+  // Sync theme from localStorage on storage events (cross-tab sync)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `sj:theme:${projectId}`) {
+        setThemeState(e.newValue ? JSON.parse(e.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [projectId]);
+
+  // Refresh theme when projectId changes
+  useEffect(() => {
+    setThemeState(getTheme(projectId));
+  }, [projectId]);
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
-    setError(null);
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
-      'video/*': ['.mp4', '.mov', '.webm'],
-      'audio/*': ['.mp3', '.wav', '.m4a'],
-      'text/*': ['.txt', '.md'],
-    },
-  });
-
-  // Remove file
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Get current format config
-  const getFormatConfig = () => {
-    if (outputObjective === 'personal') {
-      return {
-        aspectRatio: '16:9',
-        maxDuration: null,
-        name: 'Personal/Family',
-        description: 'High quality, private viewing'
-      };
-    }
-    return PLATFORM_CONFIGS[socialPlatform];
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  const clearTheme = () => {
+    localStorage.removeItem(`sj:theme:${projectId}`);
+    setThemeState(null);
   };
 
-  // Start pipeline
   const startPipeline = async () => {
-    if (files.length === 0) {
-      setError('Please upload at least one file to start the pipeline');
-      return;
-    }
+    setStatus('validating');
+    onStatusChange('validating');
+    
+    // Use stable projectId from state
+    const pid = projectId;
 
-    const projectId = `PROJ-${Date.now()}`;
-    setStatus('uploading');
-    onStatusChange('uploading');
-    onPipelineStart(projectId);
-    setError(null);
-
+    // 2. Trigger Backend Pipeline
     try {
-      // Initialize steps
-      const initialSteps: PipelineStep[] = AGENTS.map(agent => ({
-        agent: agent.name.toLowerCase(),
-        status: 'pending',
-      }));
-      setSteps(initialSteps);
-
-      // Upload files first
-      const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      formData.append('projectId', projectId);
-      formData.append('chaosMode', String(chaosMode));
-
-      const uploadResponse = await fetch('/.netlify/functions/intake-upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
-      }
-
-      setStatus('processing');
-      onStatusChange('processing');
-
-      // Simulate agent progression for visual feedback
-      for (let i = 0; i < AGENTS.length; i++) {
-        setCurrentStep(i);
-        setSteps(prev => prev.map((step, idx) => ({
-          ...step,
-          status: idx < i ? 'completed' : idx === i ? 'running' : 'pending'
-        })));
-        // Simulate processing time per agent
-        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
-      }
-
-      // Get format configuration
-      const formatConfig = getFormatConfig();
-
-      // Call generate-video endpoint with format info
-      const response = await fetch('/.netlify/functions/generate-video', {
+      // Step A: Upload files via intake
+      const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          projectId,
-          chaosMode,
-          outputObjective,
-          socialPlatform: outputObjective === 'social' ? socialPlatform : undefined,
-          outputFormat: {
-            objective: outputObjective,
-            platform: outputObjective === 'social' ? socialPlatform : undefined,
-            aspectRatio: formatConfig.aspectRatio,
-            maxDuration: formatConfig.maxDuration,
-          }
+          projectId: pid,
+          mock: chaosMode,
+          files: files.map(f => f.name)
         }),
       });
 
-      const result: GenerateVideoResult = await response.json();
-
-      // Mark all steps completed
-      setSteps(prev => prev.map(step => ({ ...step, status: 'completed' })));
-      setCurrentStep(AGENTS.length);
-
-      if (result.ok) {
-        setStatus('completed');
-        onStatusChange('completed');
-        onPipelineComplete({
-          ...result,
-          outputFormat: {
-            objective: outputObjective,
-            platform: outputObjective === 'social' ? socialPlatform : undefined,
-            aspectRatio: formatConfig.aspectRatio,
-            maxDuration: formatConfig.maxDuration || undefined,
-          }
-        });
-      } else {
-        throw new Error(result.error || 'Pipeline failed');
+      if (!intakeResponse.ok) {
+        throw new Error('Failed to start intake');
       }
 
-    } catch (err) {
+      setStatus('running');
+      onStatusChange('running');
+
+      // Step B: Trigger the 7-agent video generation pipeline
+      // Include themePreference so Composer can skip if theme attached
+      const generateResponse = await fetch('/.netlify/functions/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: pid,
+          prompt: `Generate a cinematic memory video from the uploaded assets`,
+          projectMode: 'commons_public',
+          themePreference: buildThemePreference(pid, attachTheme),
+        }),
+      });
+
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Video generation failed');
+      }
+
+      const result = await generateResponse.json();
+      console.log('🎬 Pipeline result:', result);
+
+      if (!result.ok) {
+        throw new Error(result.error || 'Pipeline returned error');
+      }
+
+      // 3. Hand off to App with the video result
+      onPipelineComplete(result);
+
+    } catch (error) {
+      console.error('Pipeline start failed:', error);
       setStatus('error');
       onStatusChange('error');
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      alert(`Pipeline failed: ${error.message || 'Unknown error'}`);
     }
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-6 py-12 space-y-10 animate-fade-in">
       {/* Hero Header */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/30">
-          <Sparkles className="w-4 h-4 text-brand-400" />
-          <span className="text-sm font-medium text-brand-300">7-Agent AI Pipeline Ready</span>
-          <span className="text-xs px-2 py-0.5 rounded bg-brand-500/30 text-brand-200 font-mono">{APP_VERSION}</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium animate-bounce-subtle">
+          <Sparkles className="w-4 h-4" />
+          <span>7-Agent AI Pipeline Ready</span>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold">
-          <span className="gradient-text-animated">Creative Hub</span>
+        <h1 className="text-5xl md:text-6xl font-black tracking-tight">
+          <span className="text-white">Creative</span>
+          <span className="gradient-text-animated">Hub</span>
         </h1>
-        <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-          Upload your content and watch our AI agents transform it into a cinematic masterpiece
+        <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+          Upload your assets, configure your pipeline, and let our AI agents transform your content into cinematic videos
         </p>
-        {/* Version indicator for deployment verification */}
-        <p className="text-xs text-gray-600">Build: {BUILD_DATE} | {APP_VERSION}</p>
       </div>
 
-      {/* 🆕 OUTPUT OBJECTIVE SELECTOR */}
-      <div className="glass-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Video className="w-5 h-5 text-brand-400" />
-          Choose Your Output Format
-        </h2>
-        
-        {/* Objective Toggle */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Personal/Family Option */}
-          <button
-            onClick={() => setOutputObjective('personal')}
-            className={`relative p-4 rounded-xl border-2 transition-all duration-300 text-left ${
-              outputObjective === 'personal'
-                ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/20'
-                : 'border-white/10 bg-white/5 hover:border-white/30'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`p-3 rounded-lg ${outputObjective === 'personal' ? 'bg-emerald-500/20' : 'bg-white/10'}`}>
-                <Home className={`w-6 h-6 ${outputObjective === 'personal' ? 'text-emerald-400' : 'text-gray-400'}`} />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className={`font-semibold ${outputObjective === 'personal' ? 'text-emerald-300' : 'text-white'}`}>
-                    Personal / Family
-                  </h3>
-                  <Lock className="w-4 h-4 text-gray-500" />
-                </div>
-                <p className="text-sm text-gray-400 mt-1">
-                  Private viewing • 16:9 HD • No watermarks
-                </p>
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                  <Users className="w-3 h-3" />
-                  <span>Family memories, personal archives</span>
-                </div>
-              </div>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Director', status: 'ready', color: 'brand' },
+          { label: 'Writer', status: 'ready', color: 'purple' },
+          { label: 'Voice', status: 'ready', color: 'emerald' },
+          { label: 'Editor', status: 'ready', color: 'amber' },
+        ].map((agent, i) => (
+          <div key={i} className="glass-card p-4 flex items-center gap-3 group cursor-default">
+            <div className={`status-dot active`}></div>
+            <div>
+              <p className="text-white font-semibold text-sm">{agent.label}</p>
+              <p className="text-zinc-500 text-xs">Agent {agent.status}</p>
             </div>
-            {outputObjective === 'personal' && (
-              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </button>
-
-          {/* Social Media Option */}
-          <button
-            onClick={() => setOutputObjective('social')}
-            className={`relative p-4 rounded-xl border-2 transition-all duration-300 text-left ${
-              outputObjective === 'social'
-                ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/20'
-                : 'border-white/10 bg-white/5 hover:border-white/30'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`p-3 rounded-lg ${outputObjective === 'social' ? 'bg-brand-500/20' : 'bg-white/10'}`}>
-                <Globe className={`w-6 h-6 ${outputObjective === 'social' ? 'text-brand-400' : 'text-gray-400'}`} />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className={`font-semibold ${outputObjective === 'social' ? 'text-brand-300' : 'text-white'}`}>
-                    Social Media
-                  </h3>
-                  <Globe className="w-4 h-4 text-gray-500" />
-                </div>
-                <p className="text-sm text-gray-400 mt-1">
-                  Public sharing • Platform-optimized
-                </p>
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                  <Zap className="w-3 h-3" />
-                  <span>TikTok, YouTube, Instagram</span>
-                </div>
-              </div>
-            </div>
-            {outputObjective === 'social' && (
-              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-brand-500 animate-pulse" />
-            )}
-          </button>
-        </div>
-
-        {/* Platform Selection (only if Social Media selected) */}
-        {outputObjective === 'social' && (
-          <div className="mt-4 space-y-3 animate-fade-in">
-            <h3 className="text-sm font-medium text-gray-300">Select Platform:</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(Object.entries(PLATFORM_CONFIGS) as [SocialPlatform, typeof PLATFORM_CONFIGS.tiktok][]).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={() => setSocialPlatform(key)}
-                  className={`p-3 rounded-lg border transition-all text-center ${
-                    socialPlatform === key
-                      ? `border-transparent bg-gradient-to-br ${config.color} shadow-lg`
-                      : 'border-white/10 bg-white/5 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{config.icon}</div>
-                  <div className={`text-sm font-medium ${socialPlatform === key ? 'text-white' : 'text-gray-300'}`}>
-                    {config.name}
-                  </div>
-                  <div className={`text-xs mt-1 ${socialPlatform === key ? 'text-white/80' : 'text-gray-500'}`}>
-                    {config.aspectRatio} • {config.maxDuration ? `${config.maxDuration}s max` : 'Unlimited'}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Format Summary */}
-        <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Output Format:</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-white">
-                {getFormatConfig().aspectRatio}
-              </span>
-              {getFormatConfig().maxDuration && (
-                <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">
-                  Max {getFormatConfig().maxDuration}s
-                </span>
-              )}
-              <span className={`text-xs px-2 py-0.5 rounded ${
-                outputObjective === 'personal' 
-                  ? 'bg-emerald-500/20 text-emerald-300' 
-                  : 'bg-brand-500/20 text-brand-300'
-              }`}>
-                {outputObjective === 'personal' ? '🔒 Private' : '🌐 Public'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Agent Status Grid */}
-      <div className="grid grid-cols-7 gap-2 p-4 glass-card">
-        {AGENTS.map((agent, index) => (
-          <div 
-            key={agent.name}
-            className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all ${
-              status === 'processing' && currentStep === index 
-                ? 'bg-brand-500/20 scale-105' 
-                : 'bg-white/5 hover:bg-white/10'
-            }`}
-          >
-            <div className={`text-2xl ${status === 'processing' && currentStep >= index ? 'animate-bounce-subtle' : ''}`}>
-              {agent.icon}
-            </div>
-            <span className="text-xs font-medium text-gray-400">{agent.name}</span>
-            <div className={`status-dot ${
-              status === 'completed' ? 'active' :
-              status === 'processing' && currentStep === index ? 'pending' :
-              status === 'processing' && currentStep > index ? 'active' :
-              ''
-            }`} />
           </div>
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Upload Zone - 2 columns */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Dropzone */}
-          <div
-            {...getRootProps()}
-            className={`glass-card p-8 border-2 border-dashed transition-all cursor-pointer ${
-              isDragActive 
-                ? 'border-brand-500 bg-brand-500/10' 
-                : 'border-white/20 hover:border-brand-500/50 hover:bg-white/5'
-            }`}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Input Zone */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Upload Card */}
+          <div 
+            {...getRootProps()} 
+            className={`glass-card p-10 text-center cursor-pointer group transition-all duration-300
+              ${isDragActive 
+                ? 'border-brand-500 bg-brand-500/10 shadow-glow-md scale-[1.02]' 
+                : 'hover:border-brand-500/50 hover:shadow-glow-sm'}`}
           >
             <input {...getInputProps()} />
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className={`p-4 rounded-full ${isDragActive ? 'bg-brand-500/20' : 'bg-white/10'}`}>
-                <Upload className={`w-8 h-8 ${isDragActive ? 'text-brand-400' : 'text-gray-400'}`} />
+            <div className="relative">
+              <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300
+                ${isDragActive 
+                  ? 'bg-brand-500 shadow-glow-md scale-110' 
+                  : 'bg-gradient-to-br from-brand-500/20 to-accent-purple/20 group-hover:from-brand-500/30 group-hover:to-accent-purple/30'}`}>
+                <Upload className={`w-10 h-10 transition-all duration-300 ${isDragActive ? 'text-white animate-bounce-subtle' : 'text-brand-400'}`} />
               </div>
-              <div>
-                <p className="text-lg font-medium text-white">
-                  {isDragActive ? 'Drop your files here' : 'Drag & drop your content'}
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Images, videos, audio, or text files
-                </p>
-              </div>
-              <button className="btn-primary text-sm">
-                Browse Files
-              </button>
+              {isDragActive && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-full border-2 border-brand-500 animate-ping opacity-30"></div>
+                </div>
+              )}
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {isDragActive ? 'Drop it like it\'s hot! 🔥' : 'Drop your assets here'}
+            </h3>
+            <p className="text-zinc-400 max-w-md mx-auto">
+              Scripts, images, audio files — we'll transform them into cinematic magic
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-4">
+              {['.txt', '.mp4', '.mp3', '.jpg', '.png'].map((ext, i) => (
+                <span key={i} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-500 text-xs font-mono">
+                  {ext}
+                </span>
+              ))}
             </div>
           </div>
 
-          {/* File List */}
+          {/* Staged Files */}
           {files.length > 0 && (
-            <div className="glass-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-white">Uploaded Files ({files.length})</h3>
-                <button 
-                  onClick={() => setFiles([])}
-                  className="text-xs text-gray-400 hover:text-white"
-                >
-                  Clear All
-                </button>
+            <div className="glass-card p-6 animate-slide-up">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  Staged Assets
+                </h4>
+                <span className="text-xs text-zinc-500">{files.length} file{files.length > 1 ? 's' : ''}</span>
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {files.map((file, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      {file.type.startsWith('image') && <FileText className="w-4 h-4 text-blue-400" />}
-                      {file.type.startsWith('video') && <Video className="w-4 h-4 text-purple-400" />}
-                      {file.type.startsWith('audio') && <Music className="w-4 h-4 text-green-400" />}
-                      {file.type.startsWith('text') && <FileText className="w-4 h-4 text-yellow-400" />}
-                      <span className="text-sm text-gray-300 truncate max-w-xs">{file.name}</span>
-                      <span className="text-xs text-gray-500">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </span>
+              <div className="space-y-2">
+                {files.map((file, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 hover:border-brand-500/30 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-brand-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{file.name}</p>
+                        <p className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => removeFile(index)}
-                      className="p-1 hover:bg-white/10 rounded"
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                      className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 transition-all"
                     >
-                      <X className="w-4 h-4 text-gray-400" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
-              <p className="text-sm text-red-300">{error}</p>
-            </div>
-          )}
-
-          {/* Click2Kick Button */}
-          <Click2KickButton 
-            status={status}
-            onClick={startPipeline}
-            disabled={files.length === 0 || status === 'processing' || status === 'uploading'}
-          />
         </div>
 
-        {/* Sidebar - Config */}
-        <div className="space-y-4">
-          <div className="glass-card p-4">
-            <button
-              onClick={() => setShowConfig(!showConfig)}
-              className="flex items-center justify-between w-full text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-gray-400" />
-                <span className="font-medium text-white">Pipeline Config</span>
-              </div>
-              <span className="text-xs text-gray-500">{showConfig ? '−' : '+'}</span>
-            </button>
-            
-            {showConfig && (
-              <div className="mt-4 space-y-4 pt-4 border-t border-white/10">
-                {/* Chaos Mode Toggle */}
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-400" />
-                    <span className="text-sm text-gray-300">Chaos Mode</span>
-                  </div>
-                  <div 
-                    className={`w-10 h-6 rounded-full transition-colors ${chaosMode ? 'bg-brand-500' : 'bg-gray-600'}`}
-                    onClick={() => setChaosMode(!chaosMode)}
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white mt-1 transition-transform ${chaosMode ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </label>
-                <p className="text-xs text-gray-500">
-                  Enable experimental features and creative variations
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Action Zone */}
+        <div className="space-y-6">
+          <div className="glass-card p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-brand-400" />
+                Pipeline Config
+              </h3>
+              <button 
+                onClick={() => setChaosMode(!chaosMode)}
+                className={`p-2 rounded-lg transition-all ${chaosMode 
+                  ? 'bg-red-500/20 text-red-400 shadow-glow-sm border border-red-500/30' 
+                  : 'bg-white/5 text-zinc-500 hover:text-white border border-white/5'}`}
+                title="Toggle Chaos Mode"
+              >
+                <AlertTriangle className="w-4 h-4" />
+              </button>
+            </div>
 
-          {/* Pipeline Status Card */}
-          {status !== 'idle' && (
-            <div className="glass-card p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className={`status-dot ${
-                  status === 'completed' ? 'active' :
-                  status === 'error' ? 'error' :
-                  'pending'
-                }`} />
-                <span className="font-medium text-white capitalize">{status}</span>
-              </div>
-              {status === 'processing' && (
-                <div className="space-y-2">
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-brand-500 to-accent-purple rounded-full transition-all duration-500"
-                      style={{ width: `${((currentStep + 1) / 7) * 100}%` }}
-                    />
+            <div className="space-y-3 flex-grow">
+              {[
+                { name: 'Script Analysis', model: 'GPT-4o', color: 'brand', icon: '📝' },
+                { name: 'Voice Synthesis', model: 'ElevenLabs', color: 'emerald', icon: '🎙️' },
+                { name: 'Video Generation', model: 'Stable Video', color: 'amber', icon: '🎬' },
+                { name: 'Music Composition', model: 'SUNO AI', color: 'pink', icon: '🎵' },
+              ].map((config, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{config.icon}</span>
+                    <span className="text-sm text-zinc-300 font-medium">{config.name}</span>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    Processing: {AGENTS[currentStep]?.name || 'Initializing'}...
-                  </p>
+                  <span className={`text-xs font-mono px-2 py-1 rounded-md bg-${config.color}-500/10 text-${config.color}-400 border border-${config.color}-500/20`}>
+                    {config.model}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Theme Attachment Toggle */}
+            <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Music className="w-5 h-5 text-pink-400" />
+                  <div>
+                    <p className="text-sm font-medium text-white">Attach Theme</p>
+                    <p className="text-xs text-zinc-500">
+                      {theme ? theme.filename : 'Use Suno Wizard to add'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAttachTheme(!attachTheme)}
+                  className={`p-2 rounded-lg transition-all ${attachTheme 
+                    ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' 
+                    : 'bg-white/5 text-zinc-500 hover:text-white border border-white/5'}`}
+                  title={attachTheme ? 'Theme attached' : 'Theme detached'}
+                >
+                  {attachTheme ? <Link className="w-4 h-4" /> : <Unlink className="w-4 h-4" />}
+                </button>
+              </div>
+              
+              {/* Theme Preview (when attached and available) */}
+              {attachTheme && theme && (
+                <div className="mt-3 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-mono text-pink-300">{theme.filename}</p>
+                      <p className="text-xs text-zinc-500">
+                        {theme.bpm} BPM • {theme.duration?.toFixed(1)}s
+                      </p>
+                    </div>
+                    <button
+                      onClick={clearTheme}
+                      className="p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
+                      title="Remove theme"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Output Preview Card */}
-          {status === 'idle' && (
-            <div className="glass-card p-4 space-y-3">
-              <h4 className="text-sm font-medium text-gray-300">Your Video Will Be:</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">Format:</span>
-                  <span className="text-white">{getFormatConfig().aspectRatio}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">Type:</span>
-                  <span className={outputObjective === 'personal' ? 'text-emerald-400' : 'text-brand-400'}>
-                    {outputObjective === 'personal' ? '🔒 Private' : `🌐 ${PLATFORM_CONFIGS[socialPlatform]?.name || 'Social'}`}
-                  </span>
-                </div>
-                {outputObjective === 'social' && getFormatConfig().maxDuration && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">Max Duration:</span>
-                    <span className="text-yellow-400">{getFormatConfig().maxDuration}s</span>
-                  </div>
-                )}
+            <div className="mt-6 pt-6 border-t border-white/5">
+              <Click2KickButton 
+                status={status} 
+                onClick={startPipeline}
+              />
+              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-zinc-500">
+                <Play className="w-3 h-3" />
+                <span>Estimated: ~2 minutes</span>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
-export default CreativeHub;
