@@ -1,25 +1,35 @@
 /**
- * COMPOSER AGENT - Generate Music v2.0.0
+ * COMPOSER AGENT - Generate Music v2.1.0-THEME
  * Agent 4 of 7 in the D2A Pipeline
  * 
  * PURPOSE: Music for video with multiple modes:
+ *   - ATTACHED: Skip generation if theme already attached from CreativeHub
  *   - MANUAL: Use pre-registered audio file + beat grid
  *   - SUNO: Generate via Suno API (if available)
  *   - PLACEHOLDER: Fallback with no actual audio
  * 
- * INPUT: { projectId, mood, tempo, genre, prompt, manualFile?, bpm? }
+ * INPUT: { projectId, mood, tempo, genre, prompt, manualFile?, bpm?, themePreference? }
  * OUTPUT: { musicUrl, duration, beatGrid[], bpm, stored, mode }
  * 
- * v2.0.0 Changes:
- *   - Added manual mode for pre-registered Suno/uploaded music
- *   - Beat grid loading from data/beat-grids/
- *   - Scene harmony support
+ * v2.1.0-THEME Changes:
+ *   - Added attached_theme mode for pre-attached themes via CreativeHub
+ *   - Skip generation entirely when themePreference.attached is true
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { audioStore } from "./lib/storage";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+
+// Theme preference from CreativeHub
+interface ThemePreference {
+  attached: boolean;
+  url?: string;
+  filename?: string;
+  bpm?: number;
+  duration?: number;
+  grid?: StoredBeatGrid;
+}
 
 interface MusicRequest {
   projectId: string;
@@ -33,6 +43,8 @@ interface MusicRequest {
   manualFile?: string;  // e.g., "suno_week44_weekly_reflective_88bpm_90s.mp3"
   bpm?: number;  // Override BPM for manual file
   sceneType?: string;  // For scene harmony auto-selection
+  // v2.1.0: Theme attachment from CreativeHub
+  themePreference?: ThemePreference;
 }
 
 interface BeatPoint {
@@ -54,7 +66,7 @@ interface MusicResponse {
   mood: string;
   placeholder: boolean;
   stored: boolean;
-  mode: 'manual' | 'suno' | 'placeholder';
+  mode: 'attached_theme' | 'manual' | 'suno' | 'placeholder';
   cost?: number;  // Estimated cost in cents
   sunoId?: string;  // Suno generation ID for tracking
   manualFile?: string;  // The manual file used
@@ -288,7 +300,7 @@ async function generateWithSuno(request: MusicRequest): Promise<SunoGenerationRe
 }
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  console.log('🎵 COMPOSER AGENT v2.0.0 - Generate Music');
+  console.log('🎵 COMPOSER AGENT v2.1.0-THEME - Generate Music');
   
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -316,6 +328,48 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'projectId is required' }),
+      };
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // MODE 0: ATTACHED THEME - Skip generation if theme already attached
+    // ═══════════════════════════════════════════════════════════════
+    if (request.themePreference?.attached && request.themePreference.url) {
+      const theme = request.themePreference;
+      console.log(`🎵 ATTACHED THEME MODE: Using pre-attached theme: ${theme.filename}`);
+      
+      // Use grid from theme if available, otherwise generate
+      let beatGrid: BeatPoint[];
+      if (theme.grid) {
+        beatGrid = convertStoredGrid(theme.grid);
+        console.log(`✅ Using attached grid: ${beatGrid.length} beats`);
+      } else {
+        beatGrid = generateBeatGrid(theme.duration || 90, theme.bpm || 92);
+        console.log(`⚠️ Generated grid: ${beatGrid.length} beats`);
+      }
+      
+      const response: MusicResponse = {
+        success: true,
+        projectId: request.projectId,
+        musicUrl: theme.url,
+        duration: theme.duration || 90,
+        beatGrid,
+        bpm: theme.bpm || 92,
+        genre: request.genre || 'cinematic',
+        mood: request.mood || 'adventure',
+        placeholder: false,
+        stored: true,
+        mode: 'attached_theme',
+        manualFile: theme.filename,
+        gridSource: theme.grid ? 'attached' : 'generated',
+      };
+      
+      console.log(`✅ Composer Agent: Attached theme mode - ${theme.filename} (skipped generation)`);
+      
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(response),
       };
     }
     
@@ -499,9 +553,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      body: JSON.stringify({
+        success: false,
+        error: 'Internal server error',
+        detail: error instanceof Error ? error.message : 'Unknown error',
       }),
     };
   }
