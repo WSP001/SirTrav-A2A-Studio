@@ -1,10 +1,12 @@
 /**
- * EDITOR AGENT - Compile Video
+ * EDITOR AGENT - Compile Video v2.0.0-DUCKING
  * Agent 5 of 7 in the D2A Pipeline
  * 
- * PURPOSE: FFmpeg video compilation with LUFS audio normalization
+ * PURPOSE: FFmpeg video compilation with:
+ * - LUFS audio normalization (-14 LUFS for YouTube)
+ * - Audio ducking: -10dB under narration, -3dB in gaps
  * 
- * INPUT: { projectId, images[], narrationUrl, musicUrl, beatGrid[] }
+ * INPUT: { projectId, images[], narrationUrl, musicUrl, beatGrid[], narrationSegments? }
  * OUTPUT: { videoUrl, duration, resolution, stored }
  * 
  * REAL INTEGRATION: Uses FFmpeg (via ffmpeg.wasm or external service) + Netlify Blobs
@@ -15,6 +17,13 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { videoStore, audioStore } from "./lib/storage";
+import { 
+  generateDuckingFilterChain, 
+  generateVolumeKeyframes,
+  NarrationSegment,
+  DuckingConfig,
+  DEFAULT_DUCKING_CONFIG 
+} from "./lib/ducking";
 
 interface BeatPoint {
   time: number;
@@ -38,6 +47,10 @@ interface CompileRequest {
   resolution?: '720p' | '1080p' | '4k';
   fps?: number;
   lufsTarget?: number;  // Target loudness (-14 LUFS for YouTube)
+  // v2.0.0: Audio ducking support
+  narrationSegments?: NarrationSegment[];  // For precise ducking timing
+  duckingConfig?: Partial<DuckingConfig>;  // Override ducking settings
+  useSidechainDucking?: boolean;           // Use dynamic sidechain vs keyframes
 }
 
 interface CompileResponse {
@@ -51,6 +64,8 @@ interface CompileResponse {
   placeholder: boolean;
   cost?: number;
   jobId?: string;  // For async processing
+  duckingApplied?: boolean;
+  ffmpegCommand?: string;  // For debugging
 }
 
 /**
@@ -67,30 +82,64 @@ function calculateDuration(images: ImageAsset[], beatGrid?: BeatPoint[]): number
 }
 
 /**
- * Generate FFmpeg command for video compilation
- * This is for documentation/future implementation
+ * Generate FFmpeg command for video compilation with audio ducking
+ * v2.0.0: Now includes ducking filter chain
  */
-function generateFFmpegCommand(request: CompileRequest): string {
+function generateFFmpegCommand(request: CompileRequest, duration: number): string {
   const resolution = request.resolution === '4k' ? '3840:2160' 
                    : request.resolution === '1080p' ? '1920:1080' 
                    : '1280:720';
   const fps = request.fps || 30;
   const lufs = request.lufsTarget || -14;
   
-  // This would be the actual FFmpeg command
+  // Merge ducking config with defaults
+  const duckingConfig: DuckingConfig = {
+    ...DEFAULT_DUCKING_CONFIG,
+    ...request.duckingConfig,
+  };
+  
+  // Build audio filter complex based on inputs
+  let audioFilter = '';
+  
+  if (request.narrationUrl && request.musicUrl) {
+    // Both narration and music - apply ducking
+    if (request.narrationSegments && request.narrationSegments.length > 0) {
+      // Keyframe-based ducking with precise timing
+      audioFilter = generateDuckingFilterChain(
+        '1:a',  // narration input
+        '2:a',  // music input
+        request.narrationSegments,
+        duration,
+        duckingConfig,
+        request.useSidechainDucking || false
+      );
+    } else {
+      // Sidechain compression for dynamic ducking
+      audioFilter = `
+        [1:a]loudnorm=I=${lufs}:TP=-1.5:LRA=11[narration];
+        [2:a]volume=${duckingConfig.gapVolume}[music_vol];
+        [music_vol][narration]sidechaincompress=threshold=0.015:ratio=6:attack=${duckingConfig.attackMs}:release=${duckingConfig.releaseMs}[ducked_music];
+        [narration][ducked_music]amix=inputs=2:duration=longest:weights=1 0.5[a]
+      `.trim().replace(/\n\s+/g, '');
+    }
+  } else if (request.narrationUrl) {
+    // Narration only
+    audioFilter = `[1:a]loudnorm=I=${lufs}:TP=-1.5:LRA=11[a]`;
+  } else if (request.musicUrl) {
+    // Music only - apply gap volume level
+    audioFilter = `[1:a]volume=${duckingConfig.gapVolume},loudnorm=I=${lufs - 6}:TP=-1.5:LRA=11[a]`;
+  }
+  
+  // Build complete FFmpeg command
   const cmd = `ffmpeg -y \\
     -framerate 1/${3} -i "images/%03d.jpg" \\
     ${request.narrationUrl ? `-i "${request.narrationUrl}"` : ''} \\
     ${request.musicUrl ? `-i "${request.musicUrl}"` : ''} \\
     -filter_complex "
       [0:v]scale=${resolution}:force_original_aspect_ratio=decrease,pad=${resolution}:(ow-iw)/2:(oh-ih)/2,fps=${fps}[v];
-      ${request.narrationUrl && request.musicUrl ? `
-      [1:a]loudnorm=I=${lufs}:TP=-1.5:LRA=11[narration];
-      [2:a]volume=0.3,loudnorm=I=${lufs - 6}:TP=-1.5:LRA=11[music];
-      [narration][music]amix=inputs=2:duration=longest[a]
-      ` : request.narrationUrl ? `[1:a]loudnorm=I=${lufs}:TP=-1.5:LRA=11[a]` : ''}
+      ${audioFilter}
     " \\
-    -map "[v]" ${request.narrationUrl || request.musicUrl ? '-map "[a]"' : ''} \\
+    -map "[v]" ${audioFilter ? '-map "[a]"' : ''} \\
     -c:v libx264 -preset medium -crf 23 \\
     -c:a aac -b:a 192k \\
     -movflags +faststart \\
@@ -115,18 +164,24 @@ function estimateCost(duration: number, resolution: string): number {
  * - AWS Lambda with FFmpeg layer
  * - Dedicated video processing service (Mux, Cloudinary, etc.)
  */
-async function compileWithFFmpeg(request: CompileRequest): Promise<Buffer | null> {
+async function compileWithFFmpeg(request: CompileRequest, duration: number): Promise<Buffer | null> {
   const ffmpegServiceUrl = process.env.FFMPEG_SERVICE_URL;
   
   if (!ffmpegServiceUrl) {
     console.log('⚠️ No FFmpeg service URL, using placeholder mode');
     console.log('📋 FFmpeg command would be:');
-    console.log(generateFFmpegCommand(request));
+    console.log(generateFFmpegCommand(request, duration));
     return null;
   }
   
   try {
     console.log(`🎬 Calling FFmpeg service: ${ffmpegServiceUrl}`);
+    
+    // Merge ducking config for the request
+    const duckingConfig: DuckingConfig = {
+      ...DEFAULT_DUCKING_CONFIG,
+      ...request.duckingConfig,
+    };
     
     const response = await fetch(ffmpegServiceUrl, {
       method: 'POST',
@@ -142,6 +197,10 @@ async function compileWithFFmpeg(request: CompileRequest): Promise<Buffer | null
         resolution: request.resolution || '1080p',
         fps: request.fps || 30,
         lufsTarget: request.lufsTarget || -14,
+        // v2.0.0: Include ducking parameters
+        narrationSegments: request.narrationSegments,
+        duckingConfig,
+        useSidechainDucking: request.useSidechainDucking || false,
       }),
     });
     
@@ -169,7 +228,7 @@ async function compileWithFFmpeg(request: CompileRequest): Promise<Buffer | null
 }
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  console.log('🎞️ EDITOR AGENT - Compile Video');
+  console.log('🎞️ EDITOR AGENT v2.0.0-DUCKING - Compile Video');
   
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -215,8 +274,23 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     
     const duration = calculateDuration(request.images, request.beatGrid);
     
+    // Determine if ducking will be applied
+    const duckingApplied = !!(request.narrationUrl && request.musicUrl);
+    
+    // Log ducking configuration
+    if (duckingApplied) {
+      const duckingConfig = { ...DEFAULT_DUCKING_CONFIG, ...request.duckingConfig };
+      console.log(`🔊 Audio ducking: -${Math.round(-20 * Math.log10(duckingConfig.narrationVolume))}dB during narration, -${Math.round(-20 * Math.log10(duckingConfig.gapVolume))}dB in gaps`);
+      console.log(`⏱️ Attack: ${duckingConfig.attackMs}ms, Release: ${duckingConfig.releaseMs}ms`);
+      if (request.narrationSegments) {
+        console.log(`📍 Using ${request.narrationSegments.length} narration segments for keyframe ducking`);
+      } else {
+        console.log(`🎚️ Using sidechain compression for dynamic ducking`);
+      }
+    }
+    
     // Try FFmpeg service, fallback to placeholder
-    const videoBuffer = await compileWithFFmpeg(request);
+    const videoBuffer = await compileWithFFmpeg(request, duration);
     const isPlaceholder = !videoBuffer;
     
     let videoUrl: string;
@@ -234,6 +308,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           duration: String(duration),
           fps: String(request.fps),
           imageCount: String(request.images.length),
+          duckingApplied: String(duckingApplied),
         },
       });
       
@@ -263,9 +338,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       stored,
       placeholder: isPlaceholder,
       cost,
+      duckingApplied,
+      // Include FFmpeg command in placeholder mode for debugging
+      ffmpegCommand: isPlaceholder ? generateFFmpegCommand(request, duration) : undefined,
     };
     
-    console.log(`✅ Editor Agent: ${isPlaceholder ? 'Placeholder' : 'Compiled'} ${duration}s video @ ${request.resolution}, stored: ${stored}`);
+    console.log(`✅ Editor Agent: ${isPlaceholder ? 'Placeholder' : 'Compiled'} ${duration}s video @ ${request.resolution}, ducking: ${duckingApplied}, stored: ${stored}`);
     
     return {
       statusCode: 200,
