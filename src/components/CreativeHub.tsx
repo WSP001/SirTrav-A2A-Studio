@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileText, Music, Video, Settings, AlertTriangle, X, Sparkles, Zap, Play, Link, Unlink } from 'lucide-react';
 import { Click2KickButton } from './Click2KickButton';
 import { Dashboard } from './Dashboard';
-import { PipelineStatus, PipelineStep } from '../types';
 import { useDropzone } from 'react-dropzone';
 import { getTheme, buildThemePreference, ThemeAttachment } from '../lib/theme';
+import { useProgress } from '../lib/useProgress';
+
+type PipelineStatus = 'idle' | 'validating' | 'running' | 'completed' | 'error';
 
 interface GenerateVideoResult {
   ok: boolean;
@@ -30,6 +32,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
   const [status, setStatus] = useState<PipelineStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
   const [chaosMode, setChaosMode] = useState(false);
+  const progress = useProgress('/.netlify/functions/progress');
   
   // Theme Attachment State - default ON
   const [projectId] = useState(() => `project-${Date.now()}`);
@@ -52,6 +55,22 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     setThemeState(getTheme(projectId));
   }, [projectId]);
 
+  // Reflect backend progress into local status
+  useEffect(() => {
+    if (!progress) return;
+    if (progress.status === 'completed') {
+      setStatus('completed');
+      onStatusChange('completed');
+      // optionally load result from progress.agents/payload if present
+    } else if (progress.status === 'error') {
+      setStatus('error');
+      onStatusChange('error');
+    } else if (progress.status === 'running') {
+      setStatus('running');
+      onStatusChange('running');
+    }
+  }, [progress, onStatusChange]);
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
   }, []);
@@ -70,6 +89,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
   const startPipeline = async () => {
     setStatus('validating');
     onStatusChange('validating');
+    onPipelineStart(projectId);
     
     // Use stable projectId from state
     const pid = projectId;
@@ -118,6 +138,9 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
       if (!result.ok) {
         throw new Error(result.error || 'Pipeline returned error');
       }
+
+      setStatus('completed');
+      onStatusChange('completed');
 
       // 3. Hand off to App with the video result
       onPipelineComplete(result);
@@ -332,6 +355,11 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
                 <Play className="w-3 h-3" />
                 <span>Estimated: ~2 minutes</span>
               </div>
+              {progress?.message && (
+                <div className="mt-3 text-xs text-zinc-400">
+                  {progress.message}
+                </div>
+              )}
             </div>
           </div>
         </div>

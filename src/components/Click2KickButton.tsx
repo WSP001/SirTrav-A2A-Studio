@@ -1,7 +1,9 @@
 import React from 'react';
 import { Play, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
-type PipelineStatus = 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
+// Align with CreativeHub states: idle → validating → running → completed/error
+// Keep legacy names for compatibility.
+type PipelineStatus = 'idle' | 'validating' | 'running' | 'uploading' | 'processing' | 'completed' | 'error';
 
 interface Click2KickButtonProps {
   status: PipelineStatus;
@@ -16,13 +18,15 @@ export const Click2KickButton: React.FC<Click2KickButtonProps> = ({
 }) => {
   const getButtonContent = () => {
     switch (status) {
+      case 'validating':
       case 'uploading':
         return (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Uploading...</span>
+            <span>Validating...</span>
           </>
         );
+      case 'running':
       case 'processing':
         return (
           <>
@@ -62,7 +66,9 @@ export const Click2KickButton: React.FC<Click2KickButtonProps> = ({
     }
     
     switch (status) {
+      case 'validating':
       case 'uploading':
+      case 'running':
       case 'processing':
         return `${base} bg-gradient-to-r from-amber-500 to-orange-500 text-white cursor-wait`;
       case 'completed':
