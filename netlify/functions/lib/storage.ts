@@ -400,11 +400,16 @@ class NetlifyBlobsStorage {
   }
 }
 
-// Pre-configured blob stores for different media types
+// Pre-configured blob stores for different media types and artifacts
 export const videoStore = new NetlifyBlobsStorage('sirtrav-videos');
 export const audioStore = new NetlifyBlobsStorage('sirtrav-audio');
 export const imageStore = new NetlifyBlobsStorage('sirtrav-images');
 export const creditsStore = new NetlifyBlobsStorage('sirtrav-credits');
+export const uploadsStore = () => getStore('sirtrav-uploads');
+export const evalsStore = () => getStore('sirtrav-evals');
+export const runsStore = () => getStore('sirtrav-runs');
+export const artifactsStore = () => getStore('sirtrav-artifacts');
+export const exportsStore = () => getStore('sirtrav-exports');
 
 /**
  * Factory function to create appropriate storage backend
@@ -448,4 +453,3 @@ export const storage = isProduction
   : new MockStorage();
 
 export { S3Storage, MockStorage, NetlifyLMStorage, NetlifyBlobsStorage };
-

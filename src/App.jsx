@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink } from "lucide-react";
 import "./App.css";
+import ResultsPreview from './components/ResultsPreview';
 
 // Version for deployment verification
 const APP_VERSION = "v1.9.0";
@@ -27,6 +28,8 @@ function App() {
   const [videoResult, setVideoResult] = useState(null);
   const [publishMode, setPublishMode] = useState('private'); // private, unlisted, public
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showResultsPreview, setShowResultsPreview] = useState(false);
+  const [currentRunId, setCurrentRunId] = useState(null);
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -49,6 +52,8 @@ function App() {
     if (files.length === 0) return;
     
     setPipelineStatus('running');
+    const newRunId = `ui-run-${Date.now()}`;
+    setCurrentRunId(newRunId);
     setMetrics({ cost: 0, time: 0 });
     const startTime = Date.now();
 
@@ -80,6 +85,7 @@ function App() {
     
     // Generate mock video result
     setVideoResult({
+      runId: newRunId,
       videoUrl: `/api/videos/${projectId}/final.mp4`,
       thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
       duration: '2:34',
@@ -106,6 +112,12 @@ function App() {
           <nav className="flex items-center gap-4">
             <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Documentation</a>
             <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault Status</a>
+            <button
+              onClick={() => setShowResultsPreview(true)}
+              className="btn-secondary"
+            >
+              Test Results Preview
+            </button>
             <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link">
               <Github className="w-4 h-4" />
             </a>
@@ -461,6 +473,50 @@ function App() {
       <footer className="text-center py-6 text-xs text-gray-600">
         Build: {BUILD_DATE} | {APP_VERSION} | For the Commons Good 🌍
       </footer>
+
+      {/* Results Preview Modal */}
+      {showResultsPreview && (
+        <ResultsPreview
+          result={{
+            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+            projectId: "test-project-123",
+            runId: "ui-demo-run",
+            metadata: {
+              duration: 154,
+              resolution: "1080p",
+              platform: "TikTok",
+              fileSize: 24500000
+            },
+            credits: {
+              music: "Suno AI",
+              voice: "ElevenLabs",
+              platform: "SirTrav A2A Studio"
+            }
+          }}
+          onClose={() => setShowResultsPreview(false)}
+          onFeedback={async (projectId, rating, comments) => {
+            try {
+              const res = await fetch('/.netlify/functions/submit-evaluation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId,
+                  runId: currentRunId || 'ui-demo',
+                  rating,
+                  feedback: comments,
+                }),
+              });
+              if (!res.ok) {
+                const detail = await res.text();
+                throw new Error(`submit-evaluation failed (${res.status}): ${detail}`);
+              }
+            } catch (err) {
+              console.error('Feedback submit failed', err);
+              alert('Failed to submit feedback. Please try again.');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

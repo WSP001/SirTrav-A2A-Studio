@@ -11,6 +11,7 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { evalsStore } from './lib/storage';
 
 /**
  * User evaluation payload
@@ -284,6 +285,22 @@ export const handler: Handler = async (
 
     // Save updated memory index
     await saveMemoryIndex(memoryIndex);
+
+    // Persist evaluation to Blobs (production-safe)
+    try {
+      const store = evalsStore();
+      const ts = new Date().toISOString();
+      const key = `${evaluation.projectId}/${ts}.json`;
+      await store.setJSON(key, historyEntry, {
+        metadata: {
+          projectId: evaluation.projectId,
+          rating: evaluation.rating,
+          hasComments: evaluation.comments ? 'true' : 'false',
+        },
+      });
+    } catch (err) {
+      console.warn('[Evaluation] Blobs persistence failed (continuing):', err);
+    }
 
     console.log(`[Evaluation] Memory updated:`, {
       totalVideos: memoryIndex.user_preferences.total_videos,

@@ -10,10 +10,11 @@
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+import { getStore } from "@netlify/blobs";
 
 interface ServiceStatus {
   name: string;
-  status: 'ok' | 'degraded' | 'down';
+  status: 'ok' | 'degraded' | 'down' | 'disabled';
   latency_ms?: number;
   error?: string;
 }
@@ -47,24 +48,17 @@ function checkEnvVars(keys: string[]): boolean {
 async function checkStorage(): Promise<ServiceStatus> {
   const start = Date.now();
   try {
-    // Check if Netlify Blobs context is available
-    const hasBlobs = !!process.env.NETLIFY_BLOBS_CONTEXT || !!process.env.NETLIFY;
-    const hasS3 = checkEnvVars(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'S3_BUCKET_NAME']);
-    
-    if (hasBlobs || hasS3) {
-      return {
-        name: 'storage',
-        status: 'ok',
-        latency_ms: Date.now() - start,
-      };
+    const store = getStore('sirtrav-health');
+    const key = `ping-${Date.now()}`;
+    await store.set(key, 'ok', { metadata: { ts: new Date().toISOString() } });
+    const result = await store.get(key, { type: 'text' });
+    await store.delete(key);
+
+    if (result === 'ok') {
+      return { name: 'storage', status: 'ok', latency_ms: Date.now() - start };
     }
-    
-    return {
-      name: 'storage',
-      status: 'degraded',
-      latency_ms: Date.now() - start,
-      error: 'No storage backend configured (using mock)',
-    };
+
+    return { name: 'storage', status: 'degraded', latency_ms: Date.now() - start, error: 'Blob echo failed' };
   } catch (error) {
     return {
       name: 'storage',
@@ -81,24 +75,20 @@ async function checkStorage(): Promise<ServiceStatus> {
 function checkAIServices(): ServiceStatus {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   const hasElevenLabs = !!process.env.ELEVENLABS_API_KEY;
-  const hasSuno = !!process.env.SUNO_API_KEY;
+  const hasSuno = !!process.env.SUNO_API_KEY; // optional
   
-  const configured = [hasOpenAI, hasElevenLabs, hasSuno].filter(Boolean).length;
-  
-  if (configured === 3) {
-    return { name: 'ai_services', status: 'ok' };
-  } else if (configured > 0) {
-    return { 
-      name: 'ai_services', 
-      status: 'degraded',
-      error: `${configured}/3 AI services configured`,
+  if (hasOpenAI && hasElevenLabs) {
+    return {
+      name: 'ai_services',
+      status: 'ok',
+      error: hasSuno ? undefined : 'Suno key missing (manual flow assumed)',
     };
   }
   
   return { 
     name: 'ai_services', 
-    status: 'down',
-    error: 'No AI service keys configured',
+    status: 'degraded',
+    error: 'OPENAI_API_KEY or ELEVENLABS_API_KEY missing',
   };
 }
 
@@ -124,7 +114,7 @@ function checkSocialServices(): ServiceStatus {
   
   return { 
     name: 'social_publishing', 
-    status: 'degraded',
+    status: 'disabled',
     error: 'No social publishing keys (placeholder mode)',
   };
 }
