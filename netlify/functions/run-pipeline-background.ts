@@ -61,6 +61,7 @@ export const handler: Handler = async (event) => {
 
     const store = runsStore();
     const key = makeRunKey(projectId, runId);
+    const lockKey = `${projectId}/${runId}.lock`;
     const existing = await store.getJSON(key) as any;
 
     // Idempotency: if already succeeded, exit early

@@ -43,12 +43,20 @@ export const handler: Handler = async (event) => {
     const store = runsStore();
 
     // Simple lock: if a run record already exists and is not failed, refuse to start a duplicate
-    const existing = await store.getJSON(key) as any;
-    if (existing && existing.status && existing.status !== 'failed') {
+    // Optimistic lock: set a lock key once per run
+    const lockKey = `${projectId}/${runId}.lock`;
+    const lock = await store.set(lockKey, 'locked', {
+      metadata: { projectId, runId, type: 'lock' },
+      // onlyIfNew ensures we don't overwrite an existing lock
+      // @ts-ignore netlify types may not yet expose onlyIfNew
+      onlyIfNew: true,
+    }).catch(() => null);
+
+    if (!lock) {
       return {
         statusCode: 409,
         headers,
-        body: JSON.stringify({ ok: false, error: 'run_already_exists', runId, projectId, status: existing.status }),
+        body: JSON.stringify({ ok: false, error: 'run_already_exists', runId, projectId }),
       };
     }
 
