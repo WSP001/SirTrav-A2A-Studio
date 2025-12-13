@@ -42,6 +42,16 @@ export const handler: Handler = async (event) => {
     const now = new Date().toISOString();
     const store = runsStore();
 
+    // Simple lock: if a run record already exists and is not failed, refuse to start a duplicate
+    const existing = await store.getJSON(key) as any;
+    if (existing && existing.status && existing.status !== 'failed') {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({ ok: false, error: 'run_already_exists', runId, projectId, status: existing.status }),
+      };
+    }
+
     // Write initial run record
     const runRecord = {
       projectId,

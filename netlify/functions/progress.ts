@@ -1,172 +1,135 @@
 /**
- * PROGRESS TRACKING - Pipeline Progress Events with SSE
- * Receives and stores progress events from all agents
- * Supports Server-Sent Events for real-time updates
- * 
- * GET with Accept: text/event-stream → SSE stream
- * GET with Accept: application/json → JSON response
- * POST → Log progress event
- * 
- * INPUT: { projectId, agent, status, message, progress, metadata }
- * OUTPUT: SSE stream or { received: true, events: [...] }
+ * PROGRESS TRACKING (Modern function)
+ * - POST: log a progress event (persist to Blobs)
+ * - GET : return JSON list of events
+ * - GET with Accept:text/event-stream : SSE stream
  */
+import { runsStore } from './lib/storage';
 
-import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+type ProgressStatus = 'started' | 'running' | 'completed' | 'failed';
 
 interface ProgressEvent {
   projectId: string;
+  runId?: string;
   agent: string;
-  status: 'started' | 'running' | 'completed' | 'failed';
+  status: ProgressStatus;
   message: string;
   timestamp: string;
   progress: number; // 0-100
   metadata?: Record<string, unknown>;
 }
 
-// In-memory store (use Redis/DB in production)
-const progressStore: Map<string, ProgressEvent[]> = new Map();
-
-// SSE subscribers (for real-time updates)
-const subscribers: Map<string, Array<(event: ProgressEvent) => void>> = new Map();
-
-/**
- * Notify all subscribers for a project
- */
-function notifySubscribers(projectId: string, event: ProgressEvent): void {
-  const subs = subscribers.get(projectId) || [];
-  subs.forEach(callback => callback(event));
-}
-
-/**
- * Format event for SSE
- */
-function formatSSE(event: ProgressEvent): string {
-  return `event: progress\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  };
-  
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
-  }
-  
-  // GET - Retrieve progress (JSON or SSE)
-  if (event.httpMethod === 'GET') {
-    const projectId = event.queryStringParameters?.projectId;
-    const acceptHeader = event.headers['accept'] || event.headers['Accept'] || '';
-    const wantSSE = acceptHeader.includes('text/event-stream');
-    
-    if (!projectId) {
-      return {
-        statusCode: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'projectId query parameter required' }),
-      };
-    }
-    
-    // SSE Mode - Return current events as SSE stream
-    if (wantSSE) {
-      const events = progressStore.get(projectId) || [];
-      
-      // Build SSE response with all current events
-      let sseBody = `: SirTrav A2A Progress Stream\n`;
-      sseBody += `event: connected\ndata: {"projectId":"${projectId}"}\n\n`;
-      
-      for (const evt of events) {
-        sseBody += formatSSE(evt);
-      }
-      
-      // Check if pipeline is complete
-      const lastEvent = events[events.length - 1];
-      const isComplete = lastEvent && 
-        (lastEvent.status === 'completed' || lastEvent.status === 'failed') &&
-        lastEvent.agent === 'publisher';
-      
-      if (isComplete) {
-        sseBody += `event: complete\ndata: {"projectId":"${projectId}","status":"${lastEvent.status}"}\n\n`;
-      }
-      
-      return {
-        statusCode: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-        body: sseBody,
-      };
-    }
-    
-    // JSON Mode - Return events as JSON
-    const events = progressStore.get(projectId) || [];
-    
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId, events, count: events.length }),
-    };
-  }
-  
-  // POST - Log a progress event
-  if (event.httpMethod === 'POST') {
-    const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
-    
-    try {
-      const progressEvent: ProgressEvent = JSON.parse(event.body || '{}');
-      
-      if (!progressEvent.projectId || !progressEvent.agent) {
-        return {
-          statusCode: 400,
-          headers: jsonHeaders,
-          body: JSON.stringify({ error: 'projectId and agent are required' }),
-        };
-      }
-      
-      // Add timestamp if not provided
-      progressEvent.timestamp = progressEvent.timestamp || new Date().toISOString();
-      
-      // Store event
-      const events = progressStore.get(progressEvent.projectId) || [];
-      events.push(progressEvent);
-      progressStore.set(progressEvent.projectId, events);
-      
-      // Notify SSE subscribers
-      notifySubscribers(progressEvent.projectId, progressEvent);
-      
-      console.log(`📊 Progress: [${progressEvent.agent}] ${progressEvent.status} - ${progressEvent.message}`);
-      
-      return {
-        statusCode: 200,
-        headers: jsonHeaders,
-        body: JSON.stringify({ 
-          received: true, 
-          eventCount: events.length,
-          latest: progressEvent 
-        }),
-      };
-      
-    } catch (error) {
-      return {
-        statusCode: 500,
-        headers: jsonHeaders,
-        body: JSON.stringify({ 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        }),
-      };
-    }
-  }
-  
-  return {
-    statusCode: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ error: 'Method not allowed' }),
-  };
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-export { handler };
+const eventsKey = (projectId: string, runId?: string) =>
+  `${projectId}/progress-${runId || 'default'}.json`;
+
+async function readEvents(projectId: string, runId?: string): Promise<ProgressEvent[]> {
+  const store = runsStore();
+  const data = await store.getJSON(eventsKey(projectId, runId));
+  return (data as ProgressEvent[]) || [];
+}
+
+async function writeEvents(projectId: string, runId: string | undefined, events: ProgressEvent[]) {
+  const store = runsStore();
+  await store.setJSON(eventsKey(projectId, runId), events, {
+    metadata: { projectId, runId: runId || 'default', kind: 'progress' },
+  });
+}
+
+function formatSSE(events: ProgressEvent[], projectId: string) {
+  let sse = `: SirTrav A2A Progress Stream\n`;
+  sse += `event: connected\ndata: {"projectId":"${projectId}"}\n\n`;
+  for (const evt of events) {
+    sse += `event: progress\ndata: ${JSON.stringify(evt)}\n\n`;
+  }
+  const last = events[events.length - 1];
+  if (last && (last.status === 'completed' || last.status === 'failed')) {
+    sse += `event: complete\ndata: {"projectId":"${projectId}","status":"${last.status}"}\n\n`;
+  }
+  return sse;
+}
+
+export default async (req: Request) => {
+  const url = new URL(req.url);
+  if (req.method === 'OPTIONS') return new Response('', { status: 200, headers: cors });
+
+  if (req.method === 'GET') {
+    const projectId = url.searchParams.get('projectId');
+    const runId = url.searchParams.get('runId') || undefined;
+    if (!projectId) {
+      return new Response(JSON.stringify({ error: 'projectId query parameter required' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    const events = await readEvents(projectId, runId);
+    const accept = req.headers.get('accept') || '';
+    if (accept.includes('text/event-stream')) {
+      const sseBody = formatSSE(events, projectId);
+      return new Response(sseBody, {
+        status: 200,
+        headers: {
+          ...cors,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+    return new Response(JSON.stringify({ projectId, runId, events, count: events.length }), {
+      status: 200,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const body = (await req.json()) as Partial<ProgressEvent>;
+      if (!body.projectId || !body.agent) {
+        return new Response(JSON.stringify({ error: 'projectId and agent are required' }), {
+          status: 400,
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+      const projectId = body.projectId;
+      const runId = body.runId;
+      const event: ProgressEvent = {
+        projectId,
+        runId,
+        agent: body.agent,
+        status: (body.status as ProgressStatus) || 'running',
+        message: body.message || '',
+        timestamp: body.timestamp || new Date().toISOString(),
+        progress: typeof body.progress === 'number' ? body.progress : 0,
+        metadata: body.metadata,
+      };
+
+      const events = await readEvents(projectId, runId);
+      events.push(event);
+      // keep only last 200 events to avoid oversized blobs
+      const trimmed = events.slice(-200);
+      await writeEvents(projectId, runId, trimmed);
+
+      return new Response(
+        JSON.stringify({ received: true, eventCount: trimmed.length, latest: event }),
+        { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    } catch (e: any) {
+      console.error('progress error', e);
+      return new Response(JSON.stringify({ error: e?.message || 'unknown_error' }), {
+        status: 500,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+};
