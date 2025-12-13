@@ -8,8 +8,6 @@ import { runsStore } from './lib/storage';
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
-const store = runsStore();
-
 function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
 }
@@ -39,8 +37,10 @@ export const handler: Handler = async (event) => {
     }
 
     const runId = body.runId || `run-${Date.now()}`;
+    const payloadKey = `${projectId}/${runId}-payload.json`;
     const key = makeRunKey(projectId, runId);
     const now = new Date().toISOString();
+    const store = runsStore();
 
     // Write initial run record
     const runRecord = {
@@ -59,6 +59,11 @@ export const handler: Handler = async (event) => {
       metadata: { projectId, runId, status: 'queued' },
     });
 
+    // Persist payload separately to avoid background payload limits
+    await store.setJSON(payloadKey, payload, {
+      metadata: { projectId, runId, kind: 'payload' },
+    });
+
     // Trigger background worker
     const baseUrl = process.env.URL || 'http://localhost:8888';
     const invokeUrl = `${baseUrl}/.netlify/functions/run-pipeline-background`;
@@ -66,13 +71,13 @@ export const handler: Handler = async (event) => {
     await fetch(invokeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId, runId, payload }),
+      body: JSON.stringify({ projectId, runId, payloadKey }),
     });
 
     return {
       statusCode: 202,
       headers,
-      body: JSON.stringify({ ok: true, runId, projectId, status: 'queued' }),
+      body: JSON.stringify({ ok: true, runId, projectId, status: 'queued', payloadKey }),
     };
   } catch (error) {
     console.error('start-pipeline error:', error);

@@ -8,8 +8,6 @@ import { runsStore } from './lib/storage';
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
-const store = runsStore();
-
 function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
 }
@@ -30,6 +28,7 @@ async function updateRun(
     errors: string[];
   }>
 ) {
+  const store = runsStore();
   const key = makeRunKey(projectId, runId);
   const now = new Date().toISOString();
   const existing = await store.getJSON(key) as Record<string, unknown> | null;
@@ -54,9 +53,29 @@ export const handler: Handler = async (event) => {
     const body = event.body ? JSON.parse(event.body) : {};
     const projectId: string | undefined = body.projectId;
     const runId: string | undefined = body.runId;
+    const payloadKey: string | undefined = body.payloadKey;
 
     if (!projectId || !runId) {
       return { statusCode: 400, body: 'projectId and runId are required' };
+    }
+
+    const store = runsStore();
+    const key = makeRunKey(projectId, runId);
+    const existing = await store.getJSON(key) as any;
+
+    // Idempotency: if already succeeded, exit early
+    if (existing?.status === 'succeeded') {
+      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'succeeded' }) };
+    }
+
+    // Soft lock: if another worker set running recently, respect it
+    if (existing?.status === 'running' && existing?.progress >= 99) {
+      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: existing.status }) };
+    }
+
+    // Load payload if present (not used in mock, but kept for parity)
+    if (payloadKey) {
+      await store.getJSON(payloadKey); // fetch to validate existence; ignored otherwise
     }
 
     const steps = [
