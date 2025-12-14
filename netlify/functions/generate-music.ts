@@ -3,6 +3,8 @@
  * Modes: attached_theme, manual, scene harmony, suno, placeholder
  */
 import { audioStore } from './lib/storage';
+import { artifactsStore } from './lib/storage';
+import { updateRunIndex } from './lib/runIndex';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -16,6 +18,7 @@ interface ThemePreference {
 }
 interface MusicRequest {
   projectId: string;
+  runId?: string;
   mood: string;
   tempo?: number;
   genre?: string;
@@ -50,6 +53,7 @@ interface MusicResponse {
   sunoId?: string;
   manualFile?: string;
   gridSource?: string;
+  beatGridKey?: string;
 }
 interface StoredBeatGrid {
   version?: number;
@@ -221,6 +225,7 @@ export default async (req: Request) => {
     if (!request.projectId) {
       return new Response(JSON.stringify({ error: 'projectId is required' }), { status: 400, headers });
     }
+    const runId = request.runId || `run-${Date.now()}`;
 
     // Mode: attached theme
     if (request.themePreference?.attached && request.themePreference.url) {
@@ -246,6 +251,16 @@ export default async (req: Request) => {
         manualFile: theme.filename,
         gridSource: theme.grid ? 'attached' : 'generated',
       };
+      await updateRunIndex(request.projectId, runId, {
+        musicKey: theme.filename,
+        music: {
+          mode: 'attached_theme',
+          bpm: theme.bpm,
+          duration: theme.duration,
+          manualFile: theme.filename,
+          store: 'audio',
+        },
+      });
       return new Response(JSON.stringify(response), { status: 200, headers });
     }
 
@@ -282,6 +297,18 @@ export default async (req: Request) => {
         manualFile: request.manualFile,
         gridSource,
       };
+      await updateRunIndex(request.projectId, runId, {
+        musicKey: `/music/${request.manualFile}`,
+        beatGridKey: gridSource === 'file' ? `music/${request.manualFile}.json` : undefined,
+        music: {
+          mode: 'manual',
+          bpm,
+          duration,
+          manualFile: request.manualFile,
+          gridSource,
+          store: 'audio',
+        },
+      });
       return new Response(JSON.stringify(response), { status: 200, headers });
     }
 
@@ -310,6 +337,18 @@ export default async (req: Request) => {
             manualFile: file,
             gridSource: 'scene-harmony',
           };
+          await updateRunIndex(request.projectId, runId, {
+            musicKey: `/music/${file}`,
+            beatGridKey: `music/${file}.json`,
+            music: {
+              mode: 'manual',
+              bpm: grid.bpm,
+              duration: grid.duration,
+              manualFile: file,
+              gridSource: 'scene-harmony',
+              store: 'audio',
+            },
+          });
           return new Response(JSON.stringify(response), { status: 200, headers });
         }
       }
@@ -326,8 +365,9 @@ export default async (req: Request) => {
     let musicUrl: string;
     let stored = false;
 
+    let beatGridKey: string | undefined;
     if (sunoResult.audioBuffer) {
-      const musicKey = `${request.projectId}/soundtrack.mp3`;
+      const musicKey = `projects/${request.projectId}/runs/${runId}/music.mp3`;
       const upload = await audioStore.uploadData(musicKey, sunoResult.audioBuffer, {
         contentType: 'audio/mpeg',
         metadata: {
@@ -338,6 +378,10 @@ export default async (req: Request) => {
           duration: String(request.duration),
           sunoId: sunoResult.sunoId || '',
         },
+      });
+      beatGridKey = `projects/${request.projectId}/runs/${runId}/beat_grid.json`;
+      await artifactsStore().setJSON(beatGridKey, beatGrid, {
+        metadata: { projectId: request.projectId, runId, bpm: String(bpm), duration: String(request.duration) },
       });
       if (upload.ok && upload.publicUrl) {
         musicUrl = upload.publicUrl;
@@ -365,7 +409,22 @@ export default async (req: Request) => {
       mode: isPlaceholder ? 'placeholder' : 'suno',
       cost,
       sunoId: sunoResult.sunoId || undefined,
+      beatGridKey,
     };
+
+    await updateRunIndex(request.projectId, runId, {
+      musicKey: stored ? `projects/${request.projectId}/runs/${runId}/music.mp3` : response.musicUrl,
+      beatGridKey,
+      music: {
+        mode: response.mode,
+        bpm,
+        duration: request.duration,
+        sunoId: response.sunoId || null,
+        manualFile: response.manualFile,
+        gridSource: response.gridSource,
+        store: 'audio',
+      },
+    });
 
     return new Response(JSON.stringify(response), { status: 200, headers });
   } catch (e: any) {

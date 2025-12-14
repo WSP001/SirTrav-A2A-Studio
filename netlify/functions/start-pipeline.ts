@@ -5,6 +5,7 @@
  */
 import type { Handler } from '@netlify/functions';
 import { runsStore } from './lib/storage';
+import { updateRunIndex } from './lib/runIndex';
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
@@ -75,6 +76,13 @@ export const handler: Handler = async (event) => {
 
     await store.setJSON(key, runRecord, {
       metadata: { projectId, runId, status: 'queued' },
+    });
+
+    // Create the artifact index immediately so UI can poll results
+    await updateRunIndex(projectId, runId, {
+      status: 'running',
+      createdAt: now,
+      payloadKey,
     });
 
     // Persist payload separately to avoid background payload limits

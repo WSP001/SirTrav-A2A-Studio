@@ -1,18 +1,50 @@
 /**
- * Modern function: streams a blob from uploadsStore by key.
- * GET /.netlify/functions/blob-get?key=<blob-key>
+ * Modern function: streams a blob from the requested store.
+ * GET /.netlify/functions/blob-get?key=<blob-key>&store=audio|video|uploads|artifacts|exports|runs|evals
+ * Default store is uploads to stay backward compatible.
  */
-import { uploadsStore } from './lib/storage';
+import {
+  audioStore,
+  videoStore,
+  uploadsStore,
+  artifactsStore,
+  exportsStore,
+  runsStore,
+  evalsStore,
+} from './lib/storage';
+
+function pickStore(name?: string) {
+  const normalized = (name || 'uploads').toLowerCase();
+  switch (normalized) {
+    case 'audio':
+      return audioStore;
+    case 'video':
+      return videoStore;
+    case 'artifacts':
+      return artifactsStore;
+    case 'exports':
+      return exportsStore;
+    case 'runs':
+      return runsStore;
+    case 'evals':
+      return evalsStore;
+    case 'uploads':
+    default:
+      return uploadsStore;
+  }
+}
 
 export default async (req: Request) => {
   const url = new URL(req.url);
   const key = url.searchParams.get('key');
+  const storeParam = url.searchParams.get('store');
   if (!key) {
     return new Response('Missing key', { status: 400 });
   }
 
   try {
-    const store = uploadsStore();
+    const storeFactory = pickStore(storeParam);
+    const store: any = typeof storeFactory === 'function' ? storeFactory() : storeFactory;
     const entry = await store.getWithMetadata(key, { type: 'stream' });
     if (!entry) {
       return new Response('Not found', { status: 404 });

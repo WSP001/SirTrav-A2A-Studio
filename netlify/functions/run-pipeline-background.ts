@@ -5,8 +5,9 @@
  */
 import type { Handler } from '@netlify/functions';
 import { runsStore } from './lib/storage';
+import { updateRunIndex } from './lib/runIndex';
 
-type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+type RunStatus = 'queued' | 'running' | 'complete' | 'failed';
 
 function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
@@ -31,13 +32,16 @@ async function updateRun(
   const store = runsStore();
   const key = makeRunKey(projectId, runId);
   const now = new Date().toISOString();
-  const existing = await store.getJSON(key) as Record<string, unknown> | null;
+  const existing = (await store.getJSON(key)) as Record<string, unknown> | null;
   const next = {
     ...(existing || { projectId, runId, createdAt: now }),
     ...patch,
     updatedAt: now,
   };
   await store.setJSON(key, next, { metadata: { projectId, runId, status: next.status } });
+  await updateRunIndex(projectId, runId, {
+    status: (next.status as RunStatus) || 'running',
+  });
 }
 
 export const handler: Handler = async (event) => {
@@ -65,8 +69,8 @@ export const handler: Handler = async (event) => {
     const existing = await store.getJSON(key) as any;
 
     // Idempotency: if already succeeded, exit early
-    if (existing?.status === 'succeeded') {
-      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'succeeded' }) };
+    if (existing?.status === 'complete') {
+      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'complete' }) };
     }
 
     // Soft lock: if another worker set running recently, respect it
@@ -103,20 +107,14 @@ export const handler: Handler = async (event) => {
       });
     }
 
-    const artifacts = {
-      videoUrl: `/media/${projectId}/${runId}.mp4`,
-      creditsUrl: `/media/${projectId}/${runId}-credits.json`,
-    };
-
     await updateRun(projectId, runId, {
-      status: 'succeeded',
+      status: 'complete',
       progress: 100,
       step: 'complete',
       message: 'Pipeline complete',
-      artifacts,
     });
 
-    return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'succeeded', artifacts }) };
+    return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'complete' }) };
   } catch (error) {
     console.error('run-pipeline-background error:', error);
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'pipeline_failed' }) };

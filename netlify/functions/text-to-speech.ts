@@ -1,13 +1,15 @@
 /**
  * VOICE AGENT - Text to Speech (Modern)
- * POST: { projectId, text, voice_id?, character?, segment? }
+ * POST: { projectId, runId, text, voice_id?, character?, segment? }
  * Returns JSON with audioUrl, duration, etc.
  * Uses ElevenLabs if key is present; placeholder otherwise.
  */
 import { audioStore } from './lib/storage';
+import { updateRunIndex } from './lib/runIndex';
 
 interface TTSRequest {
   projectId: string;
+  runId?: string;
   text: string;
   voice_id?: string;
   character?: string;
@@ -17,6 +19,7 @@ interface TTSRequest {
 interface TTSResponse {
   success: boolean;
   projectId: string;
+  runId: string;
   audioUrl: string;
   duration: number;
   voice: string;
@@ -104,6 +107,7 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: 'projectId and text are required' }), { status: 400, headers });
     }
 
+    const runId = request.runId || `run-${Date.now()}`;
     const voiceName = request.voice_id || 'Rachel';
     const voiceId = getVoiceId(request.voice_id, request.character);
     const wordCount = request.text.split(/\s+/).length;
@@ -115,7 +119,7 @@ export default async (req: Request) => {
     let stored = false;
 
     if (audioBuffer) {
-      const key = `${request.projectId}/narration_${segment}.mp3`;
+      const key = `projects/${request.projectId}/runs/${runId}/narration_${segment}.mp3`;
       const upload = await audioStore.uploadData(key, audioBuffer, {
         contentType: 'audio/mpeg',
         metadata: {
@@ -142,6 +146,7 @@ export default async (req: Request) => {
     const response: TTSResponse = {
       success: true,
       projectId: request.projectId,
+      runId,
       audioUrl,
       duration,
       voice: voiceName,
@@ -151,6 +156,18 @@ export default async (req: Request) => {
       stored,
       cost,
     };
+
+    await updateRunIndex(request.projectId, runId, {
+      narrationKey: stored ? `projects/${request.projectId}/runs/${runId}/narration_${segment}.mp3` : undefined,
+      voice: {
+        voiceId,
+        modelId: 'eleven_monolingual_v1',
+        characters: request.text.length,
+        costCents: cost,
+        placeholder: isPlaceholder,
+        store: 'audio',
+      },
+    });
 
     return new Response(JSON.stringify(response), { status: 200, headers });
   } catch (error: any) {
