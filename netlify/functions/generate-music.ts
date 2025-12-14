@@ -1,27 +1,11 @@
 /**
- * COMPOSER AGENT - Generate Music v2.1.0-THEME
- * Agent 4 of 7 in the D2A Pipeline
- * 
- * PURPOSE: Music for video with multiple modes:
- *   - ATTACHED: Skip generation if theme already attached from CreativeHub
- *   - MANUAL: Use pre-registered audio file + beat grid
- *   - SUNO: Generate via Suno API (if available)
- *   - PLACEHOLDER: Fallback with no actual audio
- * 
- * INPUT: { projectId, mood, tempo, genre, prompt, manualFile?, bpm?, themePreference? }
- * OUTPUT: { musicUrl, duration, beatGrid[], bpm, stored, mode }
- * 
- * v2.1.0-THEME Changes:
- *   - Added attached_theme mode for pre-attached themes via CreativeHub
- *   - Skip generation entirely when themePreference.attached is true
+ * COMPOSER AGENT - Generate Music v2.1.0-THEME (Modern)
+ * Modes: attached_theme, manual, scene harmony, suno, placeholder
  */
+import { audioStore } from './lib/storage';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
-import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
-import { audioStore } from "./lib/storage";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
-
-// Theme preference from CreativeHub
 interface ThemePreference {
   attached: boolean;
   url?: string;
@@ -30,23 +14,19 @@ interface ThemePreference {
   duration?: number;
   grid?: StoredBeatGrid;
 }
-
 interface MusicRequest {
   projectId: string;
   mood: string;
   tempo?: number;
   genre?: string;
   duration?: number;
-  prompt?: string;  // Custom prompt for Suno
-  instrumental?: boolean;  // Instrumental only (no vocals)
-  // NEW: Manual mode - use pre-registered music
-  manualFile?: string;  // e.g., "suno_week44_weekly_reflective_88bpm_90s.mp3"
-  bpm?: number;  // Override BPM for manual file
-  sceneType?: string;  // For scene harmony auto-selection
-  // v2.1.0: Theme attachment from CreativeHub
+  prompt?: string;
+  instrumental?: boolean;
+  manualFile?: string;
+  bpm?: number;
+  sceneType?: string;
   themePreference?: ThemePreference;
 }
-
 interface BeatPoint {
   time: number;
   type: 'downbeat' | 'upbeat' | 'accent';
@@ -54,7 +34,6 @@ interface BeatPoint {
   beat?: number;
   measure?: number;
 }
-
 interface MusicResponse {
   success: boolean;
   projectId: string;
@@ -67,169 +46,134 @@ interface MusicResponse {
   placeholder: boolean;
   stored: boolean;
   mode: 'attached_theme' | 'manual' | 'suno' | 'placeholder';
-  cost?: number;  // Estimated cost in cents
-  sunoId?: string;  // Suno generation ID for tracking
-  manualFile?: string;  // The manual file used
-  gridSource?: string;  // Where beat grid came from
+  cost?: number;
+  sunoId?: string;
+  manualFile?: string;
+  gridSource?: string;
 }
-
 interface StoredBeatGrid {
   version?: number;
   project?: string;
   template?: string;
   bpm: number;
   duration: number;
-  beats: Array<{
-    t: number;
-    beat?: number;
-    downbeat?: boolean;
-    measure?: number;
-  }>;
+  beats: Array<{ t: number; beat?: number; downbeat?: boolean; measure?: number }>;
 }
 
-/**
- * Load pre-registered beat grid from file
- */
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+const SCENE_HARMONY: Record<string, { template: string; bpm: number }> = {
+  opening: { template: 'morning_calm', bpm: 72 },
+  adventure: { template: 'adventure_theme', bpm: 96 },
+  middle: { template: 'upbeat_rider', bpm: 104 },
+  emotional: { template: 'tender_moment', bpm: 76 },
+  playful: { template: 'playful_discovery', bpm: 110 },
+  climax: { template: 'upbeat_rider', bpm: 104 },
+  outro: { template: 'sunset_glow', bpm: 84 },
+  reflection: { template: 'weekly_reflective', bpm: 88 },
+};
+
 function loadBeatGrid(filename: string): StoredBeatGrid | null {
-  const gridPaths = [
+  const paths = [
     join(process.cwd(), 'data', 'beat-grids', `${filename}.json`),
     join('/var/task', 'data', 'beat-grids', `${filename}.json`),
     join(process.cwd(), `data/beat-grids/${filename}.json`),
   ];
-  
-  for (const gridPath of gridPaths) {
+  for (const p of paths) {
     try {
-      if (existsSync(gridPath)) {
-        const raw = readFileSync(gridPath, 'utf-8');
-        const grid = JSON.parse(raw) as StoredBeatGrid;
-        console.log(`✅ Loaded beat grid from: ${gridPath}`);
-        return grid;
+      if (existsSync(p)) {
+        const raw = readFileSync(p, 'utf-8');
+        return JSON.parse(raw) as StoredBeatGrid;
       }
     } catch (e) {
-      console.warn(`⚠️ Failed to load grid from ${gridPath}:`, e);
+      console.warn('beat grid load failed', p, e);
     }
   }
-  
   return null;
 }
 
-/**
- * Convert stored beat grid to API format
- */
 function convertStoredGrid(stored: StoredBeatGrid): BeatPoint[] {
   return stored.beats.map((beat, index) => ({
     time: beat.t,
-    type: beat.downbeat ? 'downbeat' : (index % 4 === 0 ? 'downbeat' : 'upbeat') as 'downbeat' | 'upbeat' | 'accent',
+    type: beat.downbeat ? 'downbeat' : (index % 4 === 0 ? 'downbeat' : 'upbeat'),
     intensity: beat.downbeat ? 0.8 : 0.5,
     beat: beat.beat || (index % 4) + 1,
     measure: beat.measure || Math.floor(index / 4) + 1,
   }));
 }
 
-/**
- * Generate beat grid for video synchronization
- */
 function generateBeatGrid(duration: number, bpm: number): BeatPoint[] {
-  const beatGrid: BeatPoint[] = [];
-  const secondsPerBeat = 60 / bpm;
-  
-  let time = 0;
-  let beatIndex = 0;
-  
-  while (time < duration) {
-    const isDownbeat = beatIndex % 4 === 0;
-    const isAccent = beatIndex % 8 === 0;
-    
-    beatGrid.push({
-      time: Math.round(time * 1000) / 1000,
-      type: isAccent ? 'accent' : isDownbeat ? 'downbeat' : 'upbeat',
-      intensity: isAccent ? 1.0 : isDownbeat ? 0.8 : 0.5,
-      beat: (beatIndex % 4) + 1,
-      measure: Math.floor(beatIndex / 4) + 1,
+  const grid: BeatPoint[] = [];
+  const spb = 60 / bpm;
+  let t = 0;
+  let i = 0;
+  while (t < duration) {
+    const down = i % 4 === 0;
+    const accent = i % 8 === 0;
+    grid.push({
+      time: Math.round(t * 1000) / 1000,
+      type: accent ? 'accent' : down ? 'downbeat' : 'upbeat',
+      intensity: accent ? 1.0 : down ? 0.8 : 0.5,
+      beat: (i % 4) + 1,
+      measure: Math.floor(i / 4) + 1,
     });
-    
-    time += secondsPerBeat;
-    beatIndex++;
+    t += spb;
+    i++;
   }
-  
-  return beatGrid;
+  return grid;
 }
 
-/**
- * Select tempo based on mood
- */
-function selectTempo(mood: string, requestedTempo?: number): number {
-  if (requestedTempo) return requestedTempo;
-  
+function selectTempo(mood: string, requested?: number): number {
+  if (requested) return requested;
   const moodTempos: Record<string, number> = {
-    'exciting': 120,
-    'adventure': 110,
-    'inspiring': 100,
-    'calm': 70,
-    'reflection': 65,
-    'dramatic': 90,
-    'cinematic': 85,
-    'playful': 110,
-    'tender': 76,
-    'peaceful': 72,
+    exciting: 120,
+    adventure: 110,
+    inspiring: 100,
+    calm: 70,
+    reflection: 65,
+    dramatic: 90,
+    cinematic: 85,
+    playful: 110,
+    tender: 76,
+    peaceful: 72,
   };
-  
   return moodTempos[mood] || 85;
 }
 
-/**
- * Scene harmony mapping - auto-select template based on scene type
- */
-const SCENE_HARMONY: Record<string, { template: string; bpm: number }> = {
-  'opening': { template: 'morning_calm', bpm: 72 },
-  'adventure': { template: 'adventure_theme', bpm: 96 },
-  'middle': { template: 'upbeat_rider', bpm: 104 },
-  'emotional': { template: 'tender_moment', bpm: 76 },
-  'playful': { template: 'playful_discovery', bpm: 110 },
-  'climax': { template: 'upbeat_rider', bpm: 104 },
-  'outro': { template: 'sunset_glow', bpm: 84 },
-  'reflection': { template: 'weekly_reflective', bpm: 88 },
-};
-
-/**
- * Build Suno prompt from mood and genre
- */
 function buildSunoPrompt(request: MusicRequest): string {
   if (request.prompt) return request.prompt;
-  
-  const moodDescriptors: Record<string, string> = {
-    'exciting': 'energetic, uplifting, adventurous',
-    'adventure': 'epic, heroic, inspiring journey',
-    'inspiring': 'hopeful, motivational, uplifting',
-    'calm': 'peaceful, serene, relaxing',
-    'reflection': 'contemplative, emotional, introspective',
-    'dramatic': 'intense, powerful, cinematic tension',
-    'cinematic': 'orchestral, film score, emotional',
-    'playful': 'fun, whimsical, lighthearted',
-    'mysterious': 'enigmatic, suspenseful, intriguing',
-    'tender': 'gentle, intimate, lullaby',
+  const moodDesc: Record<string, string> = {
+    exciting: 'energetic, uplifting, adventurous',
+    adventure: 'epic, heroic, inspiring journey',
+    inspiring: 'hopeful, motivational, uplifting',
+    calm: 'peaceful, serene, relaxing',
+    reflection: 'contemplative, emotional, introspective',
+    dramatic: 'intense, powerful, cinematic tension',
+    cinematic: 'orchestral, film score, emotional',
+    playful: 'fun, whimsical, lighthearted',
+    mysterious: 'enigmatic, suspenseful, intriguing',
+    tender: 'gentle, intimate, lullaby',
   };
-  
-  const genreStyles: Record<string, string> = {
-    'ambient': 'ambient electronic, atmospheric pads',
-    'orchestral': 'full orchestra, strings, brass',
-    'acoustic': 'acoustic guitar, piano, natural instruments',
-    'electronic': 'synth, electronic beats, modern',
-    'folk': 'folk instruments, warm, organic',
-    'cinematic': 'film score, epic orchestral',
+  const genreStyle: Record<string, string> = {
+    ambient: 'ambient electronic, atmospheric pads',
+    orchestral: 'full orchestra, strings, brass',
+    acoustic: 'acoustic guitar, piano, natural instruments',
+    electronic: 'synth, electronic beats, modern',
+    folk: 'folk instruments, warm, organic',
+    cinematic: 'film score, epic orchestral',
   };
-  
-  const moodDesc = moodDescriptors[request.mood] || 'cinematic, emotional';
-  const genreStyle = genreStyles[request.genre || 'cinematic'] || 'orchestral';
-  
-  return `${moodDesc}, ${genreStyle}, ${request.instrumental !== false ? 'instrumental only, no vocals' : 'with subtle vocals'}`;
+  const moodTxt = moodDesc[request.mood] || 'cinematic, emotional';
+  const genreTxt = genreStyle[request.genre || 'cinematic'] || 'orchestral';
+  return `${moodTxt}, ${genreTxt}, ${request.instrumental !== false ? 'instrumental only, no vocals' : 'with subtle vocals'}`;
 }
 
-/**
- * Estimate cost in cents (Suno pricing: ~$0.05 per generation)
- */
 function estimateCost(duration: number): number {
-  return Math.ceil(duration / 60) * 5;
+  return Math.ceil(duration / 60) * 5; // cents (placeholder estimate)
 }
 
 interface SunoGenerationResult {
@@ -237,28 +181,15 @@ interface SunoGenerationResult {
   sunoId: string | null;
 }
 
-/**
- * Generate music with Suno API
- */
 async function generateWithSuno(request: MusicRequest): Promise<SunoGenerationResult> {
   const apiKey = process.env.SUNO_API_KEY;
   const apiUrl = process.env.SUNO_API_URL || 'https://api.suno.ai/v1';
-  
-  if (!apiKey) {
-    console.log('⚠️ No Suno API key, using placeholder mode');
-    return { audioBuffer: null, sunoId: null };
-  }
-  
+  if (!apiKey) return { audioBuffer: null, sunoId: null };
   try {
     const prompt = buildSunoPrompt(request);
-    console.log(`🎵 Suno prompt: "${prompt}"`);
-    
     const createResponse = await fetch(`${apiUrl}/generate`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
         duration: request.duration || 90,
@@ -266,88 +197,40 @@ async function generateWithSuno(request: MusicRequest): Promise<SunoGenerationRe
         wait_audio: true,
       }),
     });
-    
-    if (!createResponse.ok) {
-      console.error('Suno API error:', createResponse.statusText);
-      return { audioBuffer: null, sunoId: null };
-    }
-    
+    if (!createResponse.ok) return { audioBuffer: null, sunoId: null };
     const result = await createResponse.json();
     const sunoId = result.id || result.generation_id;
-    
     const audioUrl = result.audio_url || result.url;
-    if (!audioUrl) {
-      console.error('No audio URL in Suno response');
-      return { audioBuffer: null, sunoId };
-    }
-    
+    if (!audioUrl) return { audioBuffer: null, sunoId };
     const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      console.error('Failed to download Suno audio');
-      return { audioBuffer: null, sunoId };
-    }
-    
+    if (!audioResponse.ok) return { audioBuffer: null, sunoId };
     const arrayBuffer = await audioResponse.arrayBuffer();
-    return { 
-      audioBuffer: Buffer.from(arrayBuffer), 
-      sunoId 
-    };
-    
-  } catch (error) {
-    console.error('Suno request failed:', error);
+    return { audioBuffer: Buffer.from(arrayBuffer), sunoId };
+  } catch (e) {
+    console.error('Suno request failed:', e);
     return { audioBuffer: null, sunoId: null };
   }
 }
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  console.log('🎵 COMPOSER AGENT v2.1.0-THEME - Generate Music');
-  
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
-  
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
-  
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
-  }
-  
+export default async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('', { status: 204, headers });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
+
   try {
-    const request: MusicRequest = JSON.parse(event.body || '{}');
-    
+    const request = (await req.json()) as MusicRequest;
     if (!request.projectId) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'projectId is required' }),
-      };
+      return new Response(JSON.stringify({ error: 'projectId is required' }), { status: 400, headers });
     }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // MODE 0: ATTACHED THEME - Skip generation if theme already attached
-    // ═══════════════════════════════════════════════════════════════
+
+    // Mode: attached theme
     if (request.themePreference?.attached && request.themePreference.url) {
       const theme = request.themePreference;
-      console.log(`🎵 ATTACHED THEME MODE: Using pre-attached theme: ${theme.filename}`);
-      
-      // Use grid from theme if available, otherwise generate
       let beatGrid: BeatPoint[];
       if (theme.grid) {
         beatGrid = convertStoredGrid(theme.grid);
-        console.log(`✅ Using attached grid: ${beatGrid.length} beats`);
       } else {
         beatGrid = generateBeatGrid(theme.duration || 90, theme.bpm || 92);
-        console.log(`⚠️ Generated grid: ${beatGrid.length} beats`);
       }
-      
       const response: MusicResponse = {
         success: true,
         projectId: request.projectId,
@@ -363,45 +246,27 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         manualFile: theme.filename,
         gridSource: theme.grid ? 'attached' : 'generated',
       };
-      
-      console.log(`✅ Composer Agent: Attached theme mode - ${theme.filename} (skipped generation)`);
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(response),
-      };
+      return new Response(JSON.stringify(response), { status: 200, headers });
     }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // MODE 1: MANUAL - Use pre-registered music file
-    // ═══════════════════════════════════════════════════════════════
+
+    // Mode: manual
     if (request.manualFile) {
-      console.log(`📦 MANUAL MODE: Using pre-registered file: ${request.manualFile}`);
-      
-      // Try to load existing beat grid
       const storedGrid = loadBeatGrid(request.manualFile);
-      
       let beatGrid: BeatPoint[];
       let bpm: number;
       let duration: number;
       let gridSource: string;
-      
       if (storedGrid) {
         beatGrid = convertStoredGrid(storedGrid);
         bpm = request.bpm || storedGrid.bpm || 92;
         duration = storedGrid.duration || 90;
         gridSource = 'file';
-        console.log(`✅ Loaded grid: ${beatGrid.length} beats, ${bpm} BPM, ${duration}s`);
       } else {
-        // Generate grid from BPM if no stored grid
         bpm = request.bpm || 92;
         duration = request.duration || 90;
         beatGrid = generateBeatGrid(duration, bpm);
         gridSource = 'generated';
-        console.log(`⚠️ No stored grid, generated: ${beatGrid.length} beats, ${bpm} BPM`);
       }
-      
       const response: MusicResponse = {
         success: true,
         projectId: request.projectId,
@@ -417,83 +282,53 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         manualFile: request.manualFile,
         gridSource,
       };
-      
-      console.log(`✅ Composer Agent: Manual mode - ${request.manualFile}`);
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(response),
-      };
+      return new Response(JSON.stringify(response), { status: 200, headers });
     }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // MODE 1.5: SCENE HARMONY - Auto-select based on scene type
-    // ═══════════════════════════════════════════════════════════════
+
+    // Scene harmony assist
     if (request.sceneType && SCENE_HARMONY[request.sceneType]) {
       const harmony = SCENE_HARMONY[request.sceneType];
-      console.log(`🎭 SCENE HARMONY: ${request.sceneType} → ${harmony.template} @ ${harmony.bpm} BPM`);
-      
-      // Try to find a pre-registered file for this template
-      const possibleFiles = [
+      const possible = [
         `suno_${request.projectId}_${harmony.template}_${harmony.bpm}bpm_90s.mp3`,
         `suno_default_${harmony.template}_${harmony.bpm}bpm_90s.mp3`,
       ];
-      
-      for (const filename of possibleFiles) {
-        const storedGrid = loadBeatGrid(filename);
-        if (storedGrid) {
-          console.log(`✅ Found scene harmony match: ${filename}`);
+      for (const file of possible) {
+        const grid = loadBeatGrid(file);
+        if (grid) {
           const response: MusicResponse = {
             success: true,
             projectId: request.projectId,
-            musicUrl: `/music/${filename}`,
-            duration: storedGrid.duration,
-            beatGrid: convertStoredGrid(storedGrid),
-            bpm: storedGrid.bpm,
+            musicUrl: `/music/${file}`,
+            duration: grid.duration,
+            beatGrid: convertStoredGrid(grid),
+            bpm: grid.bpm,
             genre: request.genre || 'cinematic',
             mood: request.sceneType,
             placeholder: false,
             stored: true,
             mode: 'manual',
-            manualFile: filename,
+            manualFile: file,
             gridSource: 'scene-harmony',
           };
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify(response),
-          };
+          return new Response(JSON.stringify(response), { status: 200, headers });
         }
       }
-      
-      // If no pre-registered file, fall through to Suno/placeholder with harmony BPM
-      request.tempo = harmony.bpm;
-      console.log(`⚠️ No pre-registered file for ${request.sceneType}, using harmony BPM: ${harmony.bpm}`);
+      request.tempo = SCENE_HARMONY[request.sceneType].bpm;
     }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // MODE 2: SUNO API - Generate new music
-    // ═══════════════════════════════════════════════════════════════
-    
-    // Set defaults
+
+    // Suno or placeholder
     request.mood = request.mood || 'cinematic';
     request.genre = request.genre || 'ambient';
     request.duration = request.duration || 90;
-    
     const bpm = selectTempo(request.mood, request.tempo);
-    
-    // Try Suno, fallback to placeholder
     const sunoResult = await generateWithSuno(request);
     const isPlaceholder = !sunoResult.audioBuffer;
-    
     let musicUrl: string;
     let stored = false;
-    
+
     if (sunoResult.audioBuffer) {
-      // REAL: Store music in Netlify Blobs
       const musicKey = `${request.projectId}/soundtrack.mp3`;
-      const uploadResult = await audioStore.uploadData(musicKey, sunoResult.audioBuffer, {
+      const upload = await audioStore.uploadData(musicKey, sunoResult.audioBuffer, {
         contentType: 'audio/mpeg',
         metadata: {
           projectId: request.projectId,
@@ -504,26 +339,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           sunoId: sunoResult.sunoId || '',
         },
       });
-      
-      if (uploadResult.ok && uploadResult.publicUrl) {
-        musicUrl = uploadResult.publicUrl;
+      if (upload.ok && upload.publicUrl) {
+        musicUrl = upload.publicUrl;
         stored = true;
-        console.log(`📦 Stored music to Netlify Blobs: ${musicKey}`);
       } else {
-        console.error('Failed to store music:', uploadResult.error);
         musicUrl = `error://storage-failed/${request.projectId}`;
       }
     } else {
-      // ═══════════════════════════════════════════════════════════════
-      // MODE 3: PLACEHOLDER - No actual audio
-      // ═══════════════════════════════════════════════════════════════
       musicUrl = `placeholder://music/${request.projectId}.mp3`;
     }
-    
-    // Generate beat grid for video synchronization
+
     const beatGrid = generateBeatGrid(request.duration, bpm);
     const cost = estimateCost(request.duration);
-    
     const response: MusicResponse = {
       success: true,
       projectId: request.projectId,
@@ -539,27 +366,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       cost,
       sunoId: sunoResult.sunoId || undefined,
     };
-    
-    console.log(`✅ Composer Agent: ${response.mode} mode - ${request.duration}s music, ${bpm} BPM, stored: ${stored}`);
-    
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(response),
-    };
-    
-  } catch (error) {
-    console.error('❌ Composer Agent error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        success: false,
-        error: 'Internal server error',
-        detail: error instanceof Error ? error.message : 'Unknown error',
-      }),
-    };
+
+    return new Response(JSON.stringify(response), { status: 200, headers });
+  } catch (e: any) {
+    return new Response(
+      JSON.stringify({ success: false, error: e?.message || 'Internal server error' }),
+      { status: 500, headers }
+    );
   }
 };
-
-export { handler };
