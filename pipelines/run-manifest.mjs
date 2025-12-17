@@ -139,13 +139,35 @@ async function executeScript(scriptPath, input, context) {
 }
 
 /**
+ * Ensure every step body includes the canonical run context.
+ */
+function withRunContext(stepName, input, projectId, runId) {
+  const safeInput = input && typeof input === 'object' ? { ...input } : {};
+
+  if (safeInput.projectId && safeInput.projectId !== projectId) {
+    throw new Error(`[${stepName}] projectId mismatch: ${safeInput.projectId} != ${projectId}`);
+  }
+  if (safeInput.runId && safeInput.runId !== runId) {
+    throw new Error(`[${stepName}] runId mismatch: ${safeInput.runId} != ${runId}`);
+  }
+
+  return {
+    projectId,
+    runId,
+    ...safeInput,
+  };
+}
+
+/**
  * Execute a single step by calling its endpoint or script
  */
-async function executeStep(step, context, retries = 3) {
+async function executeStep(step, context, projectId, runId, retries = 3) {
   const input = interpolateObject(step.input || {}, context);
+  const inputWithRun = withRunContext(step.name, input, projectId, runId);
 
-  console.log(`\n🔄 Executing step: ${step.name}`);
-  console.log(`   Input:`, JSON.stringify(input, null, 2));
+  console.log(`
+?? Executing step: ${step.name}`);
+  console.log(`   Input:`, JSON.stringify(inputWithRun, null, 2));
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -154,7 +176,7 @@ async function executeStep(step, context, retries = 3) {
       if (step.script) {
         // EXECUTE SCRIPT
         const scriptPath = interpolate(step.script, context);
-        result = await executeScript(scriptPath, input, context);
+        result = await executeScript(scriptPath, inputWithRun, context);
       } else if (step.endpoint) {
         // EXECUTE ENDPOINT
         const endpoint = interpolate(step.endpoint, context);
@@ -163,7 +185,7 @@ async function executeStep(step, context, retries = 3) {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input),
+          body: JSON.stringify(inputWithRun),
         });
 
         result = await response.json();
@@ -175,7 +197,7 @@ async function executeStep(step, context, retries = 3) {
         throw new Error(`Step ${step.name} has neither endpoint nor script defined.`);
       }
 
-      console.log(`✅ Step completed: ${step.name}`);
+      console.log(`? Step completed: ${step.name}`);
 
       // Save output if specified
       if (step.output) {
@@ -195,7 +217,7 @@ async function executeStep(step, context, retries = 3) {
 
       return result;
     } catch (error) {
-      console.error(`❌ Step failed (attempt ${attempt}/${retries}): ${error.message}`);
+      console.error(`? Step failed (attempt ${attempt}/${retries}): ${error.message}`);
 
       if (attempt < retries) {
         const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
@@ -234,6 +256,15 @@ async function runManifest(manifestPath, projectConfig = {}) {
 
     // 2. Build execution context
     const projectId = projectConfig.projectId || `project-${Date.now()}`;
+    const runId = projectConfig.runId || process.env.RUN_ID;
+
+    if (!projectId) {
+      throw new Error('projectId is required');
+    }
+    if (!runId) {
+      throw new Error('runId is required (pass --runId or set RUN_ID)');
+    }
+
     const context = {
       env: { ...process.env, URL: process.env.URL || 'http://localhost:8888' },
       project: {
@@ -246,6 +277,7 @@ async function runManifest(manifestPath, projectConfig = {}) {
         name: manifest.pipeline.name,
       },
       run: {
+        id: runId,
         start_time: startTime,
         correlation_id: correlationId,
       },
@@ -282,10 +314,14 @@ async function runManifest(manifestPath, projectConfig = {}) {
         );
 
         // Execute step
-        const result = await executeStep(step, context);
+        const retries = step.retries !== undefined ? step.retries : 3;
+        const result = await executeStep(step, context, projectId, runId, retries);
 
         // Store result in context for later steps
-        context.steps[step.name] = { output: result };
+        context.steps[step.name] = {
+          output: result,
+          outputPath: step.output ? interpolate(step.output, context) : undefined
+        };
 
         // Log step completion
         await logProgress(
@@ -299,6 +335,26 @@ async function runManifest(manifestPath, projectConfig = {}) {
       } catch (error) {
         console.error(`\n❌ Pipeline failed at step: ${step.name}`);
         console.error(`   Error: ${error.message}\n`);
+
+        // FALLBACK LOGIC
+        if (step.fallback) {
+          console.warn(`⚠️  Using fallback for ${step.name}`);
+
+          // If fallback provides a static value
+          if (step.fallback.value) {
+            context.steps[step.name] = { output: step.fallback.value };
+
+            await logProgress(
+              projectId,
+              'system',
+              'warning',
+              `Step ${step.name} failed, used fallback`,
+              progress,
+              { step: step.name, usedFallback: true }
+            );
+            continue; // Continue pipeline
+          }
+        }
 
         // Log failure
         await logProgress(
@@ -363,8 +419,9 @@ if (isMainModule) {
 
   // Parse CLI options
   const projectId = process.argv[3] || `week-${new Date().toISOString().slice(0, 10)}`;
+  const runId = process.argv[4] || process.env.RUN_ID;
 
-  runManifest(manifestPath, { projectId })
+  runManifest(manifestPath, { projectId, runId })
     .then(result => {
       console.log('Pipeline result:', result);
       process.exit(0);

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  sirtrav-studio:
+    container_name: sirtrav-studio
+    build: .
+    ports:
+      - "5173:5173" # Vite Dev Server
+      - "8888:8888" # Netlify Functions
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true # Enable hot-reloading on Windows
+    command: npm run dev

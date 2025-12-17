@@ -19,6 +19,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/curate-media"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       vaultPrefix: "${project.source_root}"
       maxAssets: 12
     output: "tmp/${project.id}/curated.json"
@@ -29,6 +30,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/narrate-project"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       theme: "${steps.curate_media.output.theme}"
       mood: "${steps.curate_media.output.mood}"
       sceneCount: "${steps.curate_media.output.assetCount}"
@@ -40,6 +42,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/text-to-speech"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       text: "${steps.narrate_project.output.narrative}"
       voice_id: "Rachel"
     output: "tmp/${project.id}/narration.wav"
@@ -50,6 +53,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/generate-music"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       mood: "${steps.curate_media.output.mood}"
       tempo: 85
       genre: "ambient"
@@ -61,6 +65,7 @@ steps:
     script: "pipelines/scripts/ffmpeg_compile.mjs"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       curated_file: "${steps.curate_media.output}"
       narration_file: "${steps.synthesize_voice.output}"
       music_file: "${steps.generate_music.output}"
@@ -73,9 +78,13 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/generate-attribution"
     input:
       projectId: "${project.id}"
-      curated_file: "tmp/${project.id}/curated.json"
-      music_file: "tmp/${project.id}/music.json"
-      video_file: "public/${project.id}/FINAL.mp4"
+      runId: "${run.id}"
+      outputs:
+        director: "${steps.curate_media.output}"
+        writer: "${steps.narrate_project.output}"
+        voice: "${steps.synthesize_voice.output}"
+        composer: "${steps.generate_music.output}"
+        editor: "${steps.compile_video.output}"
     output: "tmp/${project.id}/attribution.json"
 
   # AGENT 7: PUBLISHER - Upload and update memory
@@ -84,6 +93,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/publish"
     input:
       projectId: "${project.id}"
+      runId: "${run.id}"
       video_file: "public/${project.id}/FINAL.mp4"
       attribution_file: "tmp/${project.id}/attribution.json"
       metadata:

@@ -1,10 +1,10 @@
 # MASTER.md - SirTrav A2A Studio Build Plan
 
-**Version:** 1.3.0  
+**Version:** 1.4.0  
 **Last Updated:** 2025-11-10  
-**Status:** Active Development - Pipeline Build Phase
+**Status:** Production Hardening - Observability & Evaluation
 
-> **v1.3 Focus:** Streamlined for action. Agent-specific specs, clear sprint priorities, and separation of "build now" vs "optimize later."
+> **v1.4 Focus:** Production Hardening. Adding "eyes and ears" to the system with OpenTelemetry tracing and Azure AI Evaluation to ensure quality before scale.
 
 > **This document serves as the central planning and coordination guide for building the SirTrav A2A Studio - a D2A (Doc-to-Agent) automated video production platform for the Commons Good.**
 
@@ -21,27 +21,25 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ## 🚦 CURRENT SPRINT FOCUS (Week of Nov 10, 2025)
 
-### Goal: First End-to-End Video Render
+### Goal: Production Hardening & Observability
 
 **This Week's Deliverables:**
 
-- [ ] **Wire CreativeHub to App.jsx** - Integrate the multi-step wizard into main app
-- [ ] **Test 4 Agent Endpoints Locally** - Verify Director, Writer, Voice, Composer respond correctly
-- [ ] **Complete run-manifest.mjs Integration** - Sequential agent orchestration working
-- [ ] **Generate ONE Test Video** - Full pipeline from upload → preview (placeholder audio/music OK)
+- [x] **Tracing Instrumentation** - OpenTelemetry + Traceloop integrated
+- [x] **Evaluation Harness** - Azure AI Evaluation SDK setup
+- [ ] **Run First Evaluation** - Validate Relevance/Coherence metrics
+- [ ] **Fix File System Issues** - Ensure reliable execution in Netlify
 
 **Definition of Done:**
-- User uploads files via CreativeHub
-- All 7 agent steps execute sequentially
-- Final video file generated in `/tmp/`
-- User sees preview in ResultsPreview modal
+- Traces visible in console/dashboard
+- `evaluate.py` runs successfully against test dataset
+- `MASTER.md` reflects current architecture
 
 **Blocked Until Complete:**
-- All "future features" (telemetry, cost tracking, etc.)
-- Real API integrations (use placeholder mode)
-- Advanced optimizations (CAS, vector DB, etc.)
+- Scaling to multiple users
+- Real-money API usage (need cost tracking first)
 
-**Next Sprint (After Basic Pipeline Works):**
+**Next Sprint:**
 - Real ElevenLabs integration
 - Real Suno integration
 - Editor agent (FFmpeg) with LUFS gates
@@ -163,6 +161,31 @@ User Click2Kick Button
 
 ---
 
+## 👁️ Observability & Evaluation (New in v1.4)
+
+### 1. Tracing (OpenTelemetry)
+We use OpenTelemetry with Traceloop to trace agent execution. This provides visibility into:
+- **Latency:** How long each agent takes.
+- **Costs:** Token usage and estimated cost per step.
+- **Errors:** Full stack traces for failed steps.
+- **Prompts:** The exact prompt sent to the LLM and its response.
+
+**Implementation:**
+- `netlify/functions/lib/tracing.ts`: Centralized tracing initialization.
+- Agents wrap their logic in `withWorkflow` or `withTask`.
+
+### 2. Evaluation Harness (Azure AI Evaluation)
+We use a data-driven approach to ensure quality before deployment.
+- **Framework:** Azure AI Evaluation SDK (Python).
+- **Metrics:**
+  - **Relevance:** Does the output answer the prompt?
+  - **Coherence:** Is the narrative logical and smooth?
+  - **Groundedness:** Is the content based on the source material?
+- **Dataset:** `data/evaluation_dataset.jsonl` contains "Golden Datasets" (input/expected output pairs).
+- **Runner:** `evaluation/evaluate.py` executes the test suite.
+
+---
+
 ## 📂 Agent-Specific Specifications
 
 ### Purpose: Prevent Context Window Overload
@@ -210,7 +233,9 @@ The entire system follows this principle:
   - Non-negotiable interfaces between agents
 - **Local Roles** = Specialist agents (Director, Writer, Voice, etc.)
   - Each agent is a "perfect" pluggable expert
-  - Only knows how to do ONE job really well learning from proceeding User Preview (with 👍/👎 Feedback Loop) tightly iterating, ask: *"Should this change the blueprint (global rule) or improve a specialist (local role)?"*
+  - Only knows how to do ONE job well
+
+**Practice:** When iterating, ask: *"Should this change the blueprint (global rule) or improve a specialist (local role)?"*
 
 ### 2. **The Manifest is the Master Agent**
 
@@ -300,7 +325,13 @@ The AI shouldn't learn in isolation - the user (Travis) is the "EGO" in "EGO-Pro
 - `publish.ts`
 - `progress.ts` ⚠️ (filesystem issue)
 - `healthcheck.ts`
+- `lib/tracing.ts` ✅ NEW
 - ...and 9 more
+
+**Evaluation & Observability:**
+- `evaluation/evaluate.py` ✅ NEW
+- `evaluation/requirements.txt` ✅ NEW
+- `data/evaluation_dataset.jsonl` ✅ NEW
 
 **Pipeline Orchestration:**
 - `pipelines/a2a_manifest.yml` ✅
@@ -673,18 +704,42 @@ npm run lint                 # ESLint
 - [ ] **MASTER.md plan** (this file)
 
 ### Phase 2: Core Pipeline (NEXT)
+- [x] **Tracing & Evaluation** (v1.4)
 - [ ] Fix progress tracking
 - [ ] Implement SSE streaming
 - [ ] Complete manifest executor
 - [ ] Build all 6 agent functions
 - [ ] Add quality gates
 
-### Phase 3: UI & UX
+### Phase 3: Enterprise Studio (Design-to-Code & Project Management)
+> **Goal:** Transform SirTrav into a comprehensive platform for managing the entire lifecycle from design to code.
+
+#### 1. Project Management Agent
+- **Purpose:** Organize design-to-code conversions by project with conversation history.
+- **Implementation:** New agent in `a2a_manifest.yml` that reads `project_brief.md` and generates `task.md`.
+- **Integration:** Exports tasks to GitHub Issues or Azure DevOps.
+
+#### 2. Task Generation (Figma-to-Code)
+- **Purpose:** Transform design inputs into structured development tasks.
+- **Strategy:**
+    -   **Input:** Image exports or text descriptions of designs.
+    -   **Process:** "Architect Agent" breaks down UI into component tasks.
+    -   **Output:** Detailed tickets with acceptance criteria.
+
+#### 3. Automated Documentation
+- **Purpose:** Automatically create detailed tickets and documentation.
+- **Implementation:** "Scribe Agent" runs after every build to update `README.md` and `docs/`.
+
+#### 4. Platform Integration
+- **Purpose:** Export work items to external tools.
+- **Implementation:** `publish_content` agent enhanced to push to GitHub/Azure APIs.
+
+### Phase 4: UI & UX
 - [ ] Click2Kick button
 - [ ] Real-time progress dashboard
+- [ ] Cost Tracking Dashboard
 - [ ] Video preview modal
 - [ ] Social sharing
-- [ ] Analytics display
 
 ### Phase 4: Integration & Testing
 - [ ] E2E tests
@@ -706,7 +761,7 @@ npm run lint                 # ESLint
 - [ ] Pipeline completes end-to-end without manual intervention
 - [ ] Real-time progress updates work in production
 - [ ] Video quality meets LUFS standards (-18 to -12 LUFS)
-- [ ] Total cost per video < $1.00
+- [ ] Total cost per video < $1.00 FOR TESTING> AND USER OPTION TO CHANGE BUDGET
 - [ ] Videos generate in < 2 minutes
 - [ ] No secrets in git history
 - [ ] All tests pass
@@ -720,8 +775,6 @@ npm run lint                 # ESLint
 - **Public Repo:** https://github.com/WSP001/SirTrav-A2A-Studio
 - **Private Vault:** https://github.com/WSP001/Sir-TRAV-scott
 - **Netlify:** (TBD after deployment)
-
----
 
 ---
 
@@ -816,42 +869,24 @@ npm run lint                 # ESLint
 
 ---
 
-## 📝 Ideas Considered but Deferred
+## 📜 History & Decisions
 
-These suggestions from external programmers were analyzed but NOT added to v1.3 (may revisit in future roadmap):
+### v1.2/v1.3 Retrospective
 
-### ❌ Dynamic Manifest Generation (Deferred)
-**Idea:** Director Agent generates a custom `job-123.yml` manifest for each run.  
-**Why Deferred:** Adds complexity before validating static manifest works. Would make debugging harder. Better to perfect the static workflow first.  
-**Future:** Consider for Phase 5 "advanced features" if users request adaptive workflows.
-
-### ❌ Vector Database for Memory (Deferred)
-**Idea:** Replace `memory_index.json` with vector DB (Pinecone, Supabase pgvector) for semantic search.  
-**Why Deferred:** Introduces external dependency and cost before proving the concept. JSON file is sufficient for MVP.  
-**Future:** Consider if `memory_index.json` grows beyond 10MB or users request semantic querying.
-
-### ❌ Secure Control Plane v1.2 (Deferred)
-**Idea:** Private repo's GitHub Action triggers public repo via `repository_dispatch`.  
-**Why Deferred:** Current `intake-upload.ts` bridge is simpler and already secure. No immediate benefit to adding another layer.  
-**Future:** Consider if we need audit trails or multi-tenant security.
-
-### ❌ Director's Cut UI with Partial Re-runs (Deferred)
-**Idea:** "Change the music" button that re-runs only Composer + Editor agents.  
-**Why Deferred:** Requires sophisticated state management and caching before UI exists. Build complete pipeline first.  
-**Future:** Great Phase 4 feature after caching is battle-tested.
-
----
-
-## 📊 What DID Make It Into v1.2
-
+#### What Made It Into v1.2
 ✅ **Attribution Agent** - Aligns with "Commons Good" mission  
 ✅ **User Feedback Loop** - Closes the critical EGO-Prompt gap  
 ✅ **Fallback Logic** - Production resilience best practice  
 ✅ **Manifest as Design Doc** - User-facing "Beautiful API"  
 ✅ **Architectural Principles** - Captures "Global Rules, Local Roles" philosophy  
 
+#### Ideas Considered but Deferred
+- **Dynamic Manifest Generation:** Deferred to Phase 5.
+- **Vector Database for Memory:** Deferred to Phase 5.
+- **Secure Control Plane v1.2:** Current bridge is sufficient.
+- **Director's Cut UI:** Deferred to Phase 4.
+
 ---
 
 **This is a living document. Update it after each sprint.**
-
-*Last updated: 2025-11-10 (v1.2) by Cascade AI*
+*Last updated: 2025-11-10 (v1.4.0) by MY AI COMBINED GitHub and Copilot*

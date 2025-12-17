@@ -2,14 +2,12 @@ import { useState } from 'react';
 
 interface Props {
     projectId: string;
+    videoUrl: string;
     onReset: () => void;
 }
 
-export default function ResultsPreview({ projectId, onReset }: Props) {
+export default function ResultsPreview({ projectId, videoUrl, onReset }: Props) {
     const [voted, setVoted] = useState(false);
-
-    // DYNAMIC URL: Now uses the actual Project ID
-    const videoUrl = `/${projectId}/FINAL.mp4`;
 
     const handleVote = async (rating: 'good' | 'bad') => {
         await fetch('/.netlify/functions/submit-evaluation', {
