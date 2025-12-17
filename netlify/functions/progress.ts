@@ -4,7 +4,7 @@
  * - GET : return JSON list of events
  * - GET with Accept:text/event-stream : SSE stream
  */
-import { runsStore } from './lib/storage';
+import { appendProgress, readProgress } from './lib/progress-store';
 
 type ProgressStatus = 'started' | 'running' | 'completed' | 'failed';
 
@@ -25,20 +25,8 @@ const cors = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const eventsKey = (projectId: string, runId?: string) =>
-  `${projectId}/progress-${runId || 'default'}.json`;
-
 async function readEvents(projectId: string, runId?: string): Promise<ProgressEvent[]> {
-  const store = runsStore();
-  const data = await store.getJSON(eventsKey(projectId, runId));
-  return (data as ProgressEvent[]) || [];
-}
-
-async function writeEvents(projectId: string, runId: string | undefined, events: ProgressEvent[]) {
-  const store = runsStore();
-  await store.setJSON(eventsKey(projectId, runId), events, {
-    metadata: { projectId, runId: runId || 'default', kind: 'progress' },
-  });
+  return (await readProgress(projectId, runId)) as ProgressEvent[];
 }
 
 function formatSSE(events: ProgressEvent[], projectId: string) {
@@ -109,11 +97,7 @@ export default async (req: Request) => {
         metadata: body.metadata,
       };
 
-      const events = await readEvents(projectId, runId);
-      events.push(event);
-      // keep only last 200 events to avoid oversized blobs
-      const trimmed = events.slice(-200);
-      await writeEvents(projectId, runId, trimmed);
+      const trimmed = await appendProgress(projectId, runId, event);
 
       return new Response(
         JSON.stringify({ received: true, eventCount: trimmed.length, latest: event }),
