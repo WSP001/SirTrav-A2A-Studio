@@ -4,10 +4,10 @@
  * A2A Manifest Runner
  * Executes the D2A (Doc-to-Agent) video automation pipeline
  * 
- * ITERATION 2 COMPLETE:
+ * ITERATION 3 COMPLETE:
  * - YAML parsing with js-yaml
  * - Variable interpolation (${env.*}, ${project.*}, ${manifest.*}, ${run.*})
- * - Sequential step execution
+ * - Sequential step execution (Endpoint FETCH or Script SPAWN)
  * - Progress logging via progress.ts function
  * - Error handling and retries
  */
@@ -16,6 +16,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { spawn } from 'child_process';
 import yaml from 'js-yaml';
 
 // ============================================================================
@@ -33,7 +34,7 @@ function generateCorrelationId() {
  * Log progress event to progress tracking function
  */
 async function logProgress(projectId, agent, status, message, progress, metadata = {}) {
-  const progressUrl = process.env.URL 
+  const progressUrl = process.env.URL
     ? `${process.env.URL}/.netlify/functions/progress`
     : 'http://localhost:8888/.netlify/functions/progress';
 
@@ -79,7 +80,7 @@ function interpolate(value, context) {
       if (current && typeof current === 'object' && part in current) {
         current = current[part];
       } else {
-        console.warn(`⚠️  Variable not found: ${path}`);
+        // console.warn(`⚠️  Variable not found: ${path}`);
         return match; // Keep original if not found
       }
     }
@@ -108,28 +109,70 @@ function interpolateObject(obj, context) {
 }
 
 /**
- * Execute a single step by calling its endpoint
+ * Execute a script step
+ */
+async function executeScript(scriptPath, input, context) {
+  return new Promise((resolve, reject) => {
+    // Convert input object to CLI args: --key=value
+    const args = Object.entries(input).map(([key, value]) => `--${key}=${value}`);
+
+    console.log(`   Running script: ${scriptPath}`);
+    console.log(`   Args: ${args.join(' ')}`);
+
+    const child = spawn('node', [scriptPath, ...args], {
+      stdio: 'inherit',
+      env: { ...process.env, ...context.env }
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        reject(new Error(`Script exited with code ${code}`));
+      }
+    });
+
+    child.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Execute a single step by calling its endpoint or script
  */
 async function executeStep(step, context, retries = 3) {
-  const endpoint = interpolate(step.endpoint, context);
   const input = interpolateObject(step.input || {}, context);
 
   console.log(`\n🔄 Executing step: ${step.name}`);
-  console.log(`   Endpoint: ${endpoint}`);
   console.log(`   Input:`, JSON.stringify(input, null, 2));
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
+      let result;
 
-      const result = await response.json();
+      if (step.script) {
+        // EXECUTE SCRIPT
+        const scriptPath = interpolate(step.script, context);
+        result = await executeScript(scriptPath, input, context);
+      } else if (step.endpoint) {
+        // EXECUTE ENDPOINT
+        const endpoint = interpolate(step.endpoint, context);
+        console.log(`   Endpoint: ${endpoint}`);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${result.error || response.statusText}`);
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+
+        result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${result.error || response.statusText}`);
+        }
+      } else {
+        throw new Error(`Step ${step.name} has neither endpoint nor script defined.`);
       }
 
       console.log(`✅ Step completed: ${step.name}`);
@@ -138,11 +181,14 @@ async function executeStep(step, context, retries = 3) {
       if (step.output) {
         const outputPath = interpolate(step.output, context);
         const outputDir = dirname(outputPath);
-        
+
         if (!existsSync(outputDir)) {
           await mkdir(outputDir, { recursive: true });
         }
-        
+
+        // If result is just { success: true } from script, we might want to save something else?
+        // Or maybe the script wrote the file itself?
+        // For now, save the result metadata.
         await writeFile(outputPath, JSON.stringify(result, null, 2));
         console.log(`   Output saved: ${outputPath}`);
       }
@@ -150,7 +196,7 @@ async function executeStep(step, context, retries = 3) {
       return result;
     } catch (error) {
       console.error(`❌ Step failed (attempt ${attempt}/${retries}): ${error.message}`);
-      
+
       if (attempt < retries) {
         const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
         console.log(`   Retrying in ${delay}ms...`);
@@ -169,7 +215,7 @@ async function executeStep(step, context, retries = 3) {
 async function runManifest(manifestPath, projectConfig = {}) {
   const startTime = new Date().toISOString();
   const correlationId = generateCorrelationId();
-  
+
   console.log('\n╔═══════════════════════════════════════════════════════════╗');
   console.log('║  SirTrav A2A Studio - Manifest Executor                  ║');
   console.log('╚═══════════════════════════════════════════════════════════╝\n');
@@ -184,12 +230,12 @@ async function runManifest(manifestPath, projectConfig = {}) {
     const manifest = yaml.load(manifestContent);
     console.log(`✅ Manifest loaded: ${manifest.pipeline.name}`);
     console.log(`   Version: ${manifest.version}`);
-    console.log(`   Stages: ${manifest.pipeline.stages.length}\n`);
+    console.log(`   Stages: ${manifest.steps.length}\n`);
 
     // 2. Build execution context
     const projectId = projectConfig.projectId || `project-${Date.now()}`;
     const context = {
-      env: process.env,
+      env: { ...process.env, URL: process.env.URL || 'http://localhost:8888' },
       project: {
         id: projectId,
         source_root: projectConfig.sourceRoot || './intake',
@@ -213,7 +259,7 @@ async function runManifest(manifestPath, projectConfig = {}) {
       'started',
       `Pipeline started: ${manifest.pipeline.name}`,
       0,
-      { correlationId, stages: manifest.pipeline.stages.length }
+      { correlationId, stages: manifest.steps.length }
     );
 
     // 4. Execute steps sequentially
@@ -300,7 +346,7 @@ async function runManifest(manifestPath, projectConfig = {}) {
     console.error('║  ❌ PIPELINE FAILED                                       ║');
     console.error('╚═══════════════════════════════════════════════════════════╝\n');
     console.error(`Error: ${error.message}\n`);
-    
+
     throw error;
   }
 }
@@ -314,10 +360,10 @@ if (isMainModule) {
   const scriptDir = dirname(fileURLToPath(import.meta.url));
   const defaultManifest = join(scriptDir, 'a2a_manifest.yml');
   const manifestPath = process.argv[2] || defaultManifest;
-  
+
   // Parse CLI options
   const projectId = process.argv[3] || `week-${new Date().toISOString().slice(0, 10)}`;
-  
+
   runManifest(manifestPath, { projectId })
     .then(result => {
       console.log('Pipeline result:', result);

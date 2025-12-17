@@ -4,9 +4,9 @@
 version: "1.3.0"
 
 project:
-  id: "week44"
+  id: "week44" # Default, overridden by CLI
   source_root: "Sir-TRAV-scott/intake"
-  out_dir: "public/week44"
+  out_dir: "public/${project.id}" # Dynamic output dir
 
 pipeline:
   name: "D2A Video Automation - Full 7-Agent Flow"
@@ -64,8 +64,8 @@ steps:
       curated_file: "${steps.curate_media.output}"
       narration_file: "${steps.synthesize_voice.output}"
       music_file: "${steps.generate_music.output}"
-      out_mp4: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
-    output: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      out_mp4: "public/${project.id}/FINAL.mp4"
+    output: "public/${project.id}/FINAL.mp4"
 
   # AGENT 6: ATTRIBUTION - Generate Commons Good credits
   - name: "generate_attribution"
@@ -75,7 +75,7 @@ steps:
       projectId: "${project.id}"
       curated_file: "tmp/${project.id}/curated.json"
       music_file: "tmp/${project.id}/music.json"
-      video_file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      video_file: "public/${project.id}/FINAL.mp4"
     output: "tmp/${project.id}/attribution.json"
 
   # AGENT 7: PUBLISHER - Upload and update memory
@@ -84,7 +84,7 @@ steps:
     endpoint: "${env.URL}/.netlify/functions/publish"
     input:
       projectId: "${project.id}"
-      video_file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      video_file: "public/${project.id}/FINAL.mp4"
       attribution_file: "tmp/${project.id}/attribution.json"
       metadata:
         pipeline_version: "${manifest.version}"

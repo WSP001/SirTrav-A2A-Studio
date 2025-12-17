@@ -1,32 +1,9 @@
-.app {
-  background: radial-gradient(circle at top, #111827 0%, #020617 55%, #000 100%);
-  color: #f8fafc;
-  min-height: 100vh;
-  padding: 3rem 1.5rem 4rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-}
-
-.app__header {
-  text-align: center;
-  max-width: 720px;
-}
-
-.app__header h1 {
-  font-size: clamp(2.25rem, 3vw, 3.25rem);
-  margin-bottom: 0.75rem;
-}
-
-.app__header p {
-  margin: 0;
-  color: rgba(248, 250, 252, 0.75);
-}
-
-.app__main {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding-bottom: 4rem;
-}
+body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; margin: 0; }
+.app-container { max-width: 800px; margin: 0 auto; padding: 2rem; text-align: center; }
+.btn-kick { background: #2563eb; color: white; padding: 1rem 2rem; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; margin-bottom: 2rem; }
+.btn-kick:hover { background: #1d4ed8; transform: scale(1.05); }
+.progress-console { background: #1e293b; padding: 1rem; border-radius: 8px; text-align: left; height: 300px; overflow-y: auto; font-family: monospace; border: 1px solid #334155; }
+.log-entry { margin-bottom: 0.5rem; }
+.time { color: #64748b; margin-right: 0.5rem; }
+.status.ok { color: #4ade80; }
+.status.error { color: #f87171; }

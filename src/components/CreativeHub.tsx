@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './CreativeHub.css';
+import './ I I.css';
 
 /**
  * Creative Hub - Multi-step AI-powered video creation workflow
@@ -33,85 +33,116 @@ export default function CreativeHub({ onPipelineStart }: CreativeHubProps) {
   const [script, setScript] = useState<string>('');
   const [musicBrief, setMusicBrief] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Chaos Monkey Simulation Helper
+  const runStep = async (stepName: string, action: () => Promise<void>) => {
+    setIsProcessing(true);
+    setError(null);
+    
+    try {
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Chaos Monkey: 20% chance of failure
+      if (Math.random() < 0.2) {
+        throw new Error(`Chaos Monkey struck during ${stepName}! Agent unresponsive.`);
+      }
+
+      await action();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Mock AI-generated storyboard (replace with actual API call)
-  const generateStoryboard = async () => {
-    setIsProcessing(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock storyboard data
-    const mockScenes: Scene[] = [
-      {
-        id: '1',
-        imageUrl: '/placeholder-scene-1.jpg',
-        caption: 'Opening shot: Family gathered around the kitchen table',
-        order: 1,
-      },
-      {
-        id: '2',
-        imageUrl: '/placeholder-scene-2.jpg',
-        caption: 'Close-up: Laughter and warm smiles',
-        order: 2,
-      },
-      {
-        id: '3',
-        imageUrl: '/placeholder-scene-3.jpg',
-        caption: 'Wide shot: Sunset walk in the park',
-        order: 3,
-      },
-    ];
-    
-    setStoryboard(mockScenes);
-    setIsProcessing(false);
-    setCurrentStep('storyboard');
+  const generateStoryboard = () => {
+    runStep('Storyboard Generation', async () => {
+      // Mock storyboard data
+      const mockScenes: Scene[] = [
+        {
+          id: '1',
+          imageUrl: '/placeholder-scene-1.jpg',
+          caption: 'Opening shot: Family gathered around the kitchen table',
+          order: 1,
+        },
+        {
+          id: '2',
+          imageUrl: '/placeholder-scene-2.jpg',
+          caption: 'Close-up: Laughter and warm smiles',
+          order: 2,
+        },
+        {
+          id: '3',
+          imageUrl: '/placeholder-scene-3.jpg',
+          caption: 'Wide shot: Sunset walk in the park',
+          order: 3,
+        },
+      ];
+      
+      setStoryboard(mockScenes);
+      setCurrentStep('storyboard');
+    });
   };
 
   // Mock AI script generation
-  const generateScript = async () => {
-    setIsProcessing(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const mockScript = `This week brought us together in ways both simple and profound.
+  const generateScript = () => {
+    runStep('Script Generation', async () => {
+      const mockScript = `This week brought us together in ways both simple and profound.
 
 The kitchen became our gathering place, where stories flowed as freely as the coffee. Those moments of laughter reminded us why we cherish these times together.
 
 As the sun began its descent, we found ourselves walking familiar paths, yet seeing them through new eyes. The golden hour painted everything in warmth, a perfect reflection of the week we shared.`;
-    
-    setScript(mockScript);
-    setIsProcessing(false);
-    setCurrentStep('script');
+      
+      setScript(mockScript);
+      setCurrentStep('script');
+    });
   };
 
   // Mock music brief generation
-  const generateMusicBrief = async () => {
-    setIsProcessing(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const mockBrief = `Genre: Ambient / Acoustic
+  const generateMusicBrief = () => {
+    runStep('Music Brief Creation', async () => {
+      const mockBrief = `Genre: Ambient / Acoustic
 Mood: Warm, Reflective, Uplifting
 Tempo: 85 BPM
 Instruments: Piano, Acoustic Guitar, Strings
 Style: Cinematic underscore with gentle build`;
-    
-    setMusicBrief(mockBrief);
-    setIsProcessing(false);
-    setCurrentStep('music');
+      
+      setMusicBrief(mockBrief);
+      setCurrentStep('music');
+    });
   };
 
   // Launch full pipeline
-  const launchPipeline = async () => {
-    const newProjectId = `week-${Date.now()}`;
-    setProjectId(newProjectId);
-    setCurrentStep('launch');
-    
-    // Call parent callback to start pipeline
-    if (onPipelineStart) {
-      onPipelineStart(newProjectId);
-    }
+  const launchPipeline = () => {
+    runStep('Pipeline Launch', async () => {
+      const newProjectId = 'week-001';
+      setProjectId(newProjectId);
+      
+      // 1. Trigger the pipeline via intake-upload
+      const response = await fetch('/.netlify/functions/intake-upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: newProjectId,
+          files: uploadedFiles.map(f => f.name), // In real app, upload to S3 first
+          mock: true // Force mock mode for now
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start pipeline');
+      }
+
+      // Call parent callback to switch view
+      if (onPipelineStart) {
+        onPipelineStart(newProjectId);
+      }
+      
+      // We don't set currentStep to 'launch' here because the parent component switches the view
+    });
   };
 
   // File upload handler
@@ -131,15 +162,14 @@ Style: Cinematic underscore with gentle build`;
       { id: 'music', label: 'Music' },
       { id: 'launch', label: 'Launch' },
     ];
+    const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
     return (
       <div className="step-indicator">
         {steps.map((step, index) => (
           <div
             key={step.id}
-            className={`step ${currentStep === step.id ? 'active' : ''} ${
-              steps.findIndex(s => s.id === currentStep) > index ? 'completed' : ''
-            }`}
+            className={`step ${currentStep === step.id ? 'active' : ''} ${index < currentStepIndex ? 'completed' : ''}`.trim()}
           >
             <div className="step-number">{index + 1}</div>
             <div className="step-label">{step.label}</div>
@@ -177,12 +207,13 @@ Style: Cinematic underscore with gentle build`;
             {uploadedFiles.length > 0 && (
               <div className="file-list">
                 <h3>{uploadedFiles.length} files selected</h3>
+                {error && <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>⚠️ {error}</div>}
                 <button
                   onClick={generateStoryboard}
                   className="btn-primary"
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : 'Generate Storyboard →'}
+                  {isProcessing ? 'Processing...' : error ? '🔄 Retry Production' : 'Generate Storyboard →'}
                 </button>
               </div>
             )}
@@ -208,15 +239,16 @@ Style: Cinematic underscore with gentle build`;
             </div>
 
             <div className="step-actions">
-              <button onClick={() => setCurrentStep('upload')} className="btn-secondary">
+              <button onClick={() => setCurrentStep('upload')} className="btn-secondary" disabled={isProcessing}>
                 ← Back
               </button>
+              {error && <div className="error-message" style={{color: 'red', margin: '0 10px'}}>⚠️ {error}</div>}
               <button
                 onClick={generateScript}
                 className="btn-primary"
                 disabled={isProcessing}
               >
-                {isProcessing ? 'Generating...' : 'Generate Script →'}
+                {isProcessing ? 'Generating...' : error ? '🔄 Retry Production' : 'Generate Script →'}
               </button>
             </div>
           </div>
@@ -236,15 +268,16 @@ Style: Cinematic underscore with gentle build`;
             />
 
             <div className="step-actions">
-              <button onClick={() => setCurrentStep('storyboard')} className="btn-secondary">
+              <button onClick={() => setCurrentStep('storyboard')} className="btn-secondary" disabled={isProcessing}>
                 ← Back
               </button>
+              {error && <div className="error-message" style={{color: 'red', margin: '0 10px'}}>⚠️ {error}</div>}
               <button
                 onClick={generateMusicBrief}
                 className="btn-primary"
                 disabled={isProcessing}
               >
-                {isProcessing ? 'Creating...' : 'Create Music Brief →'}
+                {isProcessing ? 'Creating...' : error ? '🔄 Retry Production' : 'Create Music Brief →'}
               </button>
             </div>
           </div>
@@ -261,11 +294,12 @@ Style: Cinematic underscore with gentle build`;
             </div>
 
             <div className="step-actions">
-              <button onClick={() => setCurrentStep('script')} className="btn-secondary">
+              <button onClick={() => setCurrentStep('script')} className="btn-secondary" disabled={isProcessing}>
                 ← Back
               </button>
-              <button onClick={launchPipeline} className="btn-primary btn-launch">
-                🚀 Launch Pipeline
+              {error && <div className="error-message" style={{color: 'red', margin: '0 10px'}}>⚠️ {error}</div>}
+              <button onClick={launchPipeline} className="btn-primary btn-launch" disabled={isProcessing}>
+                {isProcessing ? 'Launching...' : error ? '🔄 Retry Production' : '🚀 Launch Pipeline'}
               </button>
             </div>
           </div>

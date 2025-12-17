@@ -1,110 +1,81 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-/**
- * ATTRIBUTION AGENT (7th Agent)
- * 
- * FOR THE COMMONS GOOD
- * 
- * Compiles credits for all AI services used in video production:
- * - Director: Gemini (media curation)
- * - Writer: GPT-4 (narrative generation)
- * - Voice: ElevenLabs (text-to-speech)
- * - Composer: Suno (music generation)
- * - Editor: FFmpeg (video compilation)
- * 
- * Output: credits.json + optional credits slate image
- */
-
-type AttributionInput = {
+interface AttributionInput {
   projectId: string;
-  curated_file?: string;
-  music_file?: string;
-  voice_file?: string;
-  video_file?: string;
-};
+  runId?: string;
+  outputs?: {
+    director?: string;
+    writer?: string;
+    voice?: string;
+    composer?: string;
+    editor?: string;
+  };
+}
 
-type Credits = {
+interface Credits {
   project_id: string;
+  run_id?: string;
   created_at: string;
   services_used: {
-    director: {
-      service: string;
-      model: string;
-      task: string;
-    };
-    writer: {
-      service: string;
-      model: string;
-      task: string;
-    };
-    voice: {
-      service: string;
-      model: string;
-      task: string;
-      character_count?: number;
-    };
-    composer: {
-      service: string;
-      model: string;
-      task: string;
-      duration_sec?: number;
-    };
-    editor: {
-      service: string;
-      tool: string;
-      task: string;
-    };
+    director: { service: string; model: string; task: string };
+    writer: { service: string; model: string; task: string };
+    voice: { service: string; model: string; task: string };
+    composer: { service: string; model: string; task: string };
+    editor: { service: string; tool: string; task: string };
   };
   commons_good_statement: string;
   license: string;
+  total_cost_usd?: number;
+}
+
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Content-Type': 'application/json',
 };
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
     const input: AttributionInput = JSON.parse(event.body || '{}');
 
     if (!input.projectId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'projectId required' }),
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'projectId required' }) };
     }
 
     const tmpDir = process.env.TMPDIR || '/tmp';
     const projectDir = join(tmpDir, input.projectId);
+    if (!existsSync(projectDir)) {
+      mkdirSync(projectDir, { recursive: true });
+    }
 
-    // Gather metadata from previous agent outputs
-    let musicDuration = 90; // default
-    let charCount = 0;
-
-    // Try to read music metadata
-    if (input.music_file && existsSync(input.music_file)) {
-      try {
-        const musicData = JSON.parse(readFileSync(input.music_file, 'utf-8'));
-        musicDuration = musicData.durationSec || 90;
-      } catch (error) {
-        console.warn('Could not read music metadata:', error);
+    // Best-effort cost aggregation from referenced outputs
+    let totalCost = 0;
+    const outputs = input.outputs || {};
+    for (const outputPath of Object.values(outputs)) {
+      if (outputPath && existsSync(outputPath)) {
+        try {
+          const data = JSON.parse(readFileSync(outputPath, 'utf-8'));
+          if (data.cost_usd) totalCost += Number(data.cost_usd) || 0;
+        } catch {
+          // ignore parse errors
+        }
       }
     }
 
-    // Build comprehensive credits
     const credits: Credits = {
       project_id: input.projectId,
+      run_id: input.runId,
       created_at: new Date().toISOString(),
       services_used: {
         director: {
           service: 'Google Gemini',
-          model: 'gemini-pro',
-          task: 'Media curation and thematic direction',
+          model: 'gemini-2.0-flash',
+          task: 'Vision analysis and scene curation',
         },
         writer: {
           service: 'OpenAI',
@@ -114,14 +85,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
         voice: {
           service: 'ElevenLabs',
           model: 'eleven_multilingual_v2',
-          task: 'Text-to-speech narration synthesis',
-          character_count: charCount,
+          task: 'Text-to-speech narration',
         },
         composer: {
           service: 'Suno AI',
           model: 'suno-v3',
           task: 'Original soundtrack composition',
-          duration_sec: musicDuration,
         },
         editor: {
           service: 'FFmpeg',
@@ -129,38 +98,33 @@ export const handler: Handler = async (event: HandlerEvent) => {
           task: 'Video compilation and audio mixing',
         },
       },
-      commons_good_statement: 
+      commons_good_statement:
         'This video was created using AI tools in service of the Commons Good. ' +
-        'All AI services are credited transparently. SirTrav A2A Studio is ' +
-        'committed to ethical AI use and proper attribution.',
+        'All AI services are credited transparently. SirTrav A2A Studio is committed to ethical AI use and proper attribution.',
       license: 'CC BY-SA 4.0 (Creative Commons Attribution-ShareAlike)',
+      total_cost_usd: totalCost,
     };
 
-    // Write credits.json to project directory
     const creditsPath = join(projectDir, 'credits.json');
-    writeFileSync(creditsPath, JSON.stringify(credits, null, 2), 'utf-8');
+    writeFileSync(creditsPath, JSON.stringify(credits, null, 2));
 
-    console.log(`✅ Attribution credits generated for ${input.projectId}`);
-
-    // Return result
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({
         ok: true,
-        message: 'Attribution credits generated',
+        projectId: input.projectId,
+        runId: input.runId,
         credits_file: creditsPath,
         credits,
       }),
     };
-
-  } catch (error) {
-    console.error('Error generating attribution:', error);
+  } catch (error: any) {
+    console.error('Attribution error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: 'Failed to generate attribution',
-        detail: error instanceof Error ? error.message : String(error),
-      }),
+      headers,
+      body: JSON.stringify({ ok: false, error: 'attribution_failed', detail: error.message }),
     };
   }
 };

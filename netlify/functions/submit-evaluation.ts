@@ -1,123 +1,123 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { readMemory, writeMemory, type MemoryIndex } from './lib/memory';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
-/**
- * USER FEEDBACK LOOP - submit-evaluation.ts
- * 
- * Closes the EGO-Prompt learning loop by capturing 👍/👎 feedback
- * 
- * Flow:
- * 1. User watches video in ResultsPreview modal
- * 2. Clicks 👍 (good) or 👎 (bad) button
- * 3. This function updates memory_index.json with preferences
- * 4. Director Agent reads preferences on next run
- * 5. AI gets smarter over time based on USER feedback
- */
-
-type FeedbackPayload = {
+interface EvaluationInput {
   projectId: string;
+  runId?: string;
   rating: 'good' | 'bad';
-  tags?: string[]; // e.g., ["reflective", "calm_music", "60s_length"]
-  comment?: string;
+  theme?: string;
+  mood?: string;
+  feedback?: string;
+}
+
+interface MemoryIndex {
+  version: string;
+  last_updated: string;
+  user_preferences: {
+    favorite_moods: string[];
+    disliked_music_styles: string[];
+  };
+  video_history: Array<{
+    project_id: string;
+    run_id?: string;
+    user_rating: 'good' | 'bad';
+    theme?: string;
+    mood?: string;
+    timestamp: string;
+    feedback?: string;
+  }>;
+}
+
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Content-Type': 'application/json',
 };
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
-    const feedback: FeedbackPayload = JSON.parse(event.body || '{}');
-
-    // Validate input
-    if (!feedback.projectId || !feedback.rating) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          error: 'Missing required fields: projectId, rating',
-        }),
-      };
+    const input: EvaluationInput = JSON.parse(event.body || '{}');
+    if (!input.projectId || !input.rating) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'projectId and rating required' }) };
     }
 
-    // Read current memory
-    const memory = await readMemory();
-
-    // Create video history entry
-    const historyEntry = {
-      project_id: feedback.projectId,
-      user_rating: feedback.rating,
-      tags: feedback.tags || [],
-      comment: feedback.comment || '',
-      created_at: new Date().toISOString(),
-    };
-
-    // Append to video history
-    if (!memory.video_history) {
-      memory.video_history = [];
-    }
-    memory.video_history.push(historyEntry);
-
-    // Update user preferences based on feedback
-    if (!memory.user_preferences) {
-      memory.user_preferences = {
-        favorite_themes: [],
-        disliked_elements: [],
-        preferred_length_sec: 60,
-      };
+    const vaultPath = process.env.VAULT_PATH || join(process.env.TMPDIR || '/tmp', 'vault');
+    if (!existsSync(vaultPath)) {
+      mkdirSync(vaultPath, { recursive: true });
     }
 
-    // If good rating, add tags to favorites
-    if (feedback.rating === 'good' && feedback.tags) {
-      for (const tag of feedback.tags) {
-        if (!memory.user_preferences.favorite_themes.includes(tag)) {
-          memory.user_preferences.favorite_themes.push(tag);
-        }
-        // Remove from dislikes if it was there
-        memory.user_preferences.disliked_elements = 
-          memory.user_preferences.disliked_elements.filter(el => el !== tag);
+    const memoryPath = join(vaultPath, 'memory_index.json');
+    let memory: MemoryIndex;
+
+    if (existsSync(memoryPath)) {
+      try {
+        memory = JSON.parse(readFileSync(memoryPath, 'utf-8'));
+      } catch {
+        memory = createEmptyMemory();
+      }
+    } else {
+      memory = createEmptyMemory();
+    }
+
+    memory.video_history.push({
+      project_id: input.projectId,
+      run_id: input.runId,
+      user_rating: input.rating,
+      theme: input.theme,
+      mood: input.mood,
+      feedback: input.feedback,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Simple learning: track liked moods
+    if (input.rating === 'good' && input.mood) {
+      if (!memory.user_preferences.favorite_moods.includes(input.mood)) {
+        memory.user_preferences.favorite_moods.push(input.mood);
       }
     }
 
-    // If bad rating, add tags to dislikes
-    if (feedback.rating === 'bad' && feedback.tags) {
-      for (const tag of feedback.tags) {
-        if (!memory.user_preferences.disliked_elements.includes(tag)) {
-          memory.user_preferences.disliked_elements.push(tag);
-        }
-        // Remove from favorites if it was there
-        memory.user_preferences.favorite_themes = 
-          memory.user_preferences.favorite_themes.filter(th => th !== tag);
-      }
+    // Keep last 100 entries
+    if (memory.video_history.length > 100) {
+      memory.video_history = memory.video_history.slice(-100);
     }
 
-    // Write updated memory back
-    await writeMemory(memory);
+    memory.last_updated = new Date().toISOString();
 
-    console.log(`✅ Feedback logged for ${feedback.projectId}: ${feedback.rating}`);
+    writeFileSync(memoryPath, JSON.stringify(memory, null, 2));
 
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({
         ok: true,
-        message: 'Feedback recorded successfully',
-        memory_updated: true,
-        history_entries: memory.video_history.length,
+        projectId: input.projectId,
+        runId: input.runId,
+        learning: {
+          favorite_moods: memory.user_preferences.favorite_moods,
+          total_history: memory.video_history.length,
+        },
       }),
     };
-
-  } catch (error) {
-    console.error('Error processing feedback:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: 'Failed to process feedback',
-        detail: error instanceof Error ? error.message : String(error),
-      }),
-    };
+  } catch (error: any) {
+    console.error('Evaluation error:', error);
+    return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'evaluation_failed', detail: error.message }) };
   }
 };
+
+function createEmptyMemory(): MemoryIndex {
+  return {
+    version: '1.0',
+    last_updated: new Date().toISOString(),
+    user_preferences: {
+      favorite_moods: [],
+      disliked_music_styles: [],
+    },
+    video_history: [],
+  };
+}
 
 export default handler;

@@ -315,6 +315,47 @@
   padding: 1rem 2rem;
 }
 
+.feedback-section {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.feedback-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.btn-feedback {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-feedback:hover {
+  transform: scale(1.03);
+}
+
+.btn-good {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.btn-bad {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.feedback-thanks {
+  color: #10b981;
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .creative-hub {

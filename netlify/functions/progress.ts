@@ -1,264 +1,33 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { Handler } from '@netlify/functions';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-/**
- * Progress Tracking Function with SSE Streaming
- * 
- * Fixed Issues:
- * 1. Uses /tmp for writable storage (not read-only repo directory)
- * 2. Implements proper SSE streaming with heartbeat
- * 3. Handles errors explicitly (no silent failures)
- */
+const TMP_DIR = os.tmpdir();
+const DATA_DIR = path.join(TMP_DIR, 'sirtrav-progress');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-type ProgressEvent = {
-  timestamp: string;
-  agent: 'director' | 'writer' | 'voice' | 'composer' | 'editor' | 'publisher' | 'system';
-  status: 'started' | 'progress' | 'completed' | 'error';
-  message: string;
-  projectId: string;
-  progress?: number; // 0-1
-  metadata?: Record<string, unknown>;
-};
+export const handler: Handler = async (event) => {
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
-type ProgressLog = {
-  projectId: string;
-  events: ProgressEvent[];
-  lastUpdated: string;
-};
+  if (event.httpMethod === 'POST') {
+    const { projectId, step, status } = JSON.parse(event.body || '{}');
+    const file = path.join(DATA_DIR, `${projectId}.json`);
+    const entry = { timestamp: new Date().toISOString(), step, status };
 
-// ✅ FIX #1: Use writable /tmp directory (NOT repo directory)
-const getProgressFilePath = (projectId?: string): string => {
-  const tmpDir = process.env.TMPDIR || '/tmp';
-  const progressDir = join(tmpDir, 'sirtrav-progress');
-  
-  // Ensure directory exists
-  if (!existsSync(progressDir)) {
-    mkdirSync(progressDir, { recursive: true });
-  }
-  
-  if (projectId) {
-    return join(progressDir, `${projectId}.json`);
-  }
-  return join(progressDir, 'all-projects.json');
-};
-
-// Read progress log from /tmp
-const readProgressLog = (projectId: string): ProgressLog => {
-  const filePath = getProgressFilePath(projectId);
-  
-  if (!existsSync(filePath)) {
-    return {
-      projectId,
-      events: [],
-      lastUpdated: new Date().toISOString(),
-    };
-  }
-  
-  try {
-    const content = readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.error(`Failed to read progress log for ${projectId}:`, error);
-    return {
-      projectId,
-      events: [],
-      lastUpdated: new Date().toISOString(),
-    };
-  }
-};
-
-// Write progress log to /tmp (with error handling)
-const writeProgressLog = (log: ProgressLog): void => {
-  const filePath = getProgressFilePath(log.projectId);
-  
-  try {
-    // Ensure parent directory exists
-    const dir = dirname(filePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-    
-    log.lastUpdated = new Date().toISOString();
-    writeFileSync(filePath, JSON.stringify(log, null, 2), 'utf-8');
-    console.log(`✅ Progress logged to ${filePath}`);
-  } catch (error) {
-    // ✅ FIX #3: Make errors LOUD (don't swallow)
-    console.error(`❌ Failed to write progress log for ${log.projectId}:`, error);
-    throw new Error(`Progress write failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-// Append event to progress log
-const appendProgressEvent = (event: ProgressEvent): void => {
-  const log = readProgressLog(event.projectId);
-  log.events.push(event);
-  writeProgressLog(log);
-};
-
-// ✅ FIX #2: Proper SSE streaming implementation
-export const handler: Handler = async (event: HandlerEvent) => {
-  const { httpMethod, body, queryStringParameters } = event;
-  const projectId = queryStringParameters?.projectId;
-
-  // POST: Log a new progress event
-  if (httpMethod === 'POST') {
-    if (!body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Request body required' }),
-      };
-    }
-
-    try {
-      const eventData: ProgressEvent = JSON.parse(body);
-      
-      if (!eventData.projectId) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: 'projectId required' }),
-        };
-      }
-
-      // Add timestamp if not provided
-      if (!eventData.timestamp) {
-        eventData.timestamp = new Date().toISOString();
-      }
-
-      appendProgressEvent(eventData);
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          ok: true,
-          message: 'Progress event logged',
-          event: eventData,
-        }),
-      };
-    } catch (error) {
-      console.error('Error logging progress:', error);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          error: 'Failed to log progress',
-          detail: error instanceof Error ? error.message : String(error),
-        }),
-      };
-    }
+    let data = [];
+    if (fs.existsSync(file)) data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    data.push(entry);
+    fs.writeFileSync(file, JSON.stringify(data));
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
 
-  // GET: Stream progress events via SSE
-  if (httpMethod === 'GET') {
-    if (!projectId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'projectId query parameter required' }),
-      };
-    }
-
-    // For SSE streaming, we need to return a proper streaming response
-    // Netlify Functions support Response objects with ReadableStream
-    
-    const encoder = new TextEncoder();
-    let isClosed = false;
-    
-    const stream = new ReadableStream({
-      async start(controller) {
-        console.log(`🔄 SSE stream started for project: ${projectId}`);
-        
-        // Send initial events immediately
-        try {
-          const log = readProgressLog(projectId);
-          
-          // Send existing events
-          for (const evt of log.events) {
-            if (isClosed) break;
-            const data = `data: ${JSON.stringify(evt)}\n\n`;
-            controller.enqueue(encoder.encode(data));
-          }
-        } catch (error) {
-          console.error('Error sending initial events:', error);
-        }
-
-        // Set up heartbeat to keep connection alive
-        const heartbeatInterval = setInterval(() => {
-          if (isClosed) {
-            clearInterval(heartbeatInterval);
-            return;
-          }
-          
-          try {
-            // SSE comment (keeps connection alive)
-            controller.enqueue(encoder.encode(': heartbeat\n\n'));
-          } catch (error) {
-            console.error('Heartbeat error:', error);
-            clearInterval(heartbeatInterval);
-          }
-        }, 30000); // 30 seconds
-
-        // Poll for new events (in production, use pub/sub or WebSocket)
-        const pollInterval = setInterval(() => {
-          if (isClosed) {
-            clearInterval(pollInterval);
-            clearInterval(heartbeatInterval);
-            return;
-          }
-
-          try {
-            const log = readProgressLog(projectId);
-            const latestEvent = log.events[log.events.length - 1];
-            
-            if (latestEvent) {
-              const data = `data: ${JSON.stringify(latestEvent)}\n\n`;
-              controller.enqueue(encoder.encode(data));
-            }
-
-            // Close stream if project completed
-            if (latestEvent?.status === 'completed' || latestEvent?.status === 'error') {
-              clearInterval(pollInterval);
-              clearInterval(heartbeatInterval);
-              controller.close();
-              isClosed = true;
-            }
-          } catch (error) {
-            console.error('Poll error:', error);
-          }
-        }, 2000); // Poll every 2 seconds
-
-        // Cleanup on stream abort
-        if (event.headers && event.headers['connection'] === 'close') {
-          clearInterval(pollInterval);
-          clearInterval(heartbeatInterval);
-          controller.close();
-          isClosed = true;
-        }
-      },
-      
-      cancel() {
-        console.log(`🛑 SSE stream cancelled for project: ${projectId}`);
-        isClosed = true;
-      }
-    });
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable nginx buffering
-      },
-    });
+  if (event.httpMethod === 'GET') {
+    const projectId = event.queryStringParameters?.projectId;
+    if (!projectId) return { statusCode: 400, body: 'Missing projectId' };
+    const file = path.join(DATA_DIR, `${projectId}.json`);
+    const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, events: data }) };
   }
-
-  // Method not allowed
-  return {
-    statusCode: 405,
-    headers: {
-      Allow: 'GET, POST',
-    },
-    body: JSON.stringify({ error: 'Method not allowed' }),
-  };
+  return { statusCode: 405, body: 'Method Not Allowed' };
 };
-
-export default handler;

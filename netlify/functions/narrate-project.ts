@@ -1,111 +1,21 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
 
-/**
- * WRITER AGENT (narrate-project)
- * 
- * Drafts reflective first-person script based on curated scenes
- * 
- * Input: { projectId, curated_media, theme, mood }
- * Output: { ok, narrative: string, word_count }
- */
+export const handler: Handler = async (event) => {
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
-interface NarrateRequest {
-  projectId: string;
-  curated_media?: Array<{
-    file: string;
-    caption?: string;
-    order: number;
-  }>;
-  theme?: string;
-  mood?: string;
-}
+  const { projectId, curated_media } = JSON.parse(event.body || '{}');
 
-// Generate narrative based on scenes (stub - in production use Gemini/GPT)
-function generateNarrative(theme: string, mood: string, sceneCount: number): string {
-  const narratives: Record<string, string> = {
-    uplifting: `This week reminded us of the simple joys that make life meaningful.
+  // LOGIC: Create a script based on what the Director found
+  const assetCount = curated_media?.media_sequence?.length || 0;
+  const scriptText = assetCount > 0
+    ? `Welcome back. We found ${assetCount} amazing moments in the vault today. Let's take a look.`
+    : `The vault looks empty, but every blank canvas is an opportunity.`;
 
-Each moment captured here tells a story of connection, of laughter shared and memories made. The warmth we felt in these times together continues to brighten our days.
+  const narrative = [
+    { id: "intro", text: scriptText, voice: "default" },
+    { id: "outro", text: "That wraps up this week's recap. See you on the water.", voice: "default" }
+  ];
 
-As we look back on these ${sceneCount} moments, we're reminded that life's greatest treasures are the people we share it with.`,
-    
-    reflective: `Looking back on this week, I find myself grateful for the quiet moments.
-
-There's something profound in the everyday—the way light filters through a window, the comfort of familiar spaces, the gentle rhythm of our days together.
-
-These ${sceneCount} scenes capture not just what we did, but how it felt to be present, to be together, to simply be.`,
-    
-    contemplative: `This week unfolded with a quietness that invited reflection.
-
-In ${sceneCount} fleeting moments, we found depth. Each image holds a story, each story a truth about who we are and what matters most.
-
-Time moves forward, but these memories remain—anchors in the stream, reminders of what endures.`,
-  };
-
-  return narratives[theme] || narratives.reflective;
-}
-
-export const handler: Handler = async (event: HandlerEvent) => {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: { Allow: 'POST' },
-      body: JSON.stringify({ ok: false, error: 'method_not_allowed' }),
-    };
-  }
-
-  try {
-    const payload: NarrateRequest = event.body ? JSON.parse(event.body) : {};
-    const {
-      projectId,
-      curated_media = [],
-      theme = 'reflective',
-      mood = 'contemplative',
-    } = payload;
-
-    if (!projectId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ ok: false, error: 'projectId required' }),
-      };
-    }
-
-    console.log(`📝 Writer Agent: Drafting narrative for ${projectId}`);
-    console.log(`   Theme: ${theme}, Mood: ${mood}, Scenes: ${curated_media.length}`);
-
-    // Generate narrative
-    const narrative = generateNarrative(theme, mood, curated_media.length);
-    const wordCount = narrative.split(/\s+/).length;
-
-    console.log(`✅ Writer completed: ${wordCount} words`);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        ok: true,
-        projectId,
-        narrative,
-        word_count: wordCount,
-        metadata: {
-          agent: 'writer',
-          theme,
-          mood,
-          scene_count: curated_media.length,
-          timestamp: new Date().toISOString(),
-        },
-      }),
-    };
-  } catch (error) {
-    console.error('Writer agent error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        ok: false,
-        error: 'narrate_failed',
-        detail: error instanceof Error ? error.message : String(error),
-      }),
-    };
-  }
+  return { statusCode: 200, headers, body: JSON.stringify({ ok: true, narrative }) };
 };
-
-export default handler;

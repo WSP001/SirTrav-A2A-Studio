@@ -17,3 +17,12 @@ tmp/
 # OS files
 .DS_Store
 Thumbs.db
+
+# A2A Studio Artifacts (Do not commit generated videos)
+public/run-*/
+public/week*/
+data/sirtrav-progress/
+
+# Keep the placeholders but ignore real media
+content/intake/*
+!content/intake/.gitkeep

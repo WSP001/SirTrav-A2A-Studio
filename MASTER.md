@@ -210,9 +210,7 @@ The entire system follows this principle:
   - Non-negotiable interfaces between agents
 - **Local Roles** = Specialist agents (Director, Writer, Voice, etc.)
   - Each agent is a "perfect" pluggable expert
-  - Only knows how to do ONE job well
-
-**Practice:** When iterating, ask: *"Should this change the blueprint (global rule) or improve a specialist (local role)?"*
+  - Only knows how to do ONE job really well learning from proceeding User Preview (with 👍/👎 Feedback Loop) tightly iterating, ask: *"Should this change the blueprint (global rule) or improve a specialist (local role)?"*
 
 ### 2. **The Manifest is the Master Agent**
 

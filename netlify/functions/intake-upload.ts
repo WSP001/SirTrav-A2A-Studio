@@ -1,41 +1,32 @@
-import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
+import { spawn } from 'child_process';
+import path from 'path';
 
-/**
- * Netlify Function: intake-upload
- * Handles file uploads for the D2A video automation pipeline
- */
+export const handler: Handler = async (event) => {
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
-export const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Allow': 'POST',
-      },
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
-  }
+  const { projectId } = JSON.parse(event.body || '{}');
 
-  try {
-    // TODO: Implement file upload logic
-    console.log('Processing file upload...');
+  console.log(`[Real] Starting pipeline for ${projectId}`);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'Upload endpoint ready',
-        status: 'stub',
-      }),
-    };
-  } catch (error) {
-    console.error('Upload error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
-  }
+  // SPAWN REAL PIPELINE (No --mock flag)
+  // Ensure we point to the correct manifest path relative to this function
+  // Using process.cwd() is safer for Netlify Dev execution context
+  const manifestPath = path.join(process.cwd(), 'pipelines', 'a2a_manifest.yml');
+  const runnerPath = path.join(process.cwd(), 'pipelines', 'run-manifest.mjs');
+
+  const child = spawn('node', [runnerPath, manifestPath, projectId], {
+    detached: true,
+    stdio: 'ignore',
+    env: { ...process.env } // Pass env vars (URL, API Keys)
+  });
+
+  child.unref();
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ ok: true, message: "Pipeline started (Real Mode)", projectId })
+  };
 };
