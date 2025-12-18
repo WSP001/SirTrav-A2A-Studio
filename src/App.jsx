@@ -83,15 +83,15 @@ function App() {
 
     setPipelineStatus('completed');
     
-    // Generate mock video result
+    // Use real test video assets for working demo
     setVideoResult({
       runId: newRunId,
-      videoUrl: `/api/videos/${projectId}/final.mp4`,
+      videoUrl: '/test-assets/test-video.mp4',
       thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
-      duration: '2:34',
+      duration: '0:15',
       resolution: '1080p',
-      fileSize: '24.5 MB',
-      creditsUrl: `/api/videos/${projectId}/credits.json`,
+      fileSize: '2.1 MB',
+      creditsUrl: '/test-assets/credits.json',
       generatedAt: new Date().toISOString(),
     });
   };
@@ -331,22 +331,18 @@ function App() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* Video Preview */}
+              {/* Video Preview - Real playable video */}
               <div className="space-y-4">
-                <div className="relative aspect-video bg-black rounded-xl overflow-hidden group">
-                  <img 
-                    src={videoResult.thumbnailUrl} 
-                    alt="Video thumbnail" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-4 bg-white/20 rounded-full backdrop-blur-sm hover:bg-white/30 transition-colors">
-                      <Play className="w-8 h-8 text-white" />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/70 rounded text-xs text-white">
-                    {videoResult.duration}
-                  </div>
+                <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+                  <video 
+                    src={videoResult.videoUrl}
+                    controls
+                    poster={videoResult.thumbnailUrl}
+                    className="w-full h-full object-contain"
+                    preload="metadata"
+                  >
+                    Your browser does not support video playback.
+                  </video>
                 </div>
 
                 {/* Video Info */}
@@ -410,10 +406,14 @@ function App() {
                 </div>
 
                 {/* Download Button */}
-                <button className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity">
+                <a 
+                  href={videoResult.videoUrl}
+                  download={`${projectId}-video.mp4`}
+                  className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                >
                   <Download className="w-5 h-5" />
                   Download Video ({videoResult.fileSize})
-                </button>
+                </a>
 
                 {/* Social Media Publishing */}
                 <div className="space-y-2">
