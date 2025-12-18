@@ -1,8 +1,8 @@
 # MASTER.md - SirTrav A2A Studio Build Plan
 
-**Version:** 2.0.0
-**Last Updated:** 2025-12-07
-**Status:** Production Ready – Real Video Pipeline Complete
+**Version:** 2.0.1  
+**Last Updated:** 2025-12-17  
+**Status:** Production Ready – All 7 Agents Complete ✅
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc‑to‑Agent) automated video production platform for the Commons Good.
 
@@ -13,51 +13,79 @@ Build a production‑ready, user‑friendly video automation platform where user
 
 ---
 
+## 🎉 v2.0.1 Status Summary (December 17, 2025)
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| **7-Agent Pipeline** | ✅ 100% | All agents implemented |
+| **Storage** | ✅ Netlify Blobs | Durable, cross-instance |
+| **Learning Loop** | ✅ Closed | 👍/👎 → memory_index.json |
+| **Vision AI** | ✅ OpenAI | Director sees photos |
+| **Progress Tracking** | ✅ SSE + Blobs | Real-time updates |
+| **Voice Agent** | 🟡 Ready | Needs `ELEVENLABS_API_KEY` |
+| **Composer Agent** | 🟡 Ready | Needs `SUNO_API_KEY` |
+
+---
+
 ## v2.0.0 Completion Checklist
 
 ### Netlify Functions (All 7 Agents + Support)
-- [x] `curate-media.ts` - Director Agent
-- [x] `narrate-project.ts` - Writer Agent  
-- [x] `text-to-speech.ts` - Voice Agent (ElevenLabs)
-- [x] `generate-music.ts` - Composer Agent (Suno)
-- [x] `compile-video.ts` - Editor Agent (FFmpeg)
-- [x] `generate-attribution.ts` - Attribution Agent
-- [x] `publish.ts` - Publisher Agent
-- [x] `publish-youtube.ts` - YouTube API
-- [x] `publish-tiktok.ts` - TikTok API
-- [x] `publish-instagram.ts` - Instagram API
-- [x] `share-link.ts` - Shareable links + QR codes
-- [x] `progress.ts` - SSE streaming progress
-- [x] `correlate.ts` - Trace correlation
-- [x] `evals.ts` - Evaluation metrics
-- [x] `healthcheck.ts` - System health monitor
-- [x] `mcp.ts` - MCP gateway
-- [x] `intake-upload.ts` - File upload
-- [x] `submit-evaluation.ts` - User feedback
-- [x] `generate-video.ts` - Pipeline orchestrator
+- [x] `curate-media.ts` - Director Agent ✅ (Vision AI enabled)
+- [x] `narrate-project.ts` - Writer Agent ✅
+- [x] `text-to-speech.ts` - Voice Agent 🟡 (placeholder until API key)
+- [x] `generate-music.ts` - Composer Agent 🟡 (placeholder until API key)
+- [x] `compile-video.ts` - Editor Agent ✅ (FFmpeg + ducking)
+- [x] `generate-attribution.ts` - Attribution Agent ✅
+- [x] `publish.ts` - Publisher Agent ✅
+- [x] `publish-youtube.ts` - YouTube API ✅
+- [x] `publish-tiktok.ts` - TikTok API ✅
+- [x] `publish-instagram.ts` - Instagram API ✅
+- [x] `share-link.ts` - Shareable links + QR codes ✅
+- [x] `progress.ts` - SSE streaming progress ✅ (Blobs-backed)
+- [x] `correlate.ts` - Trace correlation ✅
+- [x] `evals.ts` - Evaluation metrics ✅
+- [x] `healthcheck.ts` - System health monitor ✅
+- [x] `mcp.ts` - MCP gateway ✅
+- [x] `intake-upload.ts` - File upload ✅
+- [x] `submit-evaluation.ts` - User feedback ✅ (Blobs-backed)
+- [x] `generate-video.ts` - Pipeline orchestrator ✅
+- [x] `start-pipeline.ts` - Pipeline trigger ✅
 
-### Storage (Netlify Blobs)
-- [x] `lib/storage.ts` - NetlifyBlobsStorage class
+### Storage (Netlify Blobs) ✅ UPGRADED
+- [x] `lib/storage.ts` - NetlifyBlobsStorage class (456 lines)
+- [x] `lib/progress-store.ts` - Progress persistence ✅ NEW
 - [x] Video store (`sirtrav-videos`)
 - [x] Audio store (`sirtrav-audio`)
 - [x] Media store (`sirtrav-media`)
+- [x] Runs store (`sirtrav-runs`)
+- [x] Evals store (`sirtrav-evals`)
+- [x] Progress store (`sirtrav-progress`) ✅ NEW
+
+### Lib Modules
+- [x] `lib/vision.ts` - OpenAI Vision API (458 lines) ✅
+- [x] `lib/tracing.ts` - OpenTelemetry ✅
+- [x] `lib/ducking.ts` - Audio sidechain/keyframe ✅
+- [x] `lib/alignment.ts` - Beat alignment ✅
+- [x] `lib/runIndex.ts` - Run management ✅
 
 ### Pipeline Scripts
-- [x] `run-manifest.mjs` - Manifest executor with fallback logic
-- [x] `audio_mix.mjs` - Audio mixing with LUFS normalization
-- [x] `ffmpeg_compile.mjs` - Video compilation with Ken Burns
-- [x] `lufs_check.mjs` - Loudness verification
-- [x] `test-7-agents.mjs` - Agent smoke test
+- [x] `run-manifest.mjs` - Manifest executor with fallback logic ✅
+- [x] `audio_mix.mjs` - Audio mixing with LUFS normalization ✅
+- [x] `ffmpeg_compile.mjs` - Video compilation with Ken Burns ✅
+- [x] `lufs_check.mjs` - Loudness verification ✅
+- [x] `test-7-agents.mjs` - Agent smoke test ✅
+- [x] `smoke-test.sh` - Endpoint smoke test ✅ NEW
 
 ### UI Components
-- [x] `App.jsx` - Enterprise landing page
-- [x] `CreativeHub.tsx` - File upload + pipeline trigger
-- [x] `VideoGenerator.jsx` - Video generation UI
-- [x] `PipelineProgress.tsx` - SSE progress dashboard
-- [x] `ResultsPreview.tsx` - Video preview + feedback
-- [x] `Click2KickButton.tsx` - Pipeline trigger button
-- [x] `Upload.tsx` - Drag & drop file upload
-- [x] `AnalyticsDashboard.tsx` - Metrics visualization
+- [x] `App.jsx` - Enterprise landing page ✅
+- [x] `CreativeHub.tsx` - File upload + pipeline trigger + feedback ✅
+- [x] `VideoGenerator.jsx` - Video generation UI ✅
+- [x] `PipelineProgress.tsx` - SSE progress dashboard ✅
+- [x] `ResultsPreview.tsx` - Video preview + feedback ✅
+- [x] `Click2KickButton.tsx` - Pipeline trigger button ✅
+- [x] `Upload.tsx` - Drag & drop file upload ✅
+- [x] `Dashboard.tsx` - Metrics visualization ✅
+- [x] Theme attachment toggle (v1.9.0-THEME) ✅
 
 ---
 
@@ -178,3 +206,74 @@ git commit -m "feat: description of change"
 git push origin <branch>
 ```
 *Avoid reset/force push unless absolutely necessary.*
+
+---
+
+## v2.0.1 Changelog (December 17, 2025)
+
+### ✅ Completed This Session
+1. **Netlify Blobs Migration** - All ephemeral `/tmp` storage replaced with durable Blobs
+   - `progress.ts` → `lib/progress-store.ts` → `sirtrav-progress` store
+   - `submit-evaluation.ts` → Blobs-backed with memory mirror
+   - 200 event cap with automatic truncation
+
+2. **Smoke Test Script** - `scripts/smoke-test.sh`
+   - 7 automated endpoint tests (healthcheck, progress, evaluation, attribution, CORS)
+   - Exit code 0 = all pass, non-zero = failures
+
+3. **Vision AI Integration** - Director Agent now sees uploaded photos
+   - Privacy taxonomy (FACE/CROWD/STRUCTURE/NATURE)
+   - Quality scoring (blur, lighting, composition)
+   - Content classification (MOOD/ACTION/SETTING)
+
+4. **Learning Loop Closed** - EGO-Prompt architecture complete
+   - 👍/👎 feedback persists to `memory_index.json`
+   - Director reads preferences for future runs
+
+5. **All 7 Agents Implemented**
+   - Director → Writer → Voice → Composer → Editor → Attribution → Publisher
+   - Async calls, fallback logic, progress tracking
+
+### 🟡 Known Placeholders (API Keys Required)
+- `text-to-speech.ts` - Returns mock audio URL until `ELEVENLABS_API_KEY` set
+- `generate-music.ts` - Returns mock music URL until `SUNO_API_KEY` set
+
+### 🔧 Production Checklist Before Merge
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Run build
+npm run build
+
+# 3. Run smoke tests (local)
+bash scripts/smoke-test.sh http://localhost:8888/.netlify/functions
+
+# 4. Run smoke tests (production)
+bash scripts/smoke-test.sh https://sirtrav-a2a-studio.netlify.app/.netlify/functions
+```
+
+### 📋 Next Steps (Post-Merge)
+1. [ ] Enable Dependabot for security updates
+2. [ ] Add `ELEVENLABS_API_KEY` to Netlify env vars
+3. [ ] Add `SUNO_API_KEY` to Netlify env vars  
+4. [ ] Configure Netlify Blobs persistence (already default)
+5. [ ] Test full pipeline with real user photos
+6. [ ] Monitor OpenTelemetry traces in production
+
+---
+
+## 📚 Reference Files
+
+| File | Purpose |
+|------|---------|
+| `DEVELOPER_GUIDE.md` | Setup, architecture, troubleshooting |
+| `docs/MEMORY_SCHEMA.md` | Memory index structure |
+| `docs/LOCAL_DEV.md` | Local development setup |
+| `docs/DEPLOYMENT_CHECKLIST.md` | Pre-deploy verification |
+| `docs/agents/DIRECTOR_SPEC.md` | Director Agent spec |
+| `ATTRIBUTION_SPEC.md` | Attribution format spec |
+
+---
+
+*This file is the source of truth. Agents must read it before making changes.*
