@@ -17,7 +17,7 @@ export default async (req: Request) => {
     'Content-Type': 'application/json',
   };
 
-  if (req.method === 'OPTIONS') return new Response('', { status: 204, headers });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers });
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
   }

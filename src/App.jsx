@@ -88,9 +88,9 @@ function App() {
       runId: newRunId,
       videoUrl: '/test-assets/test-video.mp4',
       thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
-      duration: '0:15',
+      duration: '0:30',
       resolution: '1080p',
-      fileSize: '2.1 MB',
+      fileSize: '10.1 MB',
       creditsUrl: '/test-assets/credits.json',
       generatedAt: new Date().toISOString(),
     });
