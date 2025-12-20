@@ -17,7 +17,8 @@ export default async (req: Request) => {
     'Content-Type': 'application/json',
   };
 
-  if (req.method === 'OPTIONS') return new Response('', { status: 204, headers });
+  // CORS preflight - use 200 for compatibility with smoke tests
+  if (req.method === 'OPTIONS') return new Response('', { status: 200, headers });
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
   }
