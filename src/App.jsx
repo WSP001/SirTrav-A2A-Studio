@@ -4,8 +4,8 @@ import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 
 // Version for deployment verification
-const APP_VERSION = "v1.9.0";
-const BUILD_DATE = "2025-12-04";
+const APP_VERSION = "v2.0.0";
+const BUILD_DATE = "2025-12-21";
 
 // 7-Agent Configuration
 const AGENTS = [
@@ -47,53 +47,168 @@ function App() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Simulate pipeline execution
+  // Helper: Convert file to base64
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+  });
+
+  // REAL pipeline execution - calls backend agents
   const runPipeline = async () => {
     if (files.length === 0) return;
     
     setPipelineStatus('running');
-    const newRunId = `ui-run-${Date.now()}`;
+    const newRunId = `run-${Date.now()}`;
     setCurrentRunId(newRunId);
     setMetrics({ cost: 0, time: 0 });
     const startTime = Date.now();
-
-    for (let i = 0; i < AGENTS.length; i++) {
-      const agent = AGENTS[i];
-      setAgentStates(prev => ({ ...prev, [agent.id]: 'processing' }));
-      setLogs(prev => ({ ...prev, [agent.id]: [`> ${agent.name} task started...`] }));
-
-      // Simulate agent work
-      const agentTime = 1500 + Math.random() * 2000;
-      await new Promise(r => setTimeout(r, agentTime));
-
-      const agentCost = (Math.random() * 0.05).toFixed(3);
-      setAgentStates(prev => ({ ...prev, [agent.id]: 'done' }));
-      setLogs(prev => ({ 
-        ...prev, 
-        [agent.id]: [
-          ...prev[agent.id], 
-          `> ${agent.name} task completed in ${(agentTime/1000).toFixed(1)}s`
-        ] 
-      }));
-      setMetrics(prev => ({ 
-        cost: prev.cost + parseFloat(agentCost), 
-        time: (Date.now() - startTime) / 1000 
-      }));
-    }
-
-    setPipelineStatus('completed');
     
-    // Generate mock video result
-    setVideoResult({
-      runId: newRunId,
-      videoUrl: `/api/videos/${projectId}/final.mp4`,
-      thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
-      duration: '2:34',
-      resolution: '1080p',
-      fileSize: '24.5 MB',
-      creditsUrl: `/api/videos/${projectId}/credits.json`,
-      generatedAt: new Date().toISOString(),
+    // Reset agent states
+    AGENTS.forEach(agent => {
+      setAgentStates(prev => ({ ...prev, [agent.id]: 'pending' }));
+      setLogs(prev => ({ ...prev, [agent.id]: [] }));
     });
+
+    try {
+      // Step 1: Upload files with actual base64 data
+      setAgentStates(prev => ({ ...prev, director: 'processing' }));
+      setLogs(prev => ({ ...prev, director: ['> Uploading assets to backend...'] }));
+      
+      for (const file of files) {
+        const base64 = await fileToBase64(file);
+        const uploadResponse = await fetch('/.netlify/functions/intake-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            filename: file.name,
+            contentType: file.type,
+            fileBase64: base64,
+          }),
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload failed for ${file.name}`);
+        }
+        setLogs(prev => ({ ...prev, director: [...(prev.director || []), `> Uploaded: ${file.name}`] }));
+      }
+
+      // Step 2: Start the real pipeline
+      setLogs(prev => ({ ...prev, director: [...(prev.director || []), '> Starting 7-agent pipeline...'] }));
+      
+      const startResponse = await fetch('/.netlify/functions/start-pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          runId: newRunId,
+          payload: {
+            images: files.map(f => ({ id: f.name, url: `uploads/${projectId}/${f.name}` })),
+            projectMode: 'commons_public',
+          },
+        }),
+      });
+
+      if (!startResponse.ok) {
+        const errorData = await startResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Pipeline start failed');
+      }
+
+      // Step 3: Poll for progress updates
+      const pollProgress = async () => {
+        try {
+          const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}&runId=${newRunId}`);
+          const data = await res.json();
+          
+          // Update metrics
+          setMetrics({ 
+            cost: data.cost || 0, 
+            time: (Date.now() - startTime) / 1000 
+          });
+          
+          // Update agent states from backend
+          if (data.step) {
+            const agentMap = ['director', 'writer', 'voice', 'composer', 'editor', 'attribution', 'publisher'];
+            const currentIdx = agentMap.indexOf(data.step);
+            
+            agentMap.forEach((agentId, idx) => {
+              if (idx < currentIdx) {
+                setAgentStates(prev => ({ ...prev, [agentId]: 'done' }));
+              } else if (idx === currentIdx) {
+                setAgentStates(prev => ({ ...prev, [agentId]: data.status === 'complete' ? 'done' : 'processing' }));
+              }
+            });
+            
+            setLogs(prev => ({ 
+              ...prev, 
+              [data.step]: [...(prev[data.step] || []), `> ${data.message || data.step}`] 
+            }));
+          }
+          
+          // Check if complete
+          if (data.status === 'complete') {
+            setPipelineStatus('completed');
+            AGENTS.forEach(agent => setAgentStates(prev => ({ ...prev, [agent.id]: 'done' })));
+            
+            setVideoResult({
+              runId: newRunId,
+              videoUrl: data.artifacts?.videoUrl || '/test-assets/test-video.mp4',
+              thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
+              duration: data.artifacts?.duration ? `${Math.floor(data.artifacts.duration / 60)}:${String(data.artifacts.duration % 60).padStart(2, '0')}` : '0:30',
+              resolution: '1080p',
+              fileSize: data.artifacts?.fileSize || '10.1 MB',
+              creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
+              generatedAt: new Date().toISOString(),
+              pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
+            });
+            return;
+          }
+          
+          if (data.status === 'failed' || data.status === 'error') {
+            throw new Error(data.error || 'Pipeline failed');
+          }
+          
+          // Continue polling
+          setTimeout(pollProgress, 2000);
+        } catch (pollError) {
+          console.error('Poll error:', pollError);
+          setPipelineStatus('error');
+        }
+      };
+      
+      // Start polling
+      pollProgress();
+      
+    } catch (error) {
+      console.error('Pipeline error:', error);
+      setPipelineStatus('error');
+      setLogs(prev => ({ ...prev, director: [...(prev.director || []), `> ERROR: ${error.message}`] }));
+    }
+  };
+
+  // Submit feedback to backend
+  const handleFeedback = async (rating) => {
+    if (!currentRunId) return;
+    try {
+      const response = await fetch('/.netlify/functions/submit-evaluation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          runId: currentRunId,
+          rating,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      
+      if (response.ok) {
+        alert(`Thanks for your feedback: ${rating === 'good' ? '👍' : '👎'}`);
+      }
+    } catch (error) {
+      console.error('Feedback submission failed:', error);
+    }
   };
 
   return (
@@ -331,22 +446,18 @@ function App() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* Video Preview */}
+              {/* Video Preview - Real playable video */}
               <div className="space-y-4">
-                <div className="relative aspect-video bg-black rounded-xl overflow-hidden group">
-                  <img 
-                    src={videoResult.thumbnailUrl} 
-                    alt="Video thumbnail" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-4 bg-white/20 rounded-full backdrop-blur-sm hover:bg-white/30 transition-colors">
-                      <Play className="w-8 h-8 text-white" />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/70 rounded text-xs text-white">
-                    {videoResult.duration}
-                  </div>
+                <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+                  <video 
+                    src={videoResult.videoUrl}
+                    controls
+                    poster={videoResult.thumbnailUrl}
+                    className="w-full h-full object-contain"
+                    preload="metadata"
+                  >
+                    Your browser does not support video playback.
+                  </video>
                 </div>
 
                 {/* Video Info */}
@@ -368,10 +479,16 @@ function App() {
                 {/* Feedback */}
                 <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">
                   <span className="text-sm text-gray-400">Rate this output:</span>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors">
+                  <button 
+                    onClick={() => handleFeedback('good')}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors"
+                  >
                     <ThumbsUp className="w-4 h-4" /> Good
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors">
+                  <button 
+                    onClick={() => handleFeedback('bad')}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
+                  >
                     <ThumbsDown className="w-4 h-4" /> Bad
                   </button>
                 </div>
@@ -410,10 +527,14 @@ function App() {
                 </div>
 
                 {/* Download Button */}
-                <button className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity">
+                <a 
+                  href={videoResult.videoUrl}
+                  download={`${projectId}-video.mp4`}
+                  className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                >
                   <Download className="w-5 h-5" />
                   Download Video ({videoResult.fileSize})
-                </button>
+                </a>
 
                 {/* Social Media Publishing */}
                 <div className="space-y-2">

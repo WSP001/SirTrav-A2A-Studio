@@ -86,6 +86,17 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     setThemeState(null);
   };
 
+  // Helper: Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]); // Remove data:... prefix
+    };
+    reader.onerror = reject;
+  });
+
   const startPipeline = async () => {
     setStatus('validating');
     onStatusChange('validating');
@@ -96,19 +107,26 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 
     // 2. Trigger Backend Pipeline
     try {
-      // Step A: Upload files via intake
-      const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          projectId: pid,
-          mock: chaosMode,
-          files: files.map(f => f.name)
-        }),
-      });
+      // Step A: Upload files with REAL base64 data (not just names!)
+      console.log(`📤 Uploading ${files.length} files with base64 data...`);
+      for (const file of files) {
+        const base64 = await fileToBase64(file);
+        const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            projectId: pid,
+            filename: file.name,
+            contentType: file.type,
+            fileBase64: base64,
+            mock: chaosMode,
+          }),
+        });
 
-      if (!intakeResponse.ok) {
-        throw new Error('Failed to start intake');
+        if (!intakeResponse.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        console.log(`✅ Uploaded: ${file.name}`);
       }
 
       setStatus('running');
