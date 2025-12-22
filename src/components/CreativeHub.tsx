@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, FileText, Music, Video, Settings, X, Sparkles, Zap, Play, Link, Unlink } from 'lucide-react';
+import { Upload, FileText, Music, Video, Settings, X, Sparkles, Zap, Play, Link, Unlink, UserCog } from 'lucide-react';
 import { Click2KickButton } from './Click2KickButton';
 import { Dashboard } from './Dashboard';
+import { CreativeBrief, CreativeBriefData } from './CreativeBrief';
+import { UserPreferencesModal, useUserPreferences } from './UserPreferences';
 import { useDropzone } from 'react-dropzone';
 import { getTheme, buildThemePreference, ThemeAttachment } from '../lib/theme';
 import { useProgress } from '../lib/useProgress';
@@ -31,8 +33,17 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 }) => {
   const [status, setStatus] = useState<PipelineStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
-  // Chaos Mode removed - always run real pipeline
+  const [creativeBrief, setCreativeBrief] = useState<CreativeBriefData | null>(null);
+  const [showPrefsModal, setShowPrefsModal] = useState(false);
+  const { preferences, savePreferences, isLoaded } = useUserPreferences();
   const progress = useProgress('/.netlify/functions/progress');
+
+  // Show onboarding for new users
+  useEffect(() => {
+    if (isLoaded && !preferences.hasCompletedOnboarding) {
+      setShowPrefsModal(true);
+    }
+  }, [isLoaded, preferences.hasCompletedOnboarding]);
   
   // Theme Attachment State - default ON
   const [projectId] = useState(() => `project-${Date.now()}`);
@@ -133,14 +144,23 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 
       // Step B: Trigger the 7-agent video generation pipeline
       // Include themePreference so Composer can skip if theme attached
+      // Include creativeBrief to guide agent decisions
       const generateResponse = await fetch('/.netlify/functions/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: pid,
-          prompt: `Generate a cinematic memory video from the uploaded assets`,
+          prompt: creativeBrief?.story || `Generate a cinematic memory video from the uploaded assets`,
           projectMode: 'commons_public',
           themePreference: buildThemePreference(pid, attachTheme),
+          creativeBrief: creativeBrief,
+          userPreferences: {
+            videoType: preferences.videoType,
+            style: preferences.preferredStyle,
+            length: preferences.preferredLength,
+            voice: preferences.defaultVoice,
+            colorTheme: preferences.colorTheme,
+          },
         }),
       });
 
@@ -174,9 +194,20 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-10 animate-fade-in">
       {/* Hero Header */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium animate-bounce-subtle">
-          <Sparkles className="w-4 h-4" />
-          <span>7-Agent AI Pipeline Ready</span>
+        <div className="flex items-center justify-center gap-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium animate-bounce-subtle">
+            <Sparkles className="w-4 h-4" />
+            <span>7-Agent AI Pipeline Ready</span>
+          </div>
+          {/* User Preferences Button */}
+          <button
+            onClick={() => setShowPrefsModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-sm font-medium hover:text-white hover:border-white/20 transition-all"
+            title="User Preferences"
+          >
+            <UserCog className="w-4 h-4" />
+            <span>{preferences.displayName || 'Preferences'}</span>
+          </button>
         </div>
         <h1 className="text-5xl md:text-6xl font-black tracking-tight">
           <span className="text-white">Creative</span>
@@ -186,6 +217,14 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
           Upload your assets, configure your pipeline, and let our AI agents transform your content into cinematic videos
         </p>
       </div>
+
+      {/* User Preferences Modal */}
+      <UserPreferencesModal
+        isOpen={showPrefsModal}
+        onClose={() => setShowPrefsModal(false)}
+        onSave={savePreferences}
+        existingPrefs={preferences}
+      />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -373,6 +412,20 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Creative Brief - Below main grid */}
+      <CreativeBrief 
+        onBriefChange={setCreativeBrief}
+        initialBrief={{
+          mood: preferences.preferredStyle === 'cinematic' ? 'cinematic' 
+              : preferences.preferredStyle === 'vibrant' ? 'energetic'
+              : preferences.preferredStyle === 'minimal' ? 'peaceful'
+              : 'cinematic',
+          pace: preferences.preferredLength === 'short' ? 'fast'
+              : preferences.preferredLength === 'long' ? 'slow'
+              : 'medium',
+        }}
+      />
     </div>
   );
 };
