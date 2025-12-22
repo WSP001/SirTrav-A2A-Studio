@@ -1,6 +1,6 @@
-import { getStore } from '@netlify/blobs';
+import { getConfiguredBlobsStore } from './storage';
 
-const store = getStore('sirtrav-progress');
+const store = getConfiguredBlobsStore('sirtrav-progress');
 const MAX_EVENTS = 200;
 
 const keyFor = (projectId: string, runId?: string) =>

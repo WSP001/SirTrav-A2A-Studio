@@ -4,7 +4,7 @@
  * - Checks AI keys (OpenAI + ElevenLabs required, Suno optional/manual)
  * - Social keys: disabled if absent (not degraded)
  */
-import { getStore } from '@netlify/blobs';
+import { getConfiguredBlobsStore } from './lib/storage';
 
 type ServiceState = 'ok' | 'degraded' | 'down' | 'disabled';
 
@@ -36,7 +36,7 @@ const checkEnvVars = (keys: string[]) => keys.every((k) => !!process.env[k]);
 async function checkStorage(): Promise<ServiceStatus> {
   const start = Date.now();
   try {
-    const store = getStore('sirtrav-health');
+    const store = getConfiguredBlobsStore('sirtrav-health');
     const key = `ping-${Date.now()}`;
     await store.set(key, 'ok', { metadata: { ts: new Date().toISOString() } });
     const result = await store.get(key, { type: 'text' });
