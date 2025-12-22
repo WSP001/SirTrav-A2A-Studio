@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, FileText, Music, Video, Settings, AlertTriangle, X, Sparkles, Zap, Play, Link, Unlink } from 'lucide-react';
+import { Upload, FileText, Music, Video, Settings, X, Sparkles, Zap, Play, Link, Unlink } from 'lucide-react';
 import { Click2KickButton } from './Click2KickButton';
 import { Dashboard } from './Dashboard';
 import { useDropzone } from 'react-dropzone';
@@ -31,7 +31,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 }) => {
   const [status, setStatus] = useState<PipelineStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
-  const [chaosMode, setChaosMode] = useState(false);
+  // Chaos Mode removed - always run real pipeline
   const progress = useProgress('/.netlify/functions/progress');
   
   // Theme Attachment State - default ON
@@ -119,7 +119,6 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
             filename: file.name,
             contentType: file.type,
             fileBase64: base64,
-            mock: chaosMode,
           }),
         });
 
@@ -289,15 +288,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
                 <Settings className="w-5 h-5 text-brand-400" />
                 Pipeline Config
               </h3>
-              <button 
-                onClick={() => setChaosMode(!chaosMode)}
-                className={`p-2 rounded-lg transition-all ${chaosMode 
-                  ? 'bg-red-500/20 text-red-400 shadow-glow-sm border border-red-500/30' 
-                  : 'bg-white/5 text-zinc-500 hover:text-white border border-white/5'}`}
-                title="Toggle Chaos Mode"
-              >
-                <AlertTriangle className="w-4 h-4" />
-              </button>
+              {/* Chaos Mode removed - always run real pipeline */}
             </div>
 
             <div className="space-y-3 flex-grow">
