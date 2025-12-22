@@ -86,29 +86,63 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     setThemeState(null);
   };
 
+  // Helper to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const startPipeline = async () => {
     setStatus('validating');
     onStatusChange('validating');
     onPipelineStart(projectId);
-    
+
     // Use stable projectId from state
     const pid = projectId;
 
     // 2. Trigger Backend Pipeline
     try {
-      // Step A: Upload files via intake
-      const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          projectId: pid,
-          mock: chaosMode,
-          files: files.map(f => f.name)
-        }),
-      });
+      // Step A: Upload each file to intake-upload with base64 data
+      const uploadedImages: Array<{ id: string; url: string; base64?: string }> = [];
 
-      if (!intakeResponse.ok) {
-        throw new Error('Failed to start intake');
+      for (const file of files) {
+        const fileBase64 = await fileToBase64(file);
+        const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: pid,
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            fileBase64,
+          }),
+        });
+
+        if (!intakeResponse.ok) {
+          console.warn(`Failed to upload ${file.name}:`, await intakeResponse.text());
+          continue; // Skip failed uploads but continue with others
+        }
+
+        const uploadResult = await intakeResponse.json();
+        uploadedImages.push({
+          id: uploadResult.key || file.name,
+          url: uploadResult.key || file.name,
+          base64: fileBase64, // Include for Director Agent vision analysis
+        });
+        console.log(`✅ Uploaded: ${file.name}`);
+      }
+
+      if (uploadedImages.length === 0) {
+        throw new Error('No files were uploaded successfully');
       }
 
       setStatus('running');
@@ -124,6 +158,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
           prompt: `Generate a cinematic memory video from the uploaded assets`,
           projectMode: 'commons_public',
           themePreference: buildThemePreference(pid, attachTheme),
+          images: uploadedImages, // Pass uploaded images with base64 data
         }),
       });
 
