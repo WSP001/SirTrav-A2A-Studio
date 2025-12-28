@@ -40,7 +40,7 @@ if (Test-Path "$VaultPath\scripts\verify-vault.ps1") {
 
 # 4) Env Check
 $req = @("ELEVENLABS_API_KEY", "URL")
-$miss = $req | Where-Object { -not $env:$_ }
+$miss = $req | Where-Object { -not (Get-Item -Path "Env:$_" -ErrorAction SilentlyContinue) }
 if ($miss) { Write-Status "Missing Env: $($miss -join ', ')" 'warn' }
 else { Write-Status "Environment variables detected." 'ok' }
 

@@ -4,7 +4,7 @@
  * - Checks AI keys (OpenAI + ElevenLabs required, Suno optional/manual)
  * - Social keys: disabled if absent (not degraded)
  */
-import { getStore } from '@netlify/blobs';
+import { getConfiguredBlobsStore } from './lib/storage';
 
 type ServiceState = 'ok' | 'degraded' | 'down' | 'disabled';
 
@@ -36,7 +36,7 @@ const checkEnvVars = (keys: string[]) => keys.every((k) => !!process.env[k]);
 async function checkStorage(): Promise<ServiceStatus> {
   const start = Date.now();
   try {
-    const store = getStore('sirtrav-health');
+    const store = getConfiguredBlobsStore('sirtrav-health');
     const key = `ping-${Date.now()}`;
     await store.set(key, 'ok', { metadata: { ts: new Date().toISOString() } });
     const result = await store.get(key, { type: 'text' });
@@ -55,9 +55,10 @@ async function checkStorage(): Promise<ServiceStatus> {
 function checkAIServices(): ServiceStatus {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   const hasElevenLabs = !!process.env.ELEVENLABS_API_KEY;
-  const hasSuno = !!process.env.SUNO_API_KEY;
+  // Note: Suno has no public API - we use prompt templates for manual workflow
+  // Music is generated via Suno Prompt Wizard → user copies to Suno → uploads result
   if (hasOpenAI && hasElevenLabs) {
-    return { name: 'ai_services', status: 'ok', error: hasSuno ? undefined : 'Suno key missing (manual flow assumed)' };
+    return { name: 'ai_services', status: 'ok' };
   }
   return { name: 'ai_services', status: 'degraded', error: 'OPENAI_API_KEY or ELEVENLABS_API_KEY missing' };
 }
@@ -66,9 +67,17 @@ function checkSocial(): ServiceStatus {
   const hasYouTube = checkEnvVars(['YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET']);
   const hasTikTok = checkEnvVars(['TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET']);
   const hasInstagram = checkEnvVars(['INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ID']);
-  const configured = [hasYouTube, hasTikTok, hasInstagram].filter(Boolean).length;
-  if (configured === 3) return { name: 'social_publishing', status: 'ok' };
-  if (configured > 0) return { name: 'social_publishing', status: 'degraded', error: `${configured}/3 platforms configured` };
+  const hasLinkedIn = checkEnvVars(['LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_ACCESS_TOKEN']);
+  const platforms = [
+    { name: 'YouTube', ok: hasYouTube },
+    { name: 'TikTok', ok: hasTikTok },
+    { name: 'Instagram', ok: hasInstagram },
+    { name: 'LinkedIn', ok: hasLinkedIn },
+  ];
+  const configured = platforms.filter(p => p.ok).length;
+  const missing = platforms.filter(p => !p.ok).map(p => p.name);
+  if (configured === 4) return { name: 'social_publishing', status: 'ok' };
+  if (configured > 0) return { name: 'social_publishing', status: 'degraded', error: `${configured}/4 platforms (missing: ${missing.join(', ')})` };
   return { name: 'social_publishing', status: 'disabled', error: 'No social publishing keys (placeholder mode)' };
 }
 
