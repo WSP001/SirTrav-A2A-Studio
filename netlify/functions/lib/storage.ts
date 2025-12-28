@@ -16,6 +16,31 @@ export interface StorageResult {
 const DEFAULT_MAX_MB = 500;
 const DEFAULT_EXPIRY_SECONDS = 24 * 60 * 60;
 
+type BlobsStoreOptions = {
+  name: string;
+  siteID?: string;
+  token?: string;
+};
+
+/**
+ * Get a configured Netlify Blobs store that works in local dev
+ * Reads NETLIFY_SITE_ID/NETLIFY_API_TOKEN from env so local `netlify dev` works
+ */
+export const getConfiguredBlobsStore = (name: string) => {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+  const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+
+  const opts: BlobsStoreOptions = { name };
+  if (siteID) opts.siteID = siteID;
+  if (token) opts.token = token;
+
+  if (!siteID || !token) {
+    console.warn('[NetlifyBlobs] NETLIFY_SITE_ID or NETLIFY_API_TOKEN missing; relying on Netlify-injected credentials');
+  }
+
+  return getStore(opts);
+};
+
 const mimeLookup: Record<string, string> = {
   mp4: 'video/mp4',
   webm: 'video/webm',
@@ -226,6 +251,10 @@ class NetlifyBlobsStorage {
     this.storeName = storeName;
   }
 
+  private store() {
+    return getConfiguredBlobsStore(this.storeName);
+  }
+
   /**
    * Upload a file to Netlify Blobs
    */
@@ -245,7 +274,7 @@ class NetlifyBlobsStorage {
         };
       }
 
-      const store = getStore(this.storeName);
+      const store = this.store();
       const fileBuffer = readFileSync(localPath);
       const contentType = resolveContentType(localPath);
 
@@ -289,7 +318,7 @@ class NetlifyBlobsStorage {
     const { contentType = 'application/octet-stream', metadata = {} } = opts;
 
     try {
-      const store = getStore(this.storeName);
+      const store = this.store();
       const buffer = typeof data === 'string' ? Buffer.from(data) : data;
 
       await store.set(key, buffer, {
@@ -325,7 +354,7 @@ class NetlifyBlobsStorage {
    */
   async get(key: string): Promise<{ ok: boolean; data?: Buffer; metadata?: Record<string, string>; error?: string }> {
     try {
-      const store = getStore(this.storeName);
+      const store = this.store();
       const blob = await store.get(key, { type: 'arrayBuffer' });
       
       if (!blob) {
@@ -352,7 +381,7 @@ class NetlifyBlobsStorage {
    */
   async delete(key: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      const store = getStore(this.storeName);
+      const store = this.store();
       await store.delete(key);
       console.log(`[NetlifyBlobs] Deleted ${key}`);
       return { ok: true };
@@ -369,7 +398,7 @@ class NetlifyBlobsStorage {
    */
   async list(prefix?: string): Promise<{ ok: boolean; keys?: string[]; error?: string }> {
     try {
-      const store = getStore(this.storeName);
+      const store = this.store();
       const { blobs } = await store.list({ prefix });
       const keys = blobs.map((b: { key: string }) => b.key);
       return { ok: true, keys };
@@ -405,11 +434,11 @@ export const videoStore = new NetlifyBlobsStorage('sirtrav-videos');
 export const audioStore = new NetlifyBlobsStorage('sirtrav-audio');
 export const imageStore = new NetlifyBlobsStorage('sirtrav-images');
 export const creditsStore = new NetlifyBlobsStorage('sirtrav-credits');
-export const uploadsStore = () => getStore('sirtrav-uploads');
-export const evalsStore = () => getStore('sirtrav-evals');
-export const runsStore = () => getStore('sirtrav-runs');
-export const artifactsStore = () => getStore('sirtrav-artifacts');
-export const exportsStore = () => getStore('sirtrav-exports');
+export const uploadsStore = () => getConfiguredBlobsStore('sirtrav-uploads');
+export const evalsStore = () => getConfiguredBlobsStore('sirtrav-evals');
+export const runsStore = () => getConfiguredBlobsStore('sirtrav-runs');
+export const artifactsStore = () => getConfiguredBlobsStore('sirtrav-artifacts');
+export const exportsStore = () => getConfiguredBlobsStore('sirtrav-exports');
 
 /**
  * Factory function to create appropriate storage backend
