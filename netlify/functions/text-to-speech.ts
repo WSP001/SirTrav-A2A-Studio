@@ -48,7 +48,7 @@ const CHARACTER_VOICES: Record<string, string> = {
   sir_james: 'SirJames',
   narrator: 'Narrator',
   child: 'Child',
-  default: 'Rachel',
+  default: 'Adam',
 };
 
 const headers = {
@@ -89,10 +89,10 @@ function estimateCost(text: string): number {
 function getVoiceId(voiceName?: string, character?: string): string {
   if (character && CHARACTER_VOICES[character.toLowerCase()]) {
     const mapped = CHARACTER_VOICES[character.toLowerCase()];
-    return VOICES[mapped]?.id || VOICES.Rachel.id;
+    return VOICES[mapped]?.id || VOICES.Adam.id;
   }
   if (voiceName && VOICES[voiceName]) return VOICES[voiceName].id;
-  return VOICES.Rachel.id;
+  return VOICES.Adam.id;
 }
 
 export default async (req: Request) => {
@@ -108,7 +108,7 @@ export default async (req: Request) => {
     }
 
     const runId = request.runId || `run-${Date.now()}`;
-    const voiceName = request.voice_id || 'Rachel';
+    const voiceName = request.voice_id || 'Adam';
     const voiceId = getVoiceId(request.voice_id, request.character);
     const wordCount = request.text.split(/\s+/).length;
     const segment = request.segment || 0;

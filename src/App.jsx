@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink } from "lucide-react";
+import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink, LayoutGrid } from "lucide-react";
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 
@@ -31,6 +31,11 @@ function App() {
   const [showResultsPreview, setShowResultsPreview] = useState(false);
   const [currentRunId, setCurrentRunId] = useState(null);
 
+  // Click-to-Kick State
+  const [targetPlatform, setTargetPlatform] = useState('tiktok'); // tiktok, instagram, youtube_shorts, linkedin, twitter
+  const [musicMode, setMusicMode] = useState('manual'); // suno, manual
+  const [manualMusicFile, setManualMusicFile] = useState(null); // File object if uploaded
+
   // File drop handler
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -58,13 +63,13 @@ function App() {
   // REAL pipeline execution - calls backend agents
   const runPipeline = async () => {
     if (files.length === 0) return;
-    
+
     setPipelineStatus('running');
     const newRunId = `run-${Date.now()}`;
     setCurrentRunId(newRunId);
     setMetrics({ cost: 0, time: 0 });
     const startTime = Date.now();
-    
+
     // Reset agent states
     AGENTS.forEach(agent => {
       setAgentStates(prev => ({ ...prev, [agent.id]: 'pending' }));
@@ -75,7 +80,7 @@ function App() {
       // Step 1: Upload files with actual base64 data
       setAgentStates(prev => ({ ...prev, director: 'processing' }));
       setLogs(prev => ({ ...prev, director: ['> Uploading assets to backend...'] }));
-      
+
       for (const file of files) {
         const base64 = await fileToBase64(file);
         const uploadResponse = await fetch('/.netlify/functions/intake-upload', {
@@ -88,7 +93,7 @@ function App() {
             fileBase64: base64,
           }),
         });
-        
+
         if (!uploadResponse.ok) {
           throw new Error(`Upload failed for ${file.name}`);
         }
@@ -97,7 +102,7 @@ function App() {
 
       // Step 2: Start the real pipeline
       setLogs(prev => ({ ...prev, director: [...(prev.director || []), '> Starting 7-agent pipeline...'] }));
-      
+
       const startResponse = await fetch('/.netlify/functions/start-pipeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +111,11 @@ function App() {
           runId: newRunId,
           payload: {
             images: files.map(f => ({ id: f.name, url: `uploads/${projectId}/${f.name}` })),
-            projectMode: 'commons_public',
+            projectMode: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'business_public' : 'commons_public',
+            socialPlatform: targetPlatform,
+            outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
+            musicMode,
+            manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined
           },
         }),
       });
@@ -121,18 +130,18 @@ function App() {
         try {
           const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}&runId=${newRunId}`);
           const data = await res.json();
-          
+
           // Update metrics
-          setMetrics({ 
-            cost: data.cost || 0, 
-            time: (Date.now() - startTime) / 1000 
+          setMetrics({
+            cost: data.cost || 0,
+            time: (Date.now() - startTime) / 1000
           });
-          
+
           // Update agent states from backend
           if (data.step) {
             const agentMap = ['director', 'writer', 'voice', 'composer', 'editor', 'attribution', 'publisher'];
             const currentIdx = agentMap.indexOf(data.step);
-            
+
             agentMap.forEach((agentId, idx) => {
               if (idx < currentIdx) {
                 setAgentStates(prev => ({ ...prev, [agentId]: 'done' }));
@@ -140,18 +149,18 @@ function App() {
                 setAgentStates(prev => ({ ...prev, [agentId]: data.status === 'complete' ? 'done' : 'processing' }));
               }
             });
-            
-            setLogs(prev => ({ 
-              ...prev, 
-              [data.step]: [...(prev[data.step] || []), `> ${data.message || data.step}`] 
+
+            setLogs(prev => ({
+              ...prev,
+              [data.step]: [...(prev[data.step] || []), `> ${data.message || data.step}`]
             }));
           }
-          
+
           // Check if complete
           if (data.status === 'complete') {
             setPipelineStatus('completed');
             AGENTS.forEach(agent => setAgentStates(prev => ({ ...prev, [agent.id]: 'done' })));
-            
+
             setVideoResult({
               runId: newRunId,
               videoUrl: data.artifacts?.videoUrl || '/test-assets/test-video.mp4',
@@ -165,11 +174,11 @@ function App() {
             });
             return;
           }
-          
+
           if (data.status === 'failed' || data.status === 'error') {
             throw new Error(data.error || 'Pipeline failed');
           }
-          
+
           // Continue polling
           setTimeout(pollProgress, 2000);
         } catch (pollError) {
@@ -177,10 +186,10 @@ function App() {
           setPipelineStatus('error');
         }
       };
-      
+
       // Start polling
       pollProgress();
-      
+
     } catch (error) {
       console.error('Pipeline error:', error);
       setPipelineStatus('error');
@@ -202,7 +211,7 @@ function App() {
           timestamp: new Date().toISOString(),
         }),
       });
-      
+
       if (response.ok) {
         alert(`Thanks for your feedback: ${rating === 'good' ? '👍' : '👎'}`);
       }
@@ -223,7 +232,7 @@ function App() {
             <span className="text-lg font-semibold text-white">SirTrav A2A Studio</span>
             <span className="version-badge">{APP_VERSION}</span>
           </div>
-          
+
           <nav className="flex items-center gap-4">
             <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Documentation</a>
             <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault Status</a>
@@ -253,7 +262,7 @@ function App() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-2 gap-8">
-          
+
           {/* Left Panel: Input Source */}
           <div className="space-y-6">
             <div className="glass-card p-6">
@@ -271,8 +280,8 @@ function App() {
                 <label className="text-xs text-gray-500 uppercase tracking-wide">Project ID / Job Ticket</label>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-gray-500">#</span>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
                     className="input-field flex-1"
@@ -281,7 +290,7 @@ function App() {
               </div>
 
               {/* File Drop Zone */}
-              <div 
+              <div
                 className="drop-zone"
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
@@ -347,7 +356,7 @@ function App() {
                     <p className="text-xs text-gray-500">Cost Distrib</p>
                     <div className="flex gap-0.5 mt-1">
                       {[40, 60, 80, 50, 30, 20, 10].map((h, i) => (
-                        <div key={i} className="w-2 bg-amber-500 rounded-sm" style={{height: `${h}%`, maxHeight: '24px'}} />
+                        <div key={i} className="w-2 bg-amber-500 rounded-sm" style={{ height: `${h}%`, maxHeight: '24px' }} />
                       ))}
                     </div>
                   </div>
@@ -359,12 +368,12 @@ function App() {
           {/* Right Panel: Agent Orchestration */}
           <div className="glass-card p-6">
             <h2 className="section-title mb-6">Agent Orchestration</h2>
-            
+
             <div className="space-y-4">
               {AGENTS.map((agent) => {
                 const state = agentStates[agent.id] || 'pending';
                 const agentLogs = logs[agent.id] || [];
-                
+
                 return (
                   <div key={agent.id} className={`agent-card ${state}`}>
                     <div className="flex items-start gap-4">
@@ -377,11 +386,11 @@ function App() {
                           <div className="flex items-center gap-2">
                             {state === 'done' && <span className="text-green-400 text-xs">DONE</span>}
                             {state === 'processing' && <span className="text-amber-400 text-xs">PROCESSING</span>}
-                            {state === 'done' && <span className="text-gray-500 text-xs">$0.0{Math.floor(Math.random()*9)}</span>}
+                            {state === 'done' && <span className="text-gray-500 text-xs">$0.0{Math.floor(Math.random() * 9)}</span>}
                           </div>
                         </div>
                         <p className="text-sm text-gray-500">{agent.description}</p>
-                        
+
                         {/* Progress bar for processing */}
                         {state === 'processing' && (
                           <div className="mt-2 h-1 bg-gray-700 rounded-full overflow-hidden">
@@ -391,7 +400,7 @@ function App() {
                         {state === 'done' && (
                           <div className="mt-2 h-1 bg-green-500 rounded-full" />
                         )}
-                        
+
                         {/* Logs */}
                         {agentLogs.length > 0 && (
                           <div className="mt-2 font-mono text-xs text-gray-500 space-y-0.5">
@@ -407,29 +416,99 @@ function App() {
               })}
             </div>
 
-            {/* Action Button */}
-            <button 
-              onClick={runPipeline}
-              disabled={files.length === 0 || pipelineStatus === 'running'}
-              className={`action-button mt-6 ${pipelineStatus === 'running' ? 'running' : ''}`}
-            >
-              {pipelineStatus === 'running' ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Agents Working...</span>
-                </>
-              ) : pipelineStatus === 'completed' ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  <span>Pipeline Complete!</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  <span>Click2Kick</span>
-                </>
-              )}
-            </button>
+            {/* Click-to-Kick Dashboard (Launchpad) */}
+            <div className={`mt-6 p-4 rounded-xl border border-gray-700 transition-all ${files.length > 0 ? 'bg-gray-800/80' : 'bg-gray-800/40 opacity-75'
+              }`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-brand-400" />
+                  Click-to-Kick Launchpad
+                </h3>
+                {files.length === 0 && (
+                  <span className="text-xs text-amber-500 animate-pulse">Upload assets to unlock</span>
+                )}
+              </div>
+
+              {/* Platform Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {[
+                  { id: 'tiktok', label: 'TikTok', icon: '🎵', ratio: '9:16' },
+                  { id: 'instagram', label: 'Reels', icon: '📸', ratio: '9:16' },
+                  { id: 'youtube_shorts', label: 'Shorts', icon: '▶️', ratio: '9:16' },
+                  { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' },
+                  { id: 'twitter', label: 'X / Twitter', icon: '🐦', ratio: '16:9' }
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setTargetPlatform(p.id)}
+                    disabled={files.length === 0 || pipelineStatus === 'running'}
+                    className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
+                        ? 'bg-purple-900/60 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                        : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
+                      } ${files.length === 0 ? 'cursor-not-allowed grayscale opacity-50' : 'cursor-pointer'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-lg">{p.icon}</span>
+                      <span className="text-[10px] font-mono text-gray-400 bg-black/40 px-1 rounded">{p.ratio}</span>
+                    </div>
+                    <span className={`text-xs font-semibold block ${targetPlatform === p.id ? 'text-white' : 'text-gray-400'}`}>
+                      {p.label}
+                    </span>
+                    {targetPlatform === p.id && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-ping" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Music Mode Toggle */}
+              <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Audio Engine</label>
+                  <span className="text-[10px] text-gray-400">{musicMode === 'suno' ? 'AI Generated (Requires API)' : 'Local File Fallback'}</span>
+                </div>
+                <div className="flex bg-gray-900 rounded p-0.5">
+                  <button
+                    onClick={() => setMusicMode('suno')}
+                    disabled={files.length === 0}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'suno' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  >
+                    Suno AI
+                  </button>
+                  <button
+                    onClick={() => setMusicMode('manual')}
+                    disabled={files.length === 0}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'manual' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  >
+                    Manual Mode
+                  </button>
+                </div>
+              </div>
+
+              {/* Big Launch Button */}
+              <button
+                onClick={runPipeline}
+                disabled={files.length === 0 || pipelineStatus === 'running'}
+                className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
+                    ? 'bg-gray-700 cursor-wait'
+                    : files.length > 0
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-900/40'
+                      : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                  }`}
+              >
+                {pipelineStatus === 'running' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    INITIALIZING AGENTS...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    LAUNCH {targetPlatform.replace('_', ' ').toUpperCase()} AGENT
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -449,7 +528,7 @@ function App() {
               {/* Video Preview - Real playable video */}
               <div className="space-y-4">
                 <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
-                  <video 
+                  <video
                     src={videoResult.videoUrl}
                     controls
                     poster={videoResult.thumbnailUrl}
@@ -479,13 +558,13 @@ function App() {
                 {/* Feedback */}
                 <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">
                   <span className="text-sm text-gray-400">Rate this output:</span>
-                  <button 
+                  <button
                     onClick={() => handleFeedback('good')}
                     className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors"
                   >
                     <ThumbsUp className="w-4 h-4" /> Good
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleFeedback('bad')}
                     className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
                   >
@@ -497,26 +576,26 @@ function App() {
               {/* Publishing Options */}
               <div className="space-y-4">
                 <h3 className="font-medium text-white">Publishing Options</h3>
-                
+
                 {/* Privacy Mode */}
                 <div className="space-y-2">
                   <label className="text-xs text-gray-500 uppercase tracking-wide">Visibility</label>
                   <div className="grid grid-cols-3 gap-2">
-                    <button 
+                    <button
                       onClick={() => setPublishMode('private')}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'private' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
                       <Lock className="w-4 h-4" />
                       <span className="text-xs">Private</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => setPublishMode('unlisted')}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'unlisted' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
                       <Share2 className="w-4 h-4" />
                       <span className="text-xs">Unlisted</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => setPublishMode('public')}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'public' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
@@ -527,7 +606,7 @@ function App() {
                 </div>
 
                 {/* Download Button */}
-                <a 
+                <a
                   href={videoResult.videoUrl}
                   download={`${projectId}-video.mp4`}
                   className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
@@ -565,9 +644,9 @@ function App() {
 
                 {/* Copy Link */}
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    readOnly 
+                  <input
+                    type="text"
+                    readOnly
                     value={`https://sirtrav.studio/v/${projectId}`}
                     className="input-field flex-1 text-sm"
                   />
@@ -643,12 +722,12 @@ function App() {
 }
 
 // Helper to get week number
-Date.prototype.getWeekNumber = function() {
+Date.prototype.getWeekNumber = function () {
   const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 };
 
 export default App;

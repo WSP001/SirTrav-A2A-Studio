@@ -17,7 +17,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 
 interface OutputFormat {
   objective: 'personal' | 'social';
-  platform?: 'tiktok' | 'youtube_shorts' | 'instagram' | 'youtube_full';
+  platform?: 'tiktok' | 'youtube_shorts' | 'instagram' | 'youtube_full' | 'linkedin' | 'twitter';
   aspectRatio: string;
   maxDuration?: number;
 }
@@ -25,11 +25,13 @@ interface OutputFormat {
 interface GenerateVideoRequest {
   projectId: string;
   outputObjective?: 'personal' | 'social';
-  socialPlatform?: 'tiktok' | 'youtube_shorts' | 'instagram' | 'youtube_full';
+  socialPlatform?: 'tiktok' | 'youtube_shorts' | 'instagram' | 'youtube_full' | 'linkedin' | 'twitter';
   outputFormat?: OutputFormat;
   chaosMode?: boolean;
   prompt?: string;
   images?: Array<{ id: string; url: string; base64?: string }>;
+  musicMode?: 'suno' | 'manual';
+  manualMusicFile?: string;
 }
 
 interface GenerateVideoResponse {
@@ -75,7 +77,7 @@ function getAspectRatio(outputFormat?: OutputFormat): { width: number; height: n
 
 function getTestVideoResponse(projectId: string, outputFormat?: OutputFormat): GenerateVideoResponse {
   console.log(`🎬 [generate-video] TEST MODE: Returning static test video for ${projectId}`);
-  
+
   return {
     ok: true,
     projectId,
@@ -107,18 +109,18 @@ async function generateSimpleSlideshow(
   outputFormat?: OutputFormat
 ): Promise<GenerateVideoResponse | null> {
   const creatomateApiKey = process.env.CREATOMATE_API_KEY;
-  
+
   if (!creatomateApiKey) {
     console.log('⚠️ CREATOMATE_API_KEY not set, cannot generate slideshow');
     return null;
   }
-  
+
   const { width, height } = getAspectRatio(outputFormat);
   const duration = Math.min(outputFormat?.maxDuration || 60, images.length * 3); // 3s per image
-  
+
   try {
     console.log(`🎬 Creating slideshow: ${images.length} images, ${width}x${height}, ${duration}s`);
-    
+
     // Build Creatomate render request
     const renderRequest = {
       template_id: process.env.CREATOMATE_TEMPLATE_ID, // Or use inline template
@@ -147,7 +149,7 @@ async function generateSimpleSlideshow(
         })),
       },
     };
-    
+
     const response = await fetch('https://api.creatomate.com/v1/renders', {
       method: 'POST',
       headers: {
@@ -156,15 +158,15 @@ async function generateSimpleSlideshow(
       },
       body: JSON.stringify(renderRequest),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       console.error('Creatomate API error:', error);
       return null;
     }
-    
+
     const result = await response.json();
-    
+
     // Creatomate returns render ID - need to poll or use webhook
     if (result[0]?.url) {
       return {
@@ -187,7 +189,7 @@ async function generateSimpleSlideshow(
         outputFormat,
       };
     }
-    
+
     // If async, return processing status
     return {
       ok: true,
@@ -204,7 +206,7 @@ async function generateSimpleSlideshow(
         publisher: 'pending',
       },
     };
-    
+
   } catch (error) {
     console.error('Slideshow generation failed:', error);
     return null;
@@ -219,21 +221,23 @@ async function runFullPipeline(
   projectId: string,
   images: Array<{ id: string; url: string }>,
   outputFormat?: OutputFormat,
-  chaosMode?: boolean
+  chaosMode?: boolean,
+  musicMode?: 'suno' | 'manual',
+  manualMusicFile?: string
 ): Promise<GenerateVideoResponse> {
   const baseUrl = process.env.URL || 'http://localhost:8888';
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   const hasElevenLabs = !!process.env.ELEVENLABS_API_KEY;
   const hasFFmpeg = !!process.env.FFMPEG_SERVICE_URL;
-  
+
   console.log(`🎬 Full Pipeline: OpenAI=${hasOpenAI}, ElevenLabs=${hasElevenLabs}, FFmpeg=${hasFFmpeg}`);
-  
+
   // If missing critical APIs, fall back to test mode
   if (!hasOpenAI || !hasFFmpeg) {
     console.log('⚠️ Missing critical APIs, falling back to test mode');
     return getTestVideoResponse(projectId, outputFormat);
   }
-  
+
   try {
     // Step 1: Director - Curate media
     console.log('🎬 Step 1: Director...');
@@ -250,7 +254,7 @@ async function runFullPipeline(
       }),
     });
     const curatedMedia = await directorResponse.json();
-    
+
     // Step 2: Writer - Generate narrative
     console.log('✍️ Step 2: Writer...');
     const writerResponse = await fetch(`${baseUrl}/.netlify/functions/narrate-project`, {
@@ -264,7 +268,7 @@ async function runFullPipeline(
       }),
     });
     const narrative = await writerResponse.json();
-    
+
     // Step 3: Voice - Text to speech (optional)
     let voiceResult = { audioUrl: null, duration: 0 };
     if (hasElevenLabs && narrative.narrative) {
@@ -280,11 +284,13 @@ async function runFullPipeline(
       });
       voiceResult = await voiceResponse.json();
     }
-    
-    // Step 4: Composer - Generate music (optional)
+
+    // Step 4: Composer - Generate music (optional or manual)
     let musicResult = { musicUrl: null };
-    if (process.env.SUNO_API_KEY) {
-      console.log('🎵 Step 4: Composer...');
+    const shouldRunComposer = process.env.SUNO_API_KEY || musicMode === 'manual';
+
+    if (shouldRunComposer) {
+      console.log(`🎵 Step 4: Composer (${musicMode === 'manual' ? 'Manual' : 'Suno'})...`);
       const composerResponse = await fetch(`${baseUrl}/.netlify/functions/generate-music`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -292,11 +298,13 @@ async function runFullPipeline(
           projectId,
           mood: curatedMedia.mood || 'inspiring',
           duration: narrative.estimatedDuration || 30,
+          manualFile: musicMode === 'manual' ? manualMusicFile : undefined,
+          mode: musicMode === 'manual' ? 'manual' : 'suno'
         }),
       });
       musicResult = await composerResponse.json();
     }
-    
+
     // Step 5: Editor - Compile video (CRITICAL)
     console.log('🎞️ Step 5: Editor...');
     const editorResponse = await fetch(`${baseUrl}/.netlify/functions/compile-video`, {
@@ -311,7 +319,7 @@ async function runFullPipeline(
       }),
     });
     const video = await editorResponse.json();
-    
+
     // Step 6: Attribution
     console.log('📜 Step 6: Attribution...');
     const attributionResponse = await fetch(`${baseUrl}/.netlify/functions/generate-attribution`, {
@@ -320,7 +328,7 @@ async function runFullPipeline(
       body: JSON.stringify({ projectId }),
     });
     const credits = await attributionResponse.json();
-    
+
     return {
       ok: true,
       projectId,
@@ -333,14 +341,14 @@ async function runFullPipeline(
         director: 'completed',
         writer: 'completed',
         voice: hasElevenLabs ? 'completed' : 'skipped',
-        composer: process.env.SUNO_API_KEY ? 'completed' : 'skipped',
+        composer: (process.env.SUNO_API_KEY || musicMode === 'manual') ? 'completed' : 'skipped',
         editor: 'completed',
         attribution: 'completed',
         publisher: 'skipped',
       },
       outputFormat,
     };
-    
+
   } catch (error) {
     console.error('Pipeline error:', error);
     return {
@@ -383,13 +391,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     // Parse request body
     const body: GenerateVideoRequest = event.body ? JSON.parse(event.body) : {};
-    const { 
-      projectId, 
+    const {
+      projectId,
       outputObjective = 'personal',
       socialPlatform,
       outputFormat,
       chaosMode = false,
       images = [],
+      musicMode,
+      manualMusicFile
     } = body;
 
     // Validate projectId
@@ -397,16 +407,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          ok: false, 
+        body: JSON.stringify({
+          ok: false,
           error: 'projectId_required',
-          detail: 'Request must include a projectId' 
+          detail: 'Request must include a projectId'
         }),
       };
     }
 
-    console.log('🎬 generate-video called:', { 
-      projectId, 
+    console.log('🎬 generate-video called:', {
+      projectId,
       outputObjective,
       socialPlatform,
       imageCount: images.length,
@@ -418,9 +428,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
       objective: outputObjective,
       platform: socialPlatform,
       aspectRatio: outputObjective === 'social' && socialPlatform !== 'youtube_full' ? '9:16' : '16:9',
-      maxDuration: socialPlatform === 'tiktok' || socialPlatform === 'youtube_shorts' ? 60 
-                 : socialPlatform === 'instagram' ? 90 
-                 : undefined,
+      maxDuration: socialPlatform === 'tiktok' || socialPlatform === 'youtube_shorts' ? 60
+        : socialPlatform === 'instagram' ? 90
+          : undefined,
     };
 
     // Decide which mode to use
@@ -428,7 +438,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
     const hasFFmpeg = !!process.env.FFMPEG_SERVICE_URL;
     const forceTestMode = process.env.USE_TEST_VIDEO === 'true';
-    
+
     let response: GenerateVideoResponse;
 
     if (forceTestMode) {
@@ -440,7 +450,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       response = slideshowResult || getTestVideoResponse(projectId, format);
     } else if (hasOpenAI && hasFFmpeg) {
       // Full pipeline mode
-      response = await runFullPipeline(projectId, images, format, chaosMode);
+      response = await runFullPipeline(projectId, images, format, chaosMode, musicMode, manualMusicFile);
     } else {
       // Fallback to test mode
       console.log('⚠️ No video generation APIs configured, using test mode');
