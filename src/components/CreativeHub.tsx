@@ -26,10 +26,10 @@ interface CreativeHubProps {
 }
 
 // v1.9.0-THEME - Added theme attachment toggle (default ON)
-export const CreativeHub: React.FC<CreativeHubProps> = ({ 
-  onPipelineStart, 
+export const CreativeHub: React.FC<CreativeHubProps> = ({
+  onPipelineStart,
   onPipelineComplete,
-  onStatusChange 
+  onStatusChange
 }) => {
   const [status, setStatus] = useState<PipelineStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
@@ -44,7 +44,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
       setShowPrefsModal(true);
     }
   }, [isLoaded, preferences.hasCompletedOnboarding]);
-  
+
   // Theme Attachment State - default ON
   const [projectId] = useState(() => `project-${Date.now()}`);
   const [attachTheme, setAttachTheme] = useState(true);
@@ -90,7 +90,15 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'text/plain': ['.txt', '.md'],
+      'image/*': ['.jpg', '.jpeg', '.png', '.webp'],
+      'audio/*': ['.mp3', '.wav'],
+      'video/*': ['.mp4', '.mov']
+    }
+  });
 
   const clearTheme = () => {
     localStorage.removeItem(`sj:theme:${projectId}`);
@@ -112,7 +120,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
     setStatus('validating');
     onStatusChange('validating');
     onPipelineStart(projectId);
-    
+
     // Use stable projectId from state
     const pid = projectId;
 
@@ -125,7 +133,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
         const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             projectId: pid,
             filename: file.name,
             contentType: file.type,
@@ -197,7 +205,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
         <div className="flex items-center justify-center gap-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium animate-bounce-subtle">
             <Sparkles className="w-4 h-4" />
-            <span>7-Agent AI Pipeline Ready</span>
+            <span>Live Gemini-Powered Pipeline</span>
           </div>
           {/* User Preferences Button */}
           <button
@@ -248,18 +256,18 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
         {/* Input Zone */}
         <div className="lg:col-span-2 space-y-6">
           {/* Upload Card */}
-          <div 
-            {...getRootProps()} 
+          <div
+            {...getRootProps()}
             className={`glass-card p-10 text-center cursor-pointer group transition-all duration-300
-              ${isDragActive 
-                ? 'border-brand-500 bg-brand-500/10 shadow-glow-md scale-[1.02]' 
+              ${isDragActive
+                ? 'border-brand-500 bg-brand-500/10 shadow-glow-md scale-[1.02]'
                 : 'hover:border-brand-500/50 hover:shadow-glow-sm'}`}
           >
             <input {...getInputProps()} />
             <div className="relative">
               <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300
-                ${isDragActive 
-                  ? 'bg-brand-500 shadow-glow-md scale-110' 
+                ${isDragActive
+                  ? 'bg-brand-500 shadow-glow-md scale-110'
                   : 'bg-gradient-to-br from-brand-500/20 to-accent-purple/20 group-hover:from-brand-500/30 group-hover:to-accent-purple/30'}`}>
                 <Upload className={`w-10 h-10 transition-all duration-300 ${isDragActive ? 'text-white animate-bounce-subtle' : 'text-brand-400'}`} />
               </div>
@@ -306,7 +314,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
                         <p className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); removeFile(i); }}
                       className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 transition-all"
                     >
@@ -332,7 +340,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 
             <div className="space-y-3 flex-grow">
               {[
-                { name: 'Script Analysis', model: 'GPT-4o', color: 'brand', icon: '📝' },
+                { name: 'Script Analysis', model: 'Gemini 1.5 Pro', color: 'brand', icon: '📝' },
                 { name: 'Voice Synthesis', model: 'ElevenLabs', color: 'emerald', icon: '🎙️' },
                 { name: 'Video Generation', model: 'Stable Video', color: 'amber', icon: '🎬' },
                 { name: 'Music Composition', model: 'SUNO AI', color: 'pink', icon: '🎵' },
@@ -363,15 +371,15 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
                 </div>
                 <button
                   onClick={() => setAttachTheme(!attachTheme)}
-                  className={`p-2 rounded-lg transition-all ${attachTheme 
-                    ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' 
+                  className={`p-2 rounded-lg transition-all ${attachTheme
+                    ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
                     : 'bg-white/5 text-zinc-500 hover:text-white border border-white/5'}`}
                   title={attachTheme ? 'Theme attached' : 'Theme detached'}
                 >
                   {attachTheme ? <Link className="w-4 h-4" /> : <Unlink className="w-4 h-4" />}
                 </button>
               </div>
-              
+
               {/* Theme Preview (when attached and available) */}
               {attachTheme && theme && (
                 <div className="mt-3 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20">
@@ -395,8 +403,8 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
             </div>
 
             <div className="mt-6 pt-6 border-t border-white/5">
-              <Click2KickButton 
-                status={status} 
+              <Click2KickButton
+                status={status}
                 onClick={startPipeline}
               />
               <div className="flex items-center justify-center gap-2 mt-4 text-xs text-zinc-500">
@@ -414,15 +422,15 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
       </div>
 
       {/* Creative Brief - Below main grid */}
-      <CreativeBrief 
+      <CreativeBrief
         onBriefChange={setCreativeBrief}
         initialBrief={{
-          mood: preferences.preferredStyle === 'cinematic' ? 'cinematic' 
-              : preferences.preferredStyle === 'vibrant' ? 'energetic'
+          mood: preferences.preferredStyle === 'cinematic' ? 'cinematic'
+            : preferences.preferredStyle === 'vibrant' ? 'energetic'
               : preferences.preferredStyle === 'minimal' ? 'peaceful'
-              : 'cinematic',
+                : 'cinematic',
           pace: preferences.preferredLength === 'short' ? 'fast'
-              : preferences.preferredLength === 'long' ? 'slow'
+            : preferences.preferredLength === 'long' ? 'slow'
               : 'medium',
         }}
       />

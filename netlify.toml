@@ -1,42 +1,16 @@
 [build]
-  # Clean any corrupted node_modules, remove stale lock, fresh install
-  # CACHE BUSTER v1.6.2 - Force complete rebuild with beautiful UI
-  command = "rm -rf node_modules package-lock.json .vite dist && npm install --legacy-peer-deps && npm run build"
+  command = "npm run build"
   publish = "dist"
 
-[build.environment]
-  NODE_VERSION = "18"
-  # Default to mock storage for testing (no AWS needed!)
-  STORAGE_BACKEND = "mock"
-  # Cache buster timestamp: 2025-01-20T16:00:00Z
-  REBUILD_VERSION = "1.6.2-beautiful-ui"
+[dev]
+  command = "npm run dev"
+  port = 8888
+  targetPort = 5173
 
-# SPA Routing - Handle 404s for React Router
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# API Functions
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
-
-# Environment hint (set actual keys in Netlify UI)
-# Required for production:
-#   OPENAI_API_KEY - For AI agents (ROTATE AFTER TESTING!)
-#   NODE_ENV - "production" for prod, "development" for test
-#   HONEYCOMB_API_KEY - For tracing (optional)
-
-# Headers for social media crawlers
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[headers]]
-  for = "/og-image.png"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"

@@ -56,7 +56,7 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
     // Try SSE first, fall back to polling
     const connectSSE = () => {
       const url = `/.netlify/functions/progress?projectId=${projectId}&stream=true`;
-      
+
       try {
         const es = new EventSource(url);
         eventSourceRef.current = es;
@@ -97,7 +97,7 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
 
     const startPolling = () => {
       setConnectionStatus('connected');
-      
+
       const poll = async () => {
         try {
           const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}`);
@@ -135,7 +135,7 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
   }, [projectId, onComplete, onError]);
 
   // Calculate progress percentage
-  const completedSteps = progress?.steps?.filter(s => 
+  const completedSteps = progress?.steps?.filter(s =>
     s.status === 'completed' || s.status === 'fallback'
   ).length || 0;
   const totalSteps = AGENTS.length;
@@ -149,11 +149,11 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'running': return 'bg-blue-500 animate-pulse';
-      case 'failed': return 'bg-red-500';
-      case 'fallback': return 'bg-yellow-500';
-      default: return 'bg-gray-600';
+      case 'completed': return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]';
+      case 'running': return 'bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+      case 'failed': return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
+      case 'fallback': return 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]';
+      default: return 'bg-zinc-700';
     }
   };
 
@@ -177,11 +177,10 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
             Project: <code className="bg-[var(--color-bg-primary)] px-2 py-0.5 rounded">{projectId}</code>
           </p>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
-          connectionStatus === 'error' ? 'bg-red-500/20 text-red-400' :
-          'bg-yellow-500/20 text-yellow-400'
-        }`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-medium ${connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
+            connectionStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+              'bg-yellow-500/20 text-yellow-400'
+          }`}>
           {connectionStatus === 'connected' ? '● Live' : connectionStatus === 'error' ? '● Disconnected' : '● Connecting...'}
         </div>
       </div>
@@ -193,7 +192,7 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
           <span className="text-[var(--color-text-primary)] font-medium">{progressPercent}%</span>
         </div>
         <div className="h-3 bg-[var(--color-bg-primary)] rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
@@ -205,17 +204,16 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
         {AGENTS.map((agent, index) => {
           const status = getAgentStatus(agent.id);
           return (
-            <div 
+            <div
               key={agent.id}
-              className={`p-4 rounded-lg border transition-all duration-300 ${
-                status.status === 'running' 
-                  ? 'border-blue-500 bg-blue-500/10' 
+              className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
+                  ? 'border-blue-500 bg-blue-500/10'
                   : status.status === 'completed'
-                  ? 'border-green-500/50 bg-green-500/5'
-                  : status.status === 'failed'
-                  ? 'border-red-500/50 bg-red-500/5'
-                  : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
-              }`}
+                    ? 'border-green-500/50 bg-green-500/5'
+                    : status.status === 'failed'
+                      ? 'border-red-500/50 bg-red-500/5'
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-2xl">{agent.icon}</span>
@@ -228,7 +226,7 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
                 </div>
               </div>
               <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
-              
+
               {/* Status indicator */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
