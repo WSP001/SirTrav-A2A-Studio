@@ -443,8 +443,8 @@ function App() {
                     onClick={() => setTargetPlatform(p.id)}
                     disabled={files.length === 0 || pipelineStatus === 'running'}
                     className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
-                        ? 'bg-purple-900/60 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-                        : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
+                      ? 'bg-purple-900/60 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                      : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
                       } ${files.length === 0 ? 'cursor-not-allowed grayscale opacity-50' : 'cursor-pointer'}`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -490,10 +490,10 @@ function App() {
                 onClick={runPipeline}
                 disabled={files.length === 0 || pipelineStatus === 'running'}
                 className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
-                    ? 'bg-gray-700 cursor-wait'
-                    : files.length > 0
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-900/40'
-                      : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                  ? 'bg-gray-700 cursor-wait'
+                  : files.length > 0
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-900/40'
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                   }`}
               >
                 {pipelineStatus === 'running' ? (

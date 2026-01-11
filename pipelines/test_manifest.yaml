@@ -1,0 +1,23 @@
+version: "1.0"
+name: "Orchestrator Smoke Test"
+
+project:
+  id: "smoke-test-001"
+  mode: "commons_public"
+
+steps:
+  - name: "curate_assets"
+    agent: "director"
+    input:
+      project_id: "${project.id}"
+      project_mode: "${project.mode}"
+      images: 
+        - id: "test-img-1"
+          url: "https://via.placeholder.com/150"
+
+  - name: "draft_script"
+    agent: "writer"
+    input:
+      projectId: "${project.id}"
+      theme: "${steps.curate_assets.output.metadata.dominant_mood}"
+      sceneCount: 3

@@ -7,6 +7,7 @@ import { artifactsStore } from './lib/storage';
 import { updateRunIndex } from './lib/runIndex';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { readMemoryIndex, learnFromHistory } from './lib/memory';
 
 interface ThemePreference {
   attached: boolean;
@@ -356,8 +357,13 @@ export default async (req: Request) => {
     }
 
     // Suno or placeholder
-    request.mood = request.mood || 'cinematic';
-    request.genre = request.genre || 'ambient';
+
+    // Memory integration
+    const memory = readMemoryIndex('./Sir-TRAV-scott');
+    const learnedMood = learnFromHistory(memory);
+
+    request.mood = request.mood || learnedMood;
+    request.genre = request.genre || (learnedMood === 'energetic' ? 'electronic' : 'ambient');
     request.duration = request.duration || 90;
     const bpm = selectTempo(request.mood, request.tempo);
     const sunoResult = await generateWithSuno(request);

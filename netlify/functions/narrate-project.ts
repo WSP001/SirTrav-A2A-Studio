@@ -9,6 +9,7 @@
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+import { readMemoryIndex, learnFromHistory } from './lib/memory';
 
 interface NarrateRequest {
   projectId: string;
@@ -39,12 +40,12 @@ interface NarrateResponse {
  */
 async function generateWithOpenAI(request: NarrateRequest): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY;
-  
+
   if (!apiKey) {
     console.log('⚠️ No OpenAI API key, using fallback');
     return null;
   }
-  
+
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -68,15 +69,15 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
         temperature: 0.8,
       }),
     });
-    
+
     if (!response.ok) {
       console.error('OpenAI API error:', response.statusText);
       return null;
     }
-    
+
     const data = await response.json();
     return data.choices[0]?.message?.content || null;
-    
+
   } catch (error) {
     console.error('OpenAI request failed:', error);
     return null;
@@ -107,10 +108,10 @@ function generateFallbackNarrative(request: NarrateRequest): { narrative: string
       "As the scene unfolds, we witness beauty in its most authentic form.",
     ],
   };
-  
+
   const sceneTexts = templates[request.theme] || templates.cinematic;
   const scenes: Scene[] = [];
-  
+
   for (let i = 0; i < request.sceneCount; i++) {
     scenes.push({
       id: i + 1,
@@ -119,25 +120,25 @@ function generateFallbackNarrative(request: NarrateRequest): { narrative: string
       visualCue: `Scene ${i + 1}: ${request.mood} atmosphere`,
     });
   }
-  
+
   const narrative = scenes.map(s => s.text).join(' ');
-  
+
   return { narrative, scenes };
 }
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   console.log('✍️ WRITER AGENT - Narrate Project');
-  
+
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
-  
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -145,10 +146,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
-  
+
   try {
     const request: NarrateRequest = JSON.parse(event.body || '{}');
-    
+
     if (!request.projectId) {
       return {
         statusCode: 400,
@@ -156,19 +157,23 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({ error: 'projectId is required' }),
       };
     }
-    
-    // Set defaults
-    request.theme = request.theme || 'cinematic';
-    request.mood = request.mood || 'inspiring';
+
+    // Load memory for context
+    const memory = readMemoryIndex('./Sir-TRAV-scott'); // Default vault path
+    const learnedMood = learnFromHistory(memory);
+
+    // Set defaults with memory persistence
+    request.theme = request.theme || learnedMood;
+    request.mood = request.mood || (learnedMood === 'energetic' ? 'inspiring' : 'reflective');
     request.sceneCount = request.sceneCount || 4;
-    
+
     // Try OpenAI first, fallback to templates
     let narrative: string;
     let scenes: Scene[];
     let generatedBy: 'openai' | 'fallback' = 'fallback';
-    
+
     const openaiNarrative = await generateWithOpenAI(request);
-    
+
     if (openaiNarrative) {
       narrative = openaiNarrative;
       generatedBy = 'openai';
@@ -185,10 +190,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       narrative = fallback.narrative;
       scenes = fallback.scenes;
     }
-    
+
     const wordCount = narrative.split(/\s+/).length;
     const estimatedDuration = scenes.reduce((sum, s) => sum + s.duration, 0);
-    
+
     const response: NarrateResponse = {
       success: true,
       projectId: request.projectId,
@@ -198,23 +203,23 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       estimatedDuration,
       generatedBy,
     };
-    
+
     console.log(`✅ Generated ${scenes.length} scenes, ${wordCount} words (${generatedBy})`);
-    
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify(response),
     };
-    
+
   } catch (error) {
     console.error('❌ Writer Agent error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      body: JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
     };
   }
