@@ -3,9 +3,10 @@
   publish = "dist"
 
 [dev]
-  command = "npm run dev"
+  command = "npx vite"
   port = 8888
   targetPort = 5173
+  autoLaunch = false
 
 [[redirects]]
   from = "/*"
