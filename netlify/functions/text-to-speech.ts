@@ -107,6 +107,10 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: 'projectId and text are required' }), { status: 400, headers });
     }
 
+    // runId threading: MUST come from orchestrator, not generated locally
+    if (!request.runId) {
+      console.warn('[Voice] runId not provided - generating fallback. This should come from orchestrator!');
+    }
     const runId = request.runId || `run-${Date.now()}`;
     const voiceName = request.voice_id || 'Adam';
     const voiceId = getVoiceId(request.voice_id, request.character);

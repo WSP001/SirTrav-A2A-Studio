@@ -226,6 +226,11 @@ export default async (req: Request) => {
     if (!request.projectId) {
       return new Response(JSON.stringify({ error: 'projectId is required' }), { status: 400, headers });
     }
+
+    // runId threading: MUST come from orchestrator, not generated locally
+    if (!request.runId) {
+      console.warn('[Composer] runId not provided - generating fallback. This should come from orchestrator!');
+    }
     const runId = request.runId || `run-${Date.now()}`;
 
     // Mode: attached theme

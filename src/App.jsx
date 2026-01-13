@@ -161,9 +161,13 @@ function App() {
             setPipelineStatus('completed');
             AGENTS.forEach(agent => setAgentStates(prev => ({ ...prev, [agent.id]: 'done' })));
 
+            // Validate videoUrl - only mark as complete if we have a real URL
+            const videoUrl = data.artifacts?.videoUrl;
+            const isRealVideo = videoUrl && !videoUrl.startsWith('placeholder://') && !videoUrl.startsWith('error://');
+
             setVideoResult({
               runId: newRunId,
-              videoUrl: data.artifacts?.videoUrl || '/test-assets/test-video.mp4',
+              videoUrl: isRealVideo ? videoUrl : '/test-assets/test-video.mp4',
               thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
               duration: data.artifacts?.duration ? `${Math.floor(data.artifacts.duration / 60)}:${String(data.artifacts.duration % 60).padStart(2, '0')}` : '0:30',
               resolution: '1080p',
@@ -171,6 +175,7 @@ function App() {
               creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
               generatedAt: new Date().toISOString(),
               pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
+              isPlaceholder: !isRealVideo,
             });
             return;
           }
@@ -519,10 +524,27 @@ function App() {
               <h2 className="section-title">
                 <Video className="w-5 h-5" /> Final Output
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-1 text-xs font-bold rounded ${
+                  videoResult.pipelineMode === 'FULL' ? 'bg-green-500/20 text-green-400' :
+                  videoResult.pipelineMode === 'ENHANCED' ? 'bg-blue-500/20 text-blue-400' :
+                  videoResult.pipelineMode === 'SIMPLE' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {videoResult.pipelineMode} MODE
+                </span>
                 <span className="text-xs text-gray-500">Generated: {new Date(videoResult.generatedAt).toLocaleString()}</span>
               </div>
             </div>
+
+            {/* Placeholder Warning */}
+            {videoResult.isPlaceholder && (
+              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <p className="text-sm text-amber-400">
+                  <span className="font-bold">Demo Mode:</span> Showing test video. Configure API keys (ElevenLabs, Suno) for real video generation.
+                </p>
+              </div>
+            )}
 
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Video Preview - Real playable video */}
