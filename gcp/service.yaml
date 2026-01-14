@@ -1,0 +1,30 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sirtrav-studio
+  labels:
+    cloud.googleapis.com/location: us-central1
+    project: sirtrav-production
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containers:
+        - image: gcr.io/PROJECT_ID/sirtrav-studio:latest
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          env:
+            - name: NODE_ENV
+              value: "production"
+            # Secrets should ideally be mounted via Secret Manager
+            # This is a placeholder for where they would go
+            - name: CONCURRENCY
+              value: "80"
+          ports:
+            - containerPort: 8080

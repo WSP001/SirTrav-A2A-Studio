@@ -5,7 +5,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Update Voice Agent to use Adam \\(serious male voice\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix\\(P0\\): Create generate-video orchestrator and thread runId\n\n- Create generate-video.ts: Full 7-agent pipeline orchestrator\n  that generates runId and calls agents sequentially\n- Thread runId through Voice and Composer agents with warnings\n  when not provided \\(backward compatible\\)\n- Fix React video preview to show pipeline mode badge and\n  placeholder warning for demo mode\n- Add isPlaceholder flag to distinguish real vs demo videos\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx netlify dev)"
     ]
   }
 }

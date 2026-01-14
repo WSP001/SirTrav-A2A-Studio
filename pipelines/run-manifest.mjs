@@ -122,7 +122,7 @@ async function executeStep(ctx, step, baseUrl) {
   const stepName = step.name;
   const agentName = step.agent || stepName;
   const isCritical = CRITICAL_AGENTS.includes(agentName);
-  
+
   ctx.steps[stepName] = { status: 'running', startTime: Date.now() };
   await ctx.logProgress(stepName, 'running');
 
@@ -139,7 +139,7 @@ async function executeStep(ctx, step, baseUrl) {
       writer: 'narrate-project',
       voice: 'text-to-speech',
       composer: 'generate-music',
-      editor: 'generate-video', // Editor uses generate-video which calls ffmpeg
+      editor: 'compile-video', // Correctly map to the Editor agent (FFmpeg wrapper)
       attribution: 'generate-attribution',
       publisher: 'publish'
     };
@@ -151,11 +151,17 @@ async function executeStep(ctx, step, baseUrl) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log(`  → Calling ${endpoint} (attempt ${attempt}/${MAX_RETRIES})`);
-      
+
+      // Auto-inject runId (correlationId) for tracing
+      const bodyPayload = {
+        ...input,
+        runId: input.runId || ctx.correlationId
+      };
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
+        body: JSON.stringify(bodyPayload)
       });
 
       const result = await response.json();
@@ -179,7 +185,7 @@ async function executeStep(ctx, step, baseUrl) {
     } catch (err) {
       lastError = err;
       console.error(`  ✗ Attempt ${attempt} failed: ${err.message}`);
-      
+
       if (attempt < MAX_RETRIES) {
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
@@ -202,7 +208,7 @@ async function executeStep(ctx, step, baseUrl) {
     console.warn(`  ⚠ Non-critical agent ${stepName} failed, using fallback`);
     ctx.steps[stepName].status = 'fallback';
     await ctx.logProgress(stepName, 'fallback', { error: lastError.message });
-    
+
     // Return fallback data
     return {
       ok: true,
@@ -239,7 +245,7 @@ function getFallbackData(agentName, projectId) {
  */
 async function runManifest(manifestPath, options = {}) {
   const { projectId = `project-${Date.now()}`, baseUrl = process.env.URL || 'http://localhost:8888' } = options;
-  
+
   console.log('═'.repeat(60));
   console.log('  SirTrav A2A Studio - Pipeline Runner');
   console.log('═'.repeat(60));
@@ -251,18 +257,18 @@ async function runManifest(manifestPath, options = {}) {
   // Load and parse manifest
   const manifestContent = await readFile(manifestPath, 'utf-8');
   const manifest = parseYaml(manifestContent);
-  
+
   // Create context
   const ctx = new PipelineContext(projectId, manifest);
-  
+
   // Ensure tmp directory exists
   const projectTmpDir = join(ctx.tmpDir, projectId);
   if (!existsSync(projectTmpDir)) {
     mkdirSync(projectTmpDir, { recursive: true });
   }
 
-  await ctx.logProgress('pipeline', 'started', { 
-    totalSteps: manifest.steps?.length || 0 
+  await ctx.logProgress('pipeline', 'started', {
+    totalSteps: manifest.steps?.length || 0
   });
 
   // Execute steps sequentially
@@ -270,13 +276,13 @@ async function runManifest(manifestPath, options = {}) {
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     console.log(`\n[${i + 1}/${steps.length}] ${step.name}`);
-    
+
     try {
       await executeStep(ctx, step, baseUrl);
     } catch (err) {
-      await ctx.logProgress('pipeline', 'failed', { 
+      await ctx.logProgress('pipeline', 'failed', {
         failedStep: step.name,
-        error: err.message 
+        error: err.message
       });
       throw err;
     }
@@ -306,7 +312,7 @@ if (isMainModule) {
   const defaultManifest = join(scriptDir, 'a2a_manifest.yml');
   const manifestPath = process.argv[2] || defaultManifest;
   const projectId = process.argv[3] || `cli-${Date.now()}`;
-  
+
   runManifest(manifestPath, { projectId })
     .then(result => {
       console.log('\nResult:', JSON.stringify(result, null, 2));

@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "netlify dev",
     "build": "vite build",
     "preview": "vite preview",
-    "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0"
+    "manifest": "node pipelines/run-manifest.mjs",
+    "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0",
+    "start:prod": "node pipelines/run-manifest.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",
