@@ -23,22 +23,100 @@ type BlobsStoreOptions = {
 };
 
 /**
- * Get a configured Netlify Blobs store with explicit site/token credentials
- * Falls back to Netlify-injected credentials if not set
+ * Wrapper around Netlify Blobs store that adds JSON helper methods
+ * and graceful fallback for local development
  */
-export const getConfiguredBlobsStore = (name: string) => {
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
-  const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+class BlobsStoreWrapper {
+  private storeName: string;
+  private memoryStore: Map<string, string> = new Map();
+  private isLocalFallback: boolean = false;
 
-  const opts: BlobsStoreOptions = { name };
-  if (siteID) opts.siteID = siteID;
-  if (token) opts.token = token;
-
-  if (!siteID || !token) {
-    console.warn('[NetlifyBlobs] NETLIFY_SITE_ID or NETLIFY_API_TOKEN missing; relying on Netlify-injected credentials');
+  constructor(name: string) {
+    this.storeName = name;
   }
 
-  return getStore(opts);
+  private getStore() {
+    const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+    const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+
+    // If no credentials, use in-memory fallback for local dev
+    if (!siteID || !token) {
+      if (!this.isLocalFallback) {
+        console.warn(`[BlobsStore:${this.storeName}] No credentials - using in-memory fallback for local dev`);
+        this.isLocalFallback = true;
+      }
+      return null;
+    }
+
+    return getStore({ name: this.storeName, siteID, token });
+  }
+
+  async set(key: string, value: string | Buffer, options?: { metadata?: Record<string, string> }) {
+    const store = this.getStore();
+    if (!store) {
+      // In-memory fallback
+      this.memoryStore.set(key, typeof value === 'string' ? value : value.toString());
+      return { ok: true };
+    }
+    return store.set(key, value, options);
+  }
+
+  async get(key: string, options?: { type?: 'text' | 'json' | 'arrayBuffer' }) {
+    const store = this.getStore();
+    if (!store) {
+      // In-memory fallback
+      const value = this.memoryStore.get(key);
+      if (!value) return null;
+      if (options?.type === 'json') return JSON.parse(value);
+      return value;
+    }
+    return store.get(key, options);
+  }
+
+  async setJSON(key: string, value: unknown, options?: { metadata?: Record<string, string> }) {
+    const jsonStr = JSON.stringify(value);
+    return this.set(key, jsonStr, {
+      metadata: { ...options?.metadata, contentType: 'application/json' },
+    });
+  }
+
+  async getJSON(key: string) {
+    return this.get(key, { type: 'json' });
+  }
+
+  async delete(key: string) {
+    const store = this.getStore();
+    if (!store) {
+      this.memoryStore.delete(key);
+      return;
+    }
+    return store.delete(key);
+  }
+
+  async list(options?: { prefix?: string }) {
+    const store = this.getStore();
+    if (!store) {
+      const keys = Array.from(this.memoryStore.keys());
+      const filtered = options?.prefix
+        ? keys.filter(k => k.startsWith(options.prefix!))
+        : keys;
+      return { blobs: filtered.map(key => ({ key })) };
+    }
+    return store.list(options);
+  }
+
+  async getMetadata(key: string) {
+    const store = this.getStore();
+    if (!store) return null;
+    return store.getMetadata(key);
+  }
+}
+
+/**
+ * Get a configured Netlify Blobs store with JSON helpers and local dev fallback
+ */
+export const getConfiguredBlobsStore = (name: string) => {
+  return new BlobsStoreWrapper(name);
 };
 
 const mimeLookup: Record<string, string> = {
