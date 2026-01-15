@@ -36,5 +36,25 @@ export default async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify(index), { status: 200, headers });
+  // Standardized Golden Path Contract
+  const resultContract = {
+    status: index.status,
+    videoUrl: index.videoUrl || null,
+    creditsUrl: index.creditsUrl || null,
+    artifacts: {
+      resolution: index.finalVideoKey ? '1080p' : undefined,
+      duration: index.music?.duration,
+    },
+    error: index.error || null,
+    updatedAt: index.updatedAt || new Date().toISOString(),
+    // Debug info (Dev only)
+    ...(process.env.CONTEXT !== 'production' ? {
+      _debug: {
+        runId: index.runId,
+        step: index.status === 'completed' ? 'completed' : 'processing'
+      }
+    } : {})
+  };
+
+  return new Response(JSON.stringify(resultContract), { status: 200, headers });
 };

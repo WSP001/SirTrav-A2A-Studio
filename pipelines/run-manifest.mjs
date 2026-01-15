@@ -155,7 +155,7 @@ async function executeStep(ctx, step, baseUrl) {
       // Auto-inject runId (correlationId) for tracing
       const bodyPayload = {
         ...input,
-        runId: input.runId || ctx.correlationId
+        runId: ctx.runId || input.runId || ctx.correlationId
       };
 
       const response = await fetch(endpoint, {
@@ -258,8 +258,31 @@ async function runManifest(manifestPath, options = {}) {
   const manifestContent = await readFile(manifestPath, 'utf-8');
   const manifest = parseYaml(manifestContent);
 
-  // Create context
+  // Create context (Init with basic info first)
   const ctx = new PipelineContext(projectId, manifest);
+
+  // P0: Get RunId from start-pipeline (Source of Truth)
+  console.log('  → Registering run with start-pipeline...');
+  try {
+    const startRes = await fetch(`${baseUrl}/.netlify/functions/start-pipeline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId })
+    });
+
+    if (!startRes.ok) {
+      // Fallback for CLI/Local if server is down (though optimal path assumes server up)
+      console.warn(`  ⚠ Could not register run (HTTP ${startRes.status}). Using local correlationId.`);
+      ctx.runId = ctx.correlationId;
+    } else {
+      const startData = await startRes.json();
+      ctx.runId = startData.runId;
+      console.log(`  ✅ Run Registered: ${ctx.runId}`);
+    }
+  } catch (err) {
+    console.warn(`  ⚠ Could not reach start-pipeline (${err.message}). Using local correlationId.`);
+    ctx.runId = ctx.correlationId;
+  }
 
   // Ensure tmp directory exists
   const projectTmpDir = join(ctx.tmpDir, projectId);

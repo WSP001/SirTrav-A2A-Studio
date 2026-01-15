@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink, LayoutGrid } from "lucide-react";
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
+import PipelineProgress from './components/PipelineProgress';
 
 // Version for deployment verification
 const APP_VERSION = "v2.0.0";
@@ -125,81 +126,40 @@ function App() {
         throw new Error(errorData.error || 'Pipeline start failed');
       }
 
-      // Step 3: Poll for progress updates
-      const pollProgress = async () => {
-        try {
-          const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}&runId=${newRunId}`);
-          const data = await res.json();
-
-          // Update metrics
-          setMetrics({
-            cost: data.cost || 0,
-            time: (Date.now() - startTime) / 1000
-          });
-
-          // Update agent states from backend
-          if (data.step) {
-            const agentMap = ['director', 'writer', 'voice', 'composer', 'editor', 'attribution', 'publisher'];
-            const currentIdx = agentMap.indexOf(data.step);
-
-            agentMap.forEach((agentId, idx) => {
-              if (idx < currentIdx) {
-                setAgentStates(prev => ({ ...prev, [agentId]: 'done' }));
-              } else if (idx === currentIdx) {
-                setAgentStates(prev => ({ ...prev, [agentId]: data.status === 'complete' ? 'done' : 'processing' }));
-              }
-            });
-
-            setLogs(prev => ({
-              ...prev,
-              [data.step]: [...(prev[data.step] || []), `> ${data.message || data.step}`]
-            }));
-          }
-
-          // Check if complete
-          if (data.status === 'complete') {
-            setPipelineStatus('completed');
-            AGENTS.forEach(agent => setAgentStates(prev => ({ ...prev, [agent.id]: 'done' })));
-
-            // Validate videoUrl - only mark as complete if we have a real URL
-            const videoUrl = data.artifacts?.videoUrl;
-            const isRealVideo = videoUrl && !videoUrl.startsWith('placeholder://') && !videoUrl.startsWith('error://');
-
-            setVideoResult({
-              runId: newRunId,
-              videoUrl: isRealVideo ? videoUrl : '/test-assets/test-video.mp4',
-              thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
-              duration: data.artifacts?.duration ? `${Math.floor(data.artifacts.duration / 60)}:${String(data.artifacts.duration % 60).padStart(2, '0')}` : '0:30',
-              resolution: '1080p',
-              fileSize: data.artifacts?.fileSize || '10.1 MB',
-              creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
-              generatedAt: new Date().toISOString(),
-              pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
-              isPlaceholder: !isRealVideo,
-            });
-            return;
-          }
-
-          if (data.status === 'failed' || data.status === 'error') {
-            throw new Error(data.error || 'Pipeline failed');
-          }
-
-          // Continue polling
-          setTimeout(pollProgress, 2000);
-        } catch (pollError) {
-          console.error('Poll error:', pollError);
-          setPipelineStatus('error');
-        }
-      };
-
-      // Start polling
-      pollProgress();
+      // NO POLLING HERE - PipelineProgress component handles SSE
+      console.log('Pipeline started, listening via SSE...');
 
     } catch (error) {
       console.error('Pipeline error:', error);
       setPipelineStatus('error');
       setLogs(prev => ({ ...prev, director: [...(prev.director || []), `> ERROR: ${error.message}`] }));
     }
+  };
+
+  const handlePipelineComplete = (data) => {
+    setPipelineStatus('completed');
+
+    // Validate videoUrl
+    const videoUrl = data.artifacts?.videoUrl;
+    const isRealVideo = videoUrl && !videoUrl.startsWith('placeholder://') && !videoUrl.startsWith('error://');
+
+    setVideoResult({
+      runId: currentRunId,
+      videoUrl: isRealVideo ? videoUrl : '/test-assets/test-video.mp4',
+      thumbnailUrl: `https://picsum.photos/seed/${projectId}/640/360`,
+      duration: data.artifacts?.duration ? `${Math.floor(data.artifacts.duration / 60)}:${String(data.artifacts.duration % 60).padStart(2, '0')}` : '0:30',
+      resolution: '1080p',
+      fileSize: data.artifacts?.fileSize || '10.1 MB',
+      creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
+      generatedAt: new Date().toISOString(),
+      pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
+      isPlaceholder: !isRealVideo,
+    });
+  };
+
+  const handlePipelineError = (err) => {
+    setPipelineStatus('error');
+    console.error('Pipeline failed:', err);
   };
 
   // Submit feedback to backend
@@ -374,52 +334,31 @@ function App() {
           <div className="glass-card p-6">
             <h2 className="section-title mb-6">Agent Orchestration</h2>
 
-            <div className="space-y-4">
-              {AGENTS.map((agent) => {
-                const state = agentStates[agent.id] || 'pending';
-                const agentLogs = logs[agent.id] || [];
-
-                return (
-                  <div key={agent.id} className={`agent-card ${state}`}>
+            {pipelineStatus === 'running' || pipelineStatus === 'completed' ? (
+              <PipelineProgress
+                projectId={projectId}
+                runId={currentRunId}
+                onComplete={handlePipelineComplete}
+                onError={handlePipelineError}
+              />
+            ) : (
+              /* Fallback / Idle State */
+              <div className="space-y-4">
+                {AGENTS.map((agent) => (
+                  <div key={agent.id} className="agent-card pending">
                     <div className="flex items-start gap-4">
-                      <div className={`agent-icon ${state}`}>
+                      <div className="agent-icon pending">
                         <span className="text-xl">{agent.icon}</span>
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-white">{agent.name}</h3>
-                          <div className="flex items-center gap-2">
-                            {state === 'done' && <span className="text-green-400 text-xs">DONE</span>}
-                            {state === 'processing' && <span className="text-amber-400 text-xs">PROCESSING</span>}
-                            {state === 'done' && <span className="text-gray-500 text-xs">$0.0{Math.floor(Math.random() * 9)}</span>}
-                          </div>
-                        </div>
+                        <h3 className="font-medium text-white">{agent.name}</h3>
                         <p className="text-sm text-gray-500">{agent.description}</p>
-
-                        {/* Progress bar for processing */}
-                        {state === 'processing' && (
-                          <div className="mt-2 h-1 bg-gray-700 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 animate-pulse w-2/3" />
-                          </div>
-                        )}
-                        {state === 'done' && (
-                          <div className="mt-2 h-1 bg-green-500 rounded-full" />
-                        )}
-
-                        {/* Logs */}
-                        {agentLogs.length > 0 && (
-                          <div className="mt-2 font-mono text-xs text-gray-500 space-y-0.5">
-                            {agentLogs.map((log, i) => (
-                              <p key={i}>{log}</p>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Click-to-Kick Dashboard (Launchpad) */}
             <div className={`mt-6 p-4 rounded-xl border border-gray-700 transition-all ${files.length > 0 ? 'bg-gray-800/80' : 'bg-gray-800/40 opacity-75'
@@ -525,12 +464,11 @@ function App() {
                 <Video className="w-5 h-5" /> Final Output
               </h2>
               <div className="flex items-center gap-3">
-                <span className={`px-2 py-1 text-xs font-bold rounded ${
-                  videoResult.pipelineMode === 'FULL' ? 'bg-green-500/20 text-green-400' :
+                <span className={`px-2 py-1 text-xs font-bold rounded ${videoResult.pipelineMode === 'FULL' ? 'bg-green-500/20 text-green-400' :
                   videoResult.pipelineMode === 'ENHANCED' ? 'bg-blue-500/20 text-blue-400' :
-                  videoResult.pipelineMode === 'SIMPLE' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-gray-500/20 text-gray-400'
-                }`}>
+                    videoResult.pipelineMode === 'SIMPLE' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-gray-500/20 text-gray-400'
+                  }`}>
                   {videoResult.pipelineMode} MODE
                 </span>
                 <span className="text-xs text-gray-500">Generated: {new Date(videoResult.generatedAt).toLocaleString()}</span>

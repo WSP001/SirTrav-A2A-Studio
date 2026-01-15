@@ -30,6 +30,7 @@ interface ProgressData {
 
 interface PipelineProgressProps {
   projectId: string;
+  runId?: string;
   onComplete?: (result: ProgressData) => void;
   onError?: (error: string) => void;
 }
@@ -44,7 +45,7 @@ const AGENTS = [
   { id: 'publisher', name: 'Publisher', icon: '🚀', description: 'Uploads to storage' }
 ];
 
-export default function PipelineProgress({ projectId, onComplete, onError }: PipelineProgressProps) {
+export default function PipelineProgress({ projectId, runId, onComplete, onError }: PipelineProgressProps) {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -55,7 +56,8 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
 
     // Try SSE first, fall back to polling
     const connectSSE = () => {
-      const url = `/.netlify/functions/progress?projectId=${projectId}&stream=true`;
+      // Add runId if available to filter stream
+      const url = `/.netlify/functions/progress?projectId=${projectId}&runId=${runId || ''}&stream=true`;
 
       try {
         const es = new EventSource(url);
@@ -66,25 +68,43 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
           console.log('[PipelineProgress] SSE connected');
         };
 
-        es.onmessage = (event) => {
+        // Listen for named events from backend
+        es.addEventListener('connected', (event: any) => {
+          console.log('[PipelineProgress] Connection established:', event.data);
+          setConnectionStatus('connected');
+        });
+
+        es.addEventListener('progress', (event: any) => {
           try {
             const data: ProgressData = JSON.parse(event.data);
             setProgress(data);
-
-            if (data.status === 'completed') {
-              onComplete?.(data);
-              es.close();
-            } else if (data.status === 'failed') {
-              onError?.(data.error || 'Pipeline failed');
-              es.close();
-            }
           } catch (err) {
             console.error('[PipelineProgress] Parse error:', err);
           }
-        };
+        });
 
-        es.onerror = () => {
-          console.warn('[PipelineProgress] SSE error, falling back to polling');
+        es.addEventListener('complete', (event: any) => {
+          try {
+            const data = JSON.parse(event.data);
+            // Verify final state
+            onComplete?.(data);
+            es.close();
+          } catch (err) {
+            console.error('[PipelineProgress] Parse error on complete:', err);
+          }
+        });
+
+        es.addEventListener('error', (event: any) => {
+          // Custom error event from backend (not network error)
+          try {
+            const data = JSON.parse(event.data);
+            onError?.(data.message || 'Pipeline failed');
+            es.close();
+          } catch (err) { }
+        });
+
+        es.onerror = (err) => {
+          console.warn('[PipelineProgress] SSE network error, falling back to polling', err);
           es.close();
           startPolling();
         };
@@ -178,8 +198,8 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
           </p>
         </div>
         <div className={`px-3 py-1 rounded-full text-xs font-medium ${connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
-            connectionStatus === 'error' ? 'bg-red-500/20 text-red-400' :
-              'bg-yellow-500/20 text-yellow-400'
+          connectionStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+            'bg-yellow-500/20 text-yellow-400'
           }`}>
           {connectionStatus === 'connected' ? '● Live' : connectionStatus === 'error' ? '● Disconnected' : '● Connecting...'}
         </div>
@@ -207,12 +227,12 @@ export default function PipelineProgress({ projectId, onComplete, onError }: Pip
             <div
               key={agent.id}
               className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
-                  ? 'border-blue-500 bg-blue-500/10'
-                  : status.status === 'completed'
-                    ? 'border-green-500/50 bg-green-500/5'
-                    : status.status === 'failed'
-                      ? 'border-red-500/50 bg-red-500/5'
-                      : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                ? 'border-blue-500 bg-blue-500/10'
+                : status.status === 'completed'
+                  ? 'border-green-500/50 bg-green-500/5'
+                  : status.status === 'failed'
+                    ? 'border-red-500/50 bg-red-500/5'
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
                 }`}
             >
               <div className="flex items-center gap-3 mb-2">

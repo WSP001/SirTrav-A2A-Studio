@@ -59,16 +59,25 @@ async function updateRun(
   const store = runsStore();
   const key = makeRunKey(projectId, runId);
   const now = new Date().toISOString();
-  const existing = (await store.getJSON(key)) as Record<string, unknown> | null;
+  const existing = (await store.get(key, { type: 'json' })) as Record<string, unknown> | null;
   const next = {
     ...(existing || { projectId, runId, createdAt: now }),
     ...patch,
     updatedAt: now,
   };
-  await store.setJSON(key, next, { metadata: { projectId, runId, status: next.status } });
-  await updateRunIndex(projectId, runId, {
+  await store.set(key, JSON.stringify(next), { metadata: { projectId, runId, status: next.status } });
+  const indexPatch: any = {
     status: (next.status as RunStatus) || 'running',
-  });
+  };
+
+  // Forward artifacts to the index if present
+  if (patch.artifacts) {
+    if (patch.artifacts.videoUrl) indexPatch.videoUrl = patch.artifacts.videoUrl;
+    if (patch.artifacts.creditsUrl) indexPatch.creditsUrl = patch.artifacts.creditsUrl;
+    if (patch.artifacts.pipelineMode) indexPatch.pipelineMode = patch.artifacts.pipelineMode;
+  }
+
+  await updateRunIndex(projectId, runId, indexPatch);
 }
 
 // ============================================================================
@@ -85,10 +94,10 @@ async function executeDirectorAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`🎬 [Director] Starting with ${images.length} images...`);
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/curate-media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,7 +117,7 @@ async function executeDirectorAgent(
 
     const data = await response.json();
     console.log(`🎬 [Director] Completed: ${data.scenes?.length || 0} scenes curated`);
-    
+
     return {
       success: true,
       data,
@@ -135,13 +144,13 @@ async function executeWriterAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`✍️ [Writer] Generating narrative...`);
-    
+
     const mood = curatedMedia?.scenes?.[0]?.dominant_mood || 'reflective';
     const sceneCount = curatedMedia?.scenes?.length || 3;
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/narrate-project`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -160,7 +169,7 @@ async function executeWriterAgent(
 
     const data = await response.json();
     console.log(`✍️ [Writer] Completed: ${data.wordCount || 0} words, ${data.estimatedDuration || 0}s`);
-    
+
     return {
       success: true,
       data,
@@ -188,12 +197,12 @@ async function executeVoiceAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`🎙️ [Voice] Synthesizing narration...`);
-    
+
     const text = narrative?.narrative || narrative?.scenes?.map((s: any) => s.text).join(' ') || 'Welcome to your memories.';
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/text-to-speech`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -212,7 +221,7 @@ async function executeVoiceAgent(
 
     const data = await response.json();
     console.log(`🎙️ [Voice] Completed: ${data.duration || 0}s audio, placeholder=${data.placeholder}`);
-    
+
     return {
       success: true,
       data,
@@ -241,10 +250,10 @@ async function executeComposerAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`🎵 [Composer] Generating soundtrack...`);
-    
+
     if (themePreference?.attach && themePreference?.blobKey) {
       console.log(`🎵 [Composer] Using attached theme: ${themePreference.blobKey}`);
       return {
@@ -258,7 +267,7 @@ async function executeComposerAgent(
         fallback: false,
       };
     }
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/generate-music`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -278,7 +287,7 @@ async function executeComposerAgent(
 
     const data = await response.json();
     console.log(`🎵 [Composer] Completed: ${data.source || 'unknown'} music`);
-    
+
     return {
       success: true,
       data,
@@ -309,10 +318,10 @@ async function executeEditorAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`🎞️ [Editor] Compiling video...`);
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/compile-video`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -333,7 +342,7 @@ async function executeEditorAgent(
 
     const data = await response.json();
     console.log(`🎞️ [Editor] Completed: ${data.videoUrl || 'test video'}`);
-    
+
     return {
       success: true,
       data,
@@ -367,10 +376,10 @@ async function executeAttributionAgent(
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
-  
+
   try {
     console.log(`📜 [Attribution] Generating credits...`);
-    
+
     const response = await fetch(`${baseUrl}/.netlify/functions/generate-attribution`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -394,7 +403,7 @@ async function executeAttributionAgent(
 
     const data = await response.json();
     console.log(`📜 [Attribution] Completed: credits generated`);
-    
+
     return {
       success: true,
       data,
@@ -422,7 +431,7 @@ async function executeAttributionAgent(
 function determinePipelineMode(agentResults: Record<string, AgentResult>): string {
   const realAgents = Object.values(agentResults).filter(r => !r.fallback).length;
   const totalAgents = Object.keys(agentResults).length;
-  
+
   if (realAgents === totalAgents) return 'FULL';
   if (realAgents >= 3) return 'ENHANCED';
   if (realAgents >= 1) return 'SIMPLE';
@@ -454,11 +463,11 @@ export const handler: Handler = async (event) => {
 
     const store = runsStore();
     const key = makeRunKey(projectId, runId);
-    const existing = await store.getJSON(key) as any;
+    const existing = await store.get(key, { type: 'json' }) as any;
 
     // Idempotency: if already succeeded, exit early
-    if (existing?.status === 'complete') {
-      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'complete' }) };
+    if (existing?.status === 'completed') {
+      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'completed' }) };
     }
 
     // Soft lock: if another worker set running recently, respect it
@@ -469,7 +478,7 @@ export const handler: Handler = async (event) => {
     // Load payload with images if present
     let payload: PipelinePayload = {};
     if (payloadKey) {
-      const loadedPayload = await store.getJSON(payloadKey);
+      const loadedPayload = await store.get(payloadKey, { type: 'json' });
       if (loadedPayload) {
         payload = loadedPayload as PipelinePayload;
       }
@@ -490,22 +499,22 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 1: DIRECTOR AGENT (Curate Media)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      status: 'running', 
-      progress: 5, 
-      step: 'director', 
-      message: '🎬 Director analyzing images...' 
+    await updateRun(projectId, runId, {
+      status: 'running',
+      progress: 5,
+      step: 'director',
+      message: '🎬 Director analyzing images...'
     });
-    
+
     agentResults.director = await executeDirectorAgent(
-      projectId, 
-      images, 
+      projectId,
+      images,
       payload.projectMode || 'commons_public'
     );
-    
-    await updateRun(projectId, runId, { 
-      progress: 15, 
-      step: 'director', 
+
+    await updateRun(projectId, runId, {
+      progress: 15,
+      step: 'director',
       message: `🎬 Director ${agentResults.director.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -513,17 +522,17 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 2: WRITER AGENT (Generate Narrative)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      progress: 20, 
-      step: 'writer', 
-      message: '✍️ Writer crafting narrative...' 
+    await updateRun(projectId, runId, {
+      progress: 20,
+      step: 'writer',
+      message: '✍️ Writer crafting narrative...'
     });
-    
+
     agentResults.writer = await executeWriterAgent(projectId, agentResults.director.data);
-    
-    await updateRun(projectId, runId, { 
-      progress: 35, 
-      step: 'writer', 
+
+    await updateRun(projectId, runId, {
+      progress: 35,
+      step: 'writer',
       message: `✍️ Writer ${agentResults.writer.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -531,17 +540,17 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 3: VOICE AGENT (Text-to-Speech)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      progress: 40, 
-      step: 'voice', 
-      message: '🎙️ Voice synthesizing narration...' 
+    await updateRun(projectId, runId, {
+      progress: 40,
+      step: 'voice',
+      message: '🎙️ Voice synthesizing narration...'
     });
-    
+
     agentResults.voice = await executeVoiceAgent(projectId, runId, agentResults.writer.data);
-    
-    await updateRun(projectId, runId, { 
-      progress: 55, 
-      step: 'voice', 
+
+    await updateRun(projectId, runId, {
+      progress: 55,
+      step: 'voice',
       message: `🎙️ Voice ${agentResults.voice.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -549,23 +558,23 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 4: COMPOSER AGENT (Generate Music)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      progress: 60, 
-      step: 'composer', 
-      message: '🎵 Composer creating soundtrack...' 
+    await updateRun(projectId, runId, {
+      progress: 60,
+      step: 'composer',
+      message: '🎵 Composer creating soundtrack...'
     });
-    
+
     const mood = agentResults.director.data?.scenes?.[0]?.dominant_mood || 'reflective';
     agentResults.composer = await executeComposerAgent(
-      projectId, 
-      runId, 
-      mood, 
+      projectId,
+      runId,
+      mood,
       payload.themePreference
     );
-    
-    await updateRun(projectId, runId, { 
-      progress: 70, 
-      step: 'composer', 
+
+    await updateRun(projectId, runId, {
+      progress: 70,
+      step: 'composer',
       message: `🎵 Composer ${agentResults.composer.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -573,12 +582,12 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 5: EDITOR AGENT (Compile Video)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      progress: 75, 
-      step: 'editor', 
-      message: '🎞️ Editor assembling video...' 
+    await updateRun(projectId, runId, {
+      progress: 75,
+      step: 'editor',
+      message: '🎞️ Editor assembling video...'
     });
-    
+
     agentResults.editor = await executeEditorAgent(
       projectId,
       runId,
@@ -587,10 +596,10 @@ export const handler: Handler = async (event) => {
       agentResults.composer,
       payload.outputFormat
     );
-    
-    await updateRun(projectId, runId, { 
-      progress: 90, 
-      step: 'editor', 
+
+    await updateRun(projectId, runId, {
+      progress: 90,
+      step: 'editor',
       message: `🎞️ Editor ${agentResults.editor.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -598,17 +607,17 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     // STEP 6: ATTRIBUTION AGENT (Commons Good Credits)
     // ========================================================================
-    await updateRun(projectId, runId, { 
-      progress: 92, 
-      step: 'attribution', 
-      message: '📜 Attribution generating credits...' 
+    await updateRun(projectId, runId, {
+      progress: 92,
+      step: 'attribution',
+      message: '📜 Attribution generating credits...'
     });
-    
+
     agentResults.attribution = await executeAttributionAgent(projectId, runId, agentResults);
-    
-    await updateRun(projectId, runId, { 
-      progress: 98, 
-      step: 'attribution', 
+
+    await updateRun(projectId, runId, {
+      progress: 98,
+      step: 'attribution',
       message: `📜 Attribution ${agentResults.attribution.success ? 'completed' : 'failed'}`,
       agentResults,
     });
@@ -618,7 +627,7 @@ export const handler: Handler = async (event) => {
     // ========================================================================
     const videoUrl = agentResults.editor.data?.videoUrl || '/test-assets/test-video.mp4';
     const creditsUrl = '/test-assets/credits.json';
-    
+
     const finalArtifacts = {
       videoUrl,
       creditsUrl,
@@ -642,27 +651,27 @@ export const handler: Handler = async (event) => {
     console.log(`✅ Mode: ${finalArtifacts.pipelineMode}`);
     console.log(`✅ ========================================\n`);
 
-    return { 
-      statusCode: 200, 
-      body: JSON.stringify({ 
-        ok: true, 
-        projectId, 
-        runId, 
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        ok: true,
+        projectId,
+        runId,
         status: 'complete',
         videoUrl,
         creditsUrl,
         pipelineMode: finalArtifacts.pipelineMode,
-      }) 
+      })
     };
-    
+
   } catch (error) {
     console.error('❌ run-pipeline-background error:', error);
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ 
-        ok: false, 
-        error: error instanceof Error ? error.message : 'pipeline_failed' 
-      }) 
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        ok: false,
+        error: error instanceof Error ? error.message : 'pipeline_failed'
+      })
     };
   }
 };

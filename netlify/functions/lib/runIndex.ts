@@ -14,6 +14,11 @@ export interface RunArtifacts {
   beatGridKey?: string;
   finalVideoKey?: string;
   exportBundleKey?: string;
+  // Golden Path fields
+  videoUrl?: string;
+  creditsUrl?: string;
+  pipelineMode?: string;
+  dashboardUrl?: string;
   voice?: {
     voiceId?: string;
     modelId?: string;
@@ -49,7 +54,7 @@ const mergeNested = (base: RunArtifacts, patch: Partial<RunArtifacts>): RunArtif
 
 export async function getRunIndex(projectId: string, runId: string): Promise<RunArtifacts | null> {
   const store = runsStore();
-  const existing = (await store.getJSON(makeIndexKey(projectId, runId))) as RunArtifacts | null;
+  const existing = await store.get(makeIndexKey(projectId, runId), { type: 'json' }) as RunArtifacts | null;
   return existing || null;
 }
 
@@ -61,7 +66,7 @@ export async function updateRunIndex(
   const store = runsStore();
   const key = makeIndexKey(projectId, runId);
   const now = new Date().toISOString();
-  const existing = ((await store.getJSON(key)) as RunArtifacts | null) || {
+  const existing = (await store.get(key, { type: 'json' })) as RunArtifacts | null || {
     projectId,
     runId,
     status: 'running',
@@ -69,6 +74,6 @@ export async function updateRunIndex(
   };
   const next = mergeNested(existing, { ...patch, updatedAt: now });
 
-  await store.setJSON(key, next, { metadata: { projectId, runId, status: next.status } });
+  await store.set(key, JSON.stringify(next), { metadata: { projectId, runId, status: next.status } });
   return next;
 }
