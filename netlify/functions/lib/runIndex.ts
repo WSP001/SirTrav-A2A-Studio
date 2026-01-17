@@ -1,6 +1,6 @@
 import { runsStore } from './storage';
 
-export type RunStatus = 'queued' | 'running' | 'complete' | 'failed';
+export type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export interface RunArtifacts {
   projectId: string;

@@ -13,7 +13,7 @@ import type { Handler } from '@netlify/functions';
 import { runsStore, artifactsStore, uploadsStore } from './lib/storage';
 import { updateRunIndex } from './lib/runIndex';
 
-type RunStatus = 'queued' | 'running' | 'complete' | 'failed';
+type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 interface PipelinePayload {
   images?: Array<{ id: string; url: string; base64?: string }>;
@@ -457,8 +457,8 @@ export const handler: Handler = async (event) => {
     const existing = await store.getJSON(key) as any;
 
     // Idempotency: if already succeeded, exit early
-    if (existing?.status === 'complete') {
-      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'complete' }) };
+    if (existing?.status === 'completed') {
+      return { statusCode: 200, body: JSON.stringify({ ok: true, projectId, runId, status: 'completed' }) };
     }
 
     // Soft lock: if another worker set running recently, respect it
@@ -628,10 +628,10 @@ export const handler: Handler = async (event) => {
     };
 
     await updateRun(projectId, runId, {
-      status: 'complete',
+      status: 'completed',
       progress: 100,
-      step: 'complete',
-      message: '✅ Pipeline complete! Video ready.',
+      step: 'completed',
+      message: '✅ Pipeline completed! Video ready.',
       artifacts: finalArtifacts,
       agentResults,
     });
@@ -642,17 +642,17 @@ export const handler: Handler = async (event) => {
     console.log(`✅ Mode: ${finalArtifacts.pipelineMode}`);
     console.log(`✅ ========================================\n`);
 
-    return { 
-      statusCode: 200, 
-      body: JSON.stringify({ 
-        ok: true, 
-        projectId, 
-        runId, 
-        status: 'complete',
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        ok: true,
+        projectId,
+        runId,
+        status: 'completed',
         videoUrl,
         creditsUrl,
         pipelineMode: finalArtifacts.pipelineMode,
-      }) 
+      })
     };
     
   } catch (error) {
