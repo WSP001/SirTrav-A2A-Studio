@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0"
+    "lint": "eslint 'src/**/*.{js,ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix",
+    "typecheck": "tsc --noEmit",
+    "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0",
+    "preflight": "npm run lint && npm run typecheck && npm run precommit:secrets"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",
@@ -28,10 +32,16 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.3.0",
