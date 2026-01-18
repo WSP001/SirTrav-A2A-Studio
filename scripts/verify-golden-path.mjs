@@ -11,7 +11,7 @@
  * 5. Verify Artifacts
  */
 
-const BASE_URL = process.env.URL || 'http://localhost:8888/.netlify/functions';
+const BASE_URL = process.env.URL || 'http://127.0.0.1:8888/.netlify/functions';
 const PROJECT_ID = process.argv[2] || `verify-${Date.now()}`;
 
 console.log(`🚀 Verifying Golden Path for Project: ${PROJECT_ID}`);
@@ -37,7 +37,10 @@ async function run() {
 
         const startRes = await fetch(`${BASE_URL}/start-pipeline`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer demo'
+            },
             body: JSON.stringify({
                 projectId: PROJECT_ID,
                 payload: isSmoke ? { mode: 'smoke' } : {}
@@ -110,9 +113,40 @@ async function run() {
 
         // 4. Assertions
         console.log('\n[4] Verifying Contract...');
-        if (results.status !== 'completed') throw new Error(`Status is '${results.status}', expected 'completed'`);
-        if (!results.videoUrl) throw new Error('Missing videoUrl');
-        // if (!results.creditsUrl) throw new Error('Missing creditsUrl'); // Might be optional in demo
+
+        // Log all fields for debugging
+        console.log('Final Status:', results.status);
+        console.log('Video URL:', results.videoUrl);
+        console.log('Errors:', results.error);
+
+        if (results.status !== 'completed') {
+            throw new Error(`Status is '${results.status}', expected 'completed'. Error: ${results.error}`);
+        }
+
+        if (!results.videoUrl) {
+            // In smoke/demo mode, we might accept a missing video URL if it was a total failure, 
+            // but Editor Mock should have prevented this.
+            throw new Error('Missing videoUrl');
+        }
+
+        // Check for robust artifacts
+        if (results.artifacts.invoice) {
+            const invoice = results.artifacts.invoice;
+            console.log('\n💰 [Auditor] Verifying Cost Plus Model...');
+            console.log(`   Base Cost: $${invoice.subtotal}`);
+            console.log(`   Markup: $${invoice.markupTotal}`);
+            console.log(`   Total Due: $${invoice.totalDue}`);
+
+            if (invoice.totalDue > invoice.subtotal && invoice.markupTotal > 0) {
+                console.log('   ✅ Cost Plus Logic Verified (Markup applied)');
+            } else {
+                console.error('   ❌ Cost Plus Logic Failed (No markup found)');
+                process.exit(1);
+            }
+        } else {
+            console.log('artifacts:', results.artifacts);
+            console.warn('   ⚠️ No Invoice found in artifacts (Expected for Enterprise flow)');
+        }
 
         console.log('\n🎉 GOLDEN PATH VERIFIED! All systems green.');
 

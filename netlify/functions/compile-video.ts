@@ -17,12 +17,12 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { videoStore, audioStore } from "./lib/storage";
-import { 
-  generateDuckingFilterChain, 
+import {
+  generateDuckingFilterChain,
   generateVolumeKeyframes,
   NarrationSegment,
   DuckingConfig,
-  DEFAULT_DUCKING_CONFIG 
+  DEFAULT_DUCKING_CONFIG
 } from "./lib/ducking";
 
 interface BeatPoint {
@@ -76,7 +76,7 @@ function calculateDuration(images: ImageAsset[], beatGrid?: BeatPoint[]): number
   if (beatGrid && beatGrid.length > 0) {
     return beatGrid[beatGrid.length - 1].time + 2; // Add 2s buffer
   }
-  
+
   // Otherwise, calculate from image durations (default 3s per image)
   return images.reduce((total, img) => total + (img.duration || 3), 0);
 }
@@ -86,21 +86,21 @@ function calculateDuration(images: ImageAsset[], beatGrid?: BeatPoint[]): number
  * v2.0.0: Now includes ducking filter chain
  */
 function generateFFmpegCommand(request: CompileRequest, duration: number): string {
-  const resolution = request.resolution === '4k' ? '3840:2160' 
-                   : request.resolution === '1080p' ? '1920:1080' 
-                   : '1280:720';
+  const resolution = request.resolution === '4k' ? '3840:2160'
+    : request.resolution === '1080p' ? '1920:1080'
+      : '1280:720';
   const fps = request.fps || 30;
   const lufs = request.lufsTarget || -14;
-  
+
   // Merge ducking config with defaults
   const duckingConfig: DuckingConfig = {
     ...DEFAULT_DUCKING_CONFIG,
     ...request.duckingConfig,
   };
-  
+
   // Build audio filter complex based on inputs
   let audioFilter = '';
-  
+
   if (request.narrationUrl && request.musicUrl) {
     // Both narration and music - apply ducking
     if (request.narrationSegments && request.narrationSegments.length > 0) {
@@ -129,7 +129,7 @@ function generateFFmpegCommand(request: CompileRequest, duration: number): strin
     // Music only - apply gap volume level
     audioFilter = `[1:a]volume=${duckingConfig.gapVolume},loudnorm=I=${lufs - 6}:TP=-1.5:LRA=11[a]`;
   }
-  
+
   // Build complete FFmpeg command
   const cmd = `ffmpeg -y \\
     -framerate 1/${3} -i "images/%03d.jpg" \\
@@ -144,7 +144,7 @@ function generateFFmpegCommand(request: CompileRequest, duration: number): strin
     -c:a aac -b:a 192k \\
     -movflags +faststart \\
     output.mp4`;
-  
+
   return cmd;
 }
 
@@ -166,23 +166,23 @@ function estimateCost(duration: number, resolution: string): number {
  */
 async function compileWithFFmpeg(request: CompileRequest, duration: number): Promise<Buffer | null> {
   const ffmpegServiceUrl = process.env.FFMPEG_SERVICE_URL;
-  
+
   if (!ffmpegServiceUrl) {
     console.log('⚠️ No FFmpeg service URL, using placeholder mode');
     console.log('📋 FFmpeg command would be:');
     console.log(generateFFmpegCommand(request, duration));
     return null;
   }
-  
+
   try {
     console.log(`🎬 Calling FFmpeg service: ${ffmpegServiceUrl}`);
-    
+
     // Merge ducking config for the request
     const duckingConfig: DuckingConfig = {
       ...DEFAULT_DUCKING_CONFIG,
       ...request.duckingConfig,
     };
-    
+
     const response = await fetch(ffmpegServiceUrl, {
       method: 'POST',
       headers: {
@@ -203,24 +203,24 @@ async function compileWithFFmpeg(request: CompileRequest, duration: number): Pro
         useSidechainDucking: request.useSidechainDucking || false,
       }),
     });
-    
+
     if (!response.ok) {
       console.error('FFmpeg service error:', response.statusText);
       return null;
     }
-    
+
     // Check if response is video or job ID
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('video')) {
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     }
-    
+
     // Async job - would need polling
     const result = await response.json();
     console.log('FFmpeg job started:', result.jobId);
     return null; // Would poll for completion
-    
+
   } catch (error) {
     console.error('FFmpeg request failed:', error);
     return null;
@@ -229,17 +229,17 @@ async function compileWithFFmpeg(request: CompileRequest, duration: number): Pro
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   console.log('🎞️ EDITOR AGENT v2.0.0-DUCKING - Compile Video');
-  
+
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
-  
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -247,10 +247,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
-  
+
   try {
     const request: CompileRequest = JSON.parse(event.body || '{}');
-    
+
     if (!request.projectId) {
       return {
         statusCode: 400,
@@ -258,25 +258,36 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({ error: 'projectId is required' }),
       };
     }
-    
-    if (!request.images || request.images.length === 0) {
+
+    // v2.1 Local Dev Fix: Allow empty images if in placeholder mode
+    const ffmpegServiceUrl = process.env.FFMPEG_SERVICE_URL;
+    if ((!request.images || request.images.length === 0) && ffmpegServiceUrl) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'At least one image is required' }),
       };
     }
-    
+
+    // Pass placeholder images if none provided locally
+    if (!request.images || request.images.length === 0) {
+      console.log('⚠️ No images provided, using placeholders for local demo');
+      request.images = [
+        { id: 'p1', url: 'placeholder://1', duration: 3 },
+        { id: 'p2', url: 'placeholder://2', duration: 3 }
+      ];
+    }
+
     // Set defaults
     request.resolution = request.resolution || '1080p';
     request.fps = request.fps || 30;
     request.lufsTarget = request.lufsTarget || -14;
-    
+
     const duration = calculateDuration(request.images, request.beatGrid);
-    
+
     // Determine if ducking will be applied
     const duckingApplied = !!(request.narrationUrl && request.musicUrl);
-    
+
     // Log ducking configuration
     if (duckingApplied) {
       const duckingConfig = { ...DEFAULT_DUCKING_CONFIG, ...request.duckingConfig };
@@ -288,15 +299,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         console.log(`🎚️ Using sidechain compression for dynamic ducking`);
       }
     }
-    
+
     // Try FFmpeg service, fallback to placeholder
     const videoBuffer = await compileWithFFmpeg(request, duration);
     const isPlaceholder = !videoBuffer;
-    
+
     let videoUrl: string;
     let stored = false;
     let fileSize: string | undefined;
-    
+
     if (videoBuffer) {
       // REAL: Store video in Netlify Blobs
       const videoKey = `${request.projectId}/final.mp4`;
@@ -311,7 +322,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           duckingApplied: String(duckingApplied),
         },
       });
-      
+
       if (uploadResult.ok && uploadResult.publicUrl) {
         videoUrl = uploadResult.publicUrl;
         stored = true;
@@ -325,9 +336,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       // Placeholder mode - return test video URL
       videoUrl = `/test-assets/test-video.mp4`;
     }
-    
+
     const cost = estimateCost(duration, request.resolution);
-    
+
     const response: CompileResponse = {
       success: true,
       projectId: request.projectId,
@@ -342,23 +353,23 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       // Include FFmpeg command in placeholder mode for debugging
       ffmpegCommand: isPlaceholder ? generateFFmpegCommand(request, duration) : undefined,
     };
-    
+
     console.log(`✅ Editor Agent: ${isPlaceholder ? 'Placeholder' : 'Compiled'} ${duration}s video @ ${request.resolution}, ducking: ${duckingApplied}, stored: ${stored}`);
-    
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify(response),
     };
-    
+
   } catch (error) {
     console.error('❌ Editor Agent error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      body: JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
     };
   }

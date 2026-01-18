@@ -44,6 +44,7 @@ export default async (req: Request) => {
     artifacts: {
       resolution: index.finalVideoKey ? '1080p' : undefined,
       duration: index.music?.duration,
+      invoice: index.invoice,
     },
     error: index.error || null,
     updatedAt: index.updatedAt || new Date().toISOString(),
@@ -51,7 +52,8 @@ export default async (req: Request) => {
     ...(process.env.CONTEXT !== 'production' ? {
       _debug: {
         runId: index.runId,
-        step: index.status === 'completed' ? 'completed' : 'processing'
+        step: index.status === 'completed' ? 'completed' : (index.step || 'processing'),
+        message: index.message
       }
     } : {})
   };

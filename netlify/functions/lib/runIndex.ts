@@ -1,6 +1,7 @@
 import { runsStore } from './storage';
+import { Manifest } from './cost-manifest';
 
-export type RunStatus = 'queued' | 'running' | 'complete' | 'failed';
+export type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export interface RunArtifacts {
   projectId: string;
@@ -18,6 +19,9 @@ export interface RunArtifacts {
   videoUrl?: string;
   creditsUrl?: string;
   pipelineMode?: string;
+  invoice?: Manifest;
+  step?: string;
+  message?: string;
   dashboardUrl?: string;
   voice?: {
     voiceId?: string;

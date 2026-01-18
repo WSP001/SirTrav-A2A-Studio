@@ -153,7 +153,9 @@ function App() {
       creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
       generatedAt: new Date().toISOString(),
       pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
+      pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
       isPlaceholder: !isRealVideo,
+      invoice: data.artifacts?.invoice, // Extract Invoice for display
     });
   };
 
@@ -291,7 +293,17 @@ function App() {
               </div>
 
               {/* Weekly Recap Template */}
-              <button className="btn-template mt-4 w-full">
+              <button
+                onClick={() => {
+                  setFiles([
+                    new File(["(dummy content)"], "journal_entry_day1.txt", { type: "text/plain" }),
+                    new File(["(dummy content)"], "voice_memo_day1.mp3", { type: "audio/mpeg" }),
+                    new File(["(dummy content)"], "photo_day1.jpg", { type: "image/jpeg" })
+                  ]);
+                  setProjectId(`week${new Date().getWeekNumber()}_recap_demo`);
+                }}
+                className="btn-template mt-4 w-full"
+              >
                 <span>📅</span> Use Weekly Recap Template
               </button>
             </div>
@@ -514,6 +526,32 @@ function App() {
                     <p className="text-sm font-medium text-white">{videoResult.fileSize}</p>
                   </div>
                 </div>
+
+                {/* INVOICE MANIFEST DISPLAY (Task 5) */}
+                {videoResult.invoice && (
+                  <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" /> Cost Plus Invoice
+                      </h4>
+                      <span className="text-[10px] text-emerald-300/60 uppercase tracking-widest">{videoResult.invoice.jobId}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2 bg-emerald-950/40 rounded">
+                        <p className="text-emerald-500/70">Subtotal</p>
+                        <p className="text-emerald-200 font-mono">${videoResult.invoice.subtotal.toFixed(3)}</p>
+                      </div>
+                      <div className="p-2 bg-emerald-950/40 rounded">
+                        <p className="text-emerald-500/70">Markup (20%)</p>
+                        <p className="text-emerald-200 font-mono">${videoResult.invoice.markupTotal.toFixed(3)}</p>
+                      </div>
+                      <div className="p-2 bg-emerald-500/20 rounded border border-emerald-500/40">
+                        <p className="text-emerald-100 font-bold">TOTAL</p>
+                        <p className="text-white font-bold font-mono">${videoResult.invoice.totalDue.toFixed(3)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Feedback */}
                 <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">

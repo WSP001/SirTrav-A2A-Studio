@@ -12,8 +12,11 @@
 import type { Handler } from '@netlify/functions';
 import { runsStore, artifactsStore, uploadsStore } from './lib/storage';
 import { updateRunIndex } from './lib/runIndex';
+import { appendProgress } from './lib/progress-store';
+import { ManifestGenerator } from './lib/cost-manifest';
+import { inspectOutput } from './lib/quality-gate';
 
-type RunStatus = 'queued' | 'running' | 'complete' | 'failed';
+type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 interface PipelinePayload {
   images?: Array<{ id: string; url: string; base64?: string }>;
@@ -65,7 +68,7 @@ async function updateRun(
     ...patch,
     updatedAt: now,
   };
-  await store.set(key, JSON.stringify(next), { metadata: { projectId, runId, status: next.status } });
+  await store.set(key, JSON.stringify(next), { metadata: { projectId, runId, status: next.status || 'unknown' } });
   const indexPatch: any = {
     status: (next.status as RunStatus) || 'running',
   };
@@ -75,9 +78,30 @@ async function updateRun(
     if (patch.artifacts.videoUrl) indexPatch.videoUrl = patch.artifacts.videoUrl;
     if (patch.artifacts.creditsUrl) indexPatch.creditsUrl = patch.artifacts.creditsUrl;
     if (patch.artifacts.pipelineMode) indexPatch.pipelineMode = patch.artifacts.pipelineMode;
+    if ((patch.artifacts as any).invoice) indexPatch.invoice = (patch.artifacts as any).invoice;
   }
 
   await updateRunIndex(projectId, runId, indexPatch);
+
+  // Post progress event for SSE streaming
+  // Map RunStatus to ProgressStatus for SSE consumers
+  const progressStatus = patch.status === 'completed' ? 'completed'
+    : patch.status === 'failed' ? 'failed'
+      : 'running';
+
+  await appendProgress(projectId, runId, {
+    projectId,
+    runId,
+    agent: patch.step || 'pipeline',
+    status: progressStatus,
+    message: patch.message || '',
+    timestamp: now,
+    progress: patch.progress || 0,
+    metadata: {
+      step: patch.step,
+      agentResults: patch.agentResults ? Object.keys(patch.agentResults) : undefined,
+    },
+  });
 }
 
 // ============================================================================
@@ -322,16 +346,25 @@ async function executeEditorAgent(
   try {
     console.log(`🎞️ [Editor] Compiling video...`);
 
+    // Extract images from curated media scenes for the Editor
+    const images = (curatedMedia?.scenes || []).flatMap((scene: any) =>
+      (scene.assets || []).map((asset: any) => ({
+        id: asset.id || asset.url,
+        url: asset.url,
+        duration: asset.duration || 3,
+      }))
+    );
+
     const response = await fetch(`${baseUrl}/.netlify/functions/compile-video`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId,
         runId,
-        scenes: curatedMedia?.scenes || [],
-        audioUrl: voiceResult?.data?.audioUrl,
+        images: images.length > 0 ? images : undefined, // Let compile-video use placeholders if empty
+        narrationUrl: voiceResult?.data?.audioUrl,
         musicUrl: musicResult?.data?.musicUrl,
-        outputFormat: outputFormat || { aspectRatio: '16:9' },
+        resolution: outputFormat?.aspectRatio === '9:16' ? '1080p' : '1080p',
       }),
     });
 
@@ -495,6 +528,7 @@ export const handler: Handler = async (event) => {
     console.log(`🚀 ========================================\n`);
 
     const agentResults: Record<string, AgentResult> = {};
+    const manifest = new ManifestGenerator();
 
     // ========================================================================
     // STEP 1: DIRECTOR AGENT (Curate Media)
@@ -511,6 +545,10 @@ export const handler: Handler = async (event) => {
       images,
       payload.projectMode || 'commons_public'
     );
+
+    // 💰 RECORD COST: Director (Vision)
+    // Base Cost: $0.03 input + $0.06 output ~= $0.09
+    manifest.addEntry('Director', 'Vision Analysis', 0.09);
 
     await updateRun(projectId, runId, {
       progress: 15,
@@ -530,6 +568,10 @@ export const handler: Handler = async (event) => {
 
     agentResults.writer = await executeWriterAgent(projectId, agentResults.director.data);
 
+    // 💰 RECORD COST: Writer (GPT-4)
+    // Base Cost: ~500 tokens = $0.03
+    manifest.addEntry('Writer', 'Script Generation', 0.03);
+
     await updateRun(projectId, runId, {
       progress: 35,
       step: 'writer',
@@ -538,44 +580,34 @@ export const handler: Handler = async (event) => {
     });
 
     // ========================================================================
-    // STEP 3: VOICE AGENT (Text-to-Speech)
+    // STEP 3 & 4: PARALLEL ENGINE (Voice & Composer)
+    // The "Speed Upgrade" - Running independent agents simultaneously
     // ========================================================================
     await updateRun(projectId, runId, {
       progress: 40,
-      step: 'voice',
-      message: '🎙️ Voice synthesizing narration...'
-    });
-
-    agentResults.voice = await executeVoiceAgent(projectId, runId, agentResults.writer.data);
-
-    await updateRun(projectId, runId, {
-      progress: 55,
-      step: 'voice',
-      message: `🎙️ Voice ${agentResults.voice.success ? 'completed' : 'failed'}`,
-      agentResults,
-    });
-
-    // ========================================================================
-    // STEP 4: COMPOSER AGENT (Generate Music)
-    // ========================================================================
-    await updateRun(projectId, runId, {
-      progress: 60,
-      step: 'composer',
-      message: '🎵 Composer creating soundtrack...'
+      step: 'production_parallel',
+      message: '⚡ Parallel Engine: Synthesizing Audio & Composing Music...'
     });
 
     const mood = agentResults.director.data?.scenes?.[0]?.dominant_mood || 'reflective';
-    agentResults.composer = await executeComposerAgent(
-      projectId,
-      runId,
-      mood,
-      payload.themePreference
-    );
+
+    // ⚡ PARALLEL EXECUTION
+    const [voiceResult, composerResult] = await Promise.all([
+      executeVoiceAgent(projectId, runId, agentResults.writer.data),
+      executeComposerAgent(projectId, runId, mood, payload.themePreference)
+    ]);
+
+    agentResults.voice = voiceResult;
+    agentResults.composer = composerResult;
+
+    // 💰 RECORD COST: Voice (ElevenLabs) & Composer (Suno)
+    manifest.addEntry('Voice', 'Speech Synthesis', 0.12);
+    manifest.addEntry('Composer', 'Music Generation', 0.08);
 
     await updateRun(projectId, runId, {
       progress: 70,
-      step: 'composer',
-      message: `🎵 Composer ${agentResults.composer.success ? 'completed' : 'failed'}`,
+      step: 'production_parallel',
+      message: `⚡ Parallel Engine completed. Voice: ${voiceResult.success}, Music: ${composerResult.success}`,
       agentResults,
     });
 
@@ -597,6 +629,9 @@ export const handler: Handler = async (event) => {
       payload.outputFormat
     );
 
+    // 💰 RECORD COST: Editor (Compute)
+    manifest.addEntry('Editor', 'Video Compilation', 0.05);
+
     await updateRun(projectId, runId, {
       progress: 90,
       step: 'editor',
@@ -615,12 +650,43 @@ export const handler: Handler = async (event) => {
 
     agentResults.attribution = await executeAttributionAgent(projectId, runId, agentResults);
 
+    // 💰 RECORD COST: Attribution (Data Processing)
+    manifest.addEntry('Attribution', 'Commons Good Audit', 0.01);
+
     await updateRun(projectId, runId, {
       progress: 98,
       step: 'attribution',
       message: `📜 Attribution ${agentResults.attribution.success ? 'completed' : 'failed'}`,
       agentResults,
     });
+
+    // ========================================================================
+    // STEP 6.5: QUALITY GATE AGENT (Enterprise Auditor)
+    // ========================================================================
+    const qualityCheck = await inspectOutput({
+      scriptText: agentResults.writer?.data?.narrative,
+      audioUrl: agentResults.voice?.data?.audioUrl,
+      videoUrl: agentResults.editor?.data?.videoUrl,
+      images: agentResults.director?.data?.scenes?.flatMap((s: any) => s.assets || [])
+    });
+
+    if (!qualityCheck.passed) {
+      console.error('❌ Quality Gate Failed:', qualityCheck.errors);
+      await updateRun(projectId, runId, {
+        status: 'failed',
+        step: 'quality_gate',
+        message: `Quality check failed: ${qualityCheck.errors.join(', ')}`
+      });
+
+      return {
+        statusCode: 422,
+        body: JSON.stringify({
+          ok: false,
+          error: 'Quality gate failed',
+          details: qualityCheck.errors
+        })
+      };
+    }
 
     // ========================================================================
     // STEP 7: COMPLETE - Store Final Artifacts
@@ -634,13 +700,14 @@ export const handler: Handler = async (event) => {
       duration: agentResults.editor.data?.duration || 30,
       agentResults,
       pipelineMode: determinePipelineMode(agentResults),
+      invoice: manifest.generate(runId),
     };
 
     await updateRun(projectId, runId, {
-      status: 'complete',
+      status: 'completed',
       progress: 100,
-      step: 'complete',
-      message: '✅ Pipeline complete! Video ready.',
+      step: 'completed',
+      message: '✅ Pipeline completed! Video ready.',
       artifacts: finalArtifacts,
       agentResults,
     });
@@ -657,9 +724,10 @@ export const handler: Handler = async (event) => {
         ok: true,
         projectId,
         runId,
-        status: 'complete',
+        status: 'completed',
         videoUrl,
         creditsUrl,
+        invoice: finalArtifacts.invoice, // 💰 Cost Plus Manifest
         pipelineMode: finalArtifacts.pipelineMode,
       })
     };

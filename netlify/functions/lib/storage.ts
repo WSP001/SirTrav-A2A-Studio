@@ -28,34 +28,80 @@ type BlobsStoreOptions = {
  */
 class BlobsStoreWrapper {
   private storeName: string;
-  private memoryStore: Map<string, string> = new Map();
   private isLocalFallback: boolean = false;
+  private localDir: string;
 
   constructor(name: string) {
     this.storeName = name;
+    // Use a local directory for persistence across function restarts/isolates
+    this.localDir = path.resolve(process.cwd(), '.local-blobs', name);
+  }
+
+  private initLocalDir() {
+    // Lazy check to avoid excessive FS calls
+    const fs = require('fs');
+    if (!fs.existsSync(this.localDir)) {
+      try {
+        fs.mkdirSync(this.localDir, { recursive: true });
+      } catch (e) {
+        // Ignore race condition errors
+      }
+    }
   }
 
   private getStore() {
     const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
     const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
 
-    // If no credentials, use in-memory fallback for local dev
+    // If no credentials, use file-system fallback for local dev
     if (!siteID || !token) {
       if (!this.isLocalFallback) {
-        console.warn(`[BlobsStore:${this.storeName}] No credentials - using in-memory fallback for local dev`);
         this.isLocalFallback = true;
       }
       return null;
     }
-
     return getStore({ name: this.storeName, siteID, token });
+  }
+
+  // Local FS Helpers
+  private localSet(key: string, value: string | Buffer) {
+    this.initLocalDir();
+    const fs = require('fs');
+    // Sanitize key for filesystem
+    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const filePath = path.join(this.localDir, safeKey);
+    fs.writeFileSync(filePath, value);
+  }
+
+  private localGet(key: string): Buffer | null {
+    this.initLocalDir();
+    const fs = require('fs');
+    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const filePath = path.join(this.localDir, safeKey);
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath);
+  }
+
+  private localDelete(key: string) {
+    this.initLocalDir();
+    const fs = require('fs');
+    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const filePath = path.join(this.localDir, safeKey);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+
+  private localList(prefix?: string): string[] {
+    this.initLocalDir();
+    const fs = require('fs');
+    const files = fs.readdirSync(this.localDir);
+    // Note: This is an approximation since we sanitized keys
+    return files;
   }
 
   async set(key: string, value: string | Buffer, options?: { metadata?: Record<string, string> }) {
     const store = this.getStore();
     if (!store) {
-      // In-memory fallback
-      this.memoryStore.set(key, typeof value === 'string' ? value : value.toString());
+      this.localSet(key, value);
       return { ok: true };
     }
     return store.set(key, value, options);
@@ -64,11 +110,12 @@ class BlobsStoreWrapper {
   async get(key: string, options?: { type?: 'text' | 'json' | 'arrayBuffer' }) {
     const store = this.getStore();
     if (!store) {
-      // In-memory fallback
-      const value = this.memoryStore.get(key);
-      if (!value) return null;
-      if (options?.type === 'json') return JSON.parse(value);
-      return value;
+      const buffer = this.localGet(key);
+      if (!buffer) return null;
+
+      if (options?.type === 'json') return JSON.parse(buffer.toString('utf-8'));
+      if (options?.type === 'arrayBuffer') return buffer.buffer ? buffer.buffer : Uint8Array.from(buffer).buffer; // Handle Buffer to ArrayBuffer conversion safely
+      return buffer.toString('utf-8');
     }
     return store.get(key, options);
   }
@@ -87,7 +134,7 @@ class BlobsStoreWrapper {
   async delete(key: string) {
     const store = this.getStore();
     if (!store) {
-      this.memoryStore.delete(key);
+      this.localDelete(key);
       return;
     }
     return store.delete(key);
@@ -96,18 +143,15 @@ class BlobsStoreWrapper {
   async list(options?: { prefix?: string }) {
     const store = this.getStore();
     if (!store) {
-      const keys = Array.from(this.memoryStore.keys());
-      const filtered = options?.prefix
-        ? keys.filter(k => k.startsWith(options.prefix!))
-        : keys;
-      return { blobs: filtered.map(key => ({ key })) };
+      const keys = this.localList(options?.prefix);
+      return { blobs: keys.map(key => ({ key })) };
     }
     return store.list(options);
   }
 
   async getMetadata(key: string) {
     const store = this.getStore();
-    if (!store) return null;
+    if (!store) return null; // FS metadata not implemented for simplicity
     return store.getMetadata(key);
   }
 }
@@ -434,7 +478,7 @@ class NetlifyBlobsStorage {
     try {
       const store = this.store();
       const blob = await store.get(key, { type: 'arrayBuffer' });
-      
+
       if (!blob) {
         return { ok: false, error: 'File not found' };
       }
@@ -524,23 +568,23 @@ export const exportsStore = () => getConfiguredBlobsStore('sirtrav-exports');
  */
 export function createStorage(storeName?: string) {
   const backend = (process.env.STORAGE_BACKEND || 'netlify_blobs').toLowerCase();
-  
+
   // Netlify Blobs - RECOMMENDED for Netlify deployments (no AWS setup!)
   if (backend === 'netlify_blobs' || backend === 'blobs') {
     console.log('[Storage] Using Netlify Blobs backend');
     return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
   }
-  
+
   if (backend === 's3' && process.env.AWS_ACCESS_KEY_ID) {
     console.log('[Storage] Using S3 backend');
     return new S3Storage();
   }
-  
+
   if (backend === 'netlify_lm') {
     console.log('[Storage] Using Netlify Large Media backend');
     return new NetlifyLMStorage();
   }
-  
+
   // Default: Netlify Blobs (works out of the box on Netlify!)
   console.log('[Storage] Defaulting to Netlify Blobs backend');
   return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
@@ -550,12 +594,12 @@ export function createStorage(storeName?: string) {
 const isProduction = process.env.NODE_ENV === 'production';
 const hasS3Config = Boolean(
   process.env.S3_BUCKET &&
-    process.env.AWS_ACCESS_KEY_ID &&
-    process.env.AWS_SECRET_ACCESS_KEY
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY
 );
 
 // Default storage instance - uses Netlify Blobs on Netlify, Mock locally
-export const storage = isProduction 
+export const storage = isProduction
   ? (hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media'))
   : new MockStorage();
 
