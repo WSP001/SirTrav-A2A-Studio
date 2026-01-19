@@ -15,6 +15,7 @@ import { updateRunIndex } from './lib/runIndex';
 import { appendProgress } from './lib/progress-store';
 import { ManifestGenerator } from './lib/cost-manifest';
 import { inspectOutput } from './lib/quality-gate';
+import { publishVideo, flushCredentials } from './lib/publish';
 
 type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -689,32 +690,41 @@ export const handler: Handler = async (event) => {
     }
 
     // ========================================================================
-    // STEP 7: COMPLETE - Store Final Artifacts
+    // STEP 7: COMPLETE - Exchange & Wipe (Security)
     // ========================================================================
-    const videoUrl = agentResults.editor.data?.videoUrl || '/test-assets/test-video.mp4';
-    const creditsUrl = '/test-assets/credits.json';
+    const rawVideoUrl = agentResults.editor.data?.videoUrl || '/test-assets/test-video.mp4';
+
+    // 🔒 EXCHANGE: Generate Secure Signed URL
+    const secureVideo = await publishVideo(rawVideoUrl, 24);
+
+    // (Credentials flushed after final update)
 
     const finalArtifacts = {
-      videoUrl,
-      creditsUrl,
+      videoUrl: secureVideo.signedUrl,
+      expiresAt: secureVideo.expiresAt,
+      creditsUrl: '/test-assets/credits.json',
       duration: agentResults.editor.data?.duration || 30,
       agentResults,
       pipelineMode: determinePipelineMode(agentResults),
       invoice: manifest.generate(runId),
+      exchangeMode: secureVideo.mode
     };
 
     await updateRun(projectId, runId, {
       status: 'completed',
       progress: 100,
       step: 'completed',
-      message: '✅ Pipeline completed! Video ready.',
+      message: '✅ Pipeline execution finished successfully',
       artifacts: finalArtifacts,
       agentResults,
     });
 
+    // 🔒 WIPE: Flush Credentials (AFTER final ledger update)
+    flushCredentials();
+
     console.log(`\n✅ ========================================`);
     console.log(`✅ PIPELINE COMPLETE: ${projectId}/${runId}`);
-    console.log(`✅ Video: ${videoUrl}`);
+    console.log(`✅ Video: ${finalArtifacts.videoUrl}`);
     console.log(`✅ Mode: ${finalArtifacts.pipelineMode}`);
     console.log(`✅ ========================================\n`);
 
@@ -725,8 +735,8 @@ export const handler: Handler = async (event) => {
         projectId,
         runId,
         status: 'completed',
-        videoUrl,
-        creditsUrl,
+        videoUrl: finalArtifacts.videoUrl,
+        creditsUrl: finalArtifacts.creditsUrl,
         invoice: finalArtifacts.invoice, // 💰 Cost Plus Manifest
         pipelineMode: finalArtifacts.pipelineMode,
       })
