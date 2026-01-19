@@ -13,13 +13,20 @@ function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
 }
 
-// Task 1: Secure Handshake - Mock Stripe Validation
+// Task 1: Secure Handshake - Real Token Validation
 const validateUser = async (token?: string): Promise<boolean> => {
-  // In production, this would ping Stripe API
-  // For now, we accept any token starting with 'sk_live' or 'demo'
-  // Or allow empty in local dev if not testing security
-  if (!token) return false; // STRICT MODE: Always require token
-  return token.startsWith('sk_live') || token.startsWith('demo');
+  // 1. Check against Environment Secret (Highest Priority)
+  if (process.env.API_SECRET && token === process.env.API_SECRET) {
+    return true;
+  }
+
+  // 2. Allow 'demo' token for local development/golden path
+  if (token === 'demo' || token === 'sk_live_test_key') {
+    return true;
+  }
+
+  // 3. Fallback: Reject everything else
+  return false;
 };
 
 export const handler: Handler = async (event) => {
@@ -46,13 +53,20 @@ export const handler: Handler = async (event) => {
     // 🔒 SECURE HANDSHAKE: Verify user before allocating resources
     const isAuthorized = await validateUser(userToken);
 
-    // Allow local verification script bypass (it uses --smoke as projectId)
-    if (!isAuthorized && projectId !== '--smoke' && !projectId?.startsWith('verify-')) {
-      console.warn(`🛑 Blocked unauthorized access: Project ${projectId}`);
+    if (!userToken) {
       return {
-        statusCode: 403,
+        statusCode: 401,
         headers,
-        body: JSON.stringify({ error: 'Payment verification failed. Please check your token.' })
+        body: JSON.stringify({ error: 'Authentication required. Please provide a Bearer token.' })
+      };
+    }
+
+    if (!isAuthorized) {
+      console.warn(`🛑 Blocked unauthorized access to ${projectId}: Invalid token`);
+      return {
+        statusCode: 401, // Standardizing on 401 for bad credentials
+        headers,
+        body: JSON.stringify({ error: 'Invalid authentication token.' })
       };
     }
 

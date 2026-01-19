@@ -12,8 +12,8 @@ async function run() {
         body: JSON.stringify({ projectId: PROJECT_ID })
     });
 
-    if (res1.status === 403) {
-        console.log('   ✅ PASS: Non-token request blocked (403 Forbidden).');
+    if (res1.status === 401) {
+        console.log('   ✅ PASS: Non-token request blocked (401 Unauthorized).');
     } else {
         console.error(`   ❌ FAIL: Request allowed or wrong status. Got: ${res1.status}`);
         process.exit(1);
@@ -30,8 +30,8 @@ async function run() {
         body: JSON.stringify({ projectId: PROJECT_ID })
     });
 
-    if (res2.status === 403) {
-        console.log('   ✅ PASS: Invalid token blocked (403 Forbidden).');
+    if (res2.status === 401) {
+        console.log('   ✅ PASS: Invalid token blocked (401 Unauthorized).');
     } else {
         console.error(`   ❌ FAIL: Invalid token allowed. Got: ${res2.status}`);
         process.exit(1);
