@@ -160,7 +160,10 @@ async function executeStep(ctx, step, baseUrl) {
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer demo'
+        },
         body: JSON.stringify(bodyPayload)
       });
 
@@ -266,7 +269,10 @@ async function runManifest(manifestPath, options = {}) {
   try {
     const startRes = await fetch(`${baseUrl}/.netlify/functions/start-pipeline`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer demo'
+      },
       body: JSON.stringify({ projectId })
     });
 

@@ -1,0 +1,28 @@
+
+> sirtrav-a2a-studio@0.1.0 preflight
+> node scripts/preflight.mjs
+
+≡ƒÜÇ Preflight Check: Validating Environment...
+
+≡ƒôä Checking Critical Files...
+  Γ£à Found: netlify/functions/start-pipeline.ts
+  Γ£à Found: netlify/functions/run-pipeline-background.ts
+  Γ£à Found: netlify/functions/lib/cost-manifest.ts
+  Γ£à Found: netlify/functions/lib/quality-gate.ts
+  Γ£à Found: netlify/functions/lib/publish.ts
+  Γ£à Found: scripts/verify-golden-path.mjs
+  Γ£à Found: scripts/verify-security.mjs
+  Γ£à Found: package.json
+  Γ¥î MISSING: .env.local
+
+≡ƒôé Checking Directories...
+  Γ£à Found: netlify/functions/
+  Γ£à Found: scripts/
+  Γ£à Found: pipelines/
+  Γ£à Found: inputs/
+  Γ£à Found: output/
+  Γ£à Found: artifacts/
+
+≡ƒöÉ Checking Environment...
+
+Γ¥î Preflight Failed with 1 errors.
