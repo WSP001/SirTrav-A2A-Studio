@@ -1,5 +1,3 @@
-name: Pre-Deploy Quality Gates
-
 on:
   pull_request:
     branches: [main]
