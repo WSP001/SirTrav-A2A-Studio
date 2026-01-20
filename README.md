@@ -92,6 +92,37 @@ bash scripts/smoke-test.sh https://sirtrav-a2a-studio.netlify.app/.netlify/funct
 
 ## 📊 Testing & Verification
 
+### Quick Test Suite (Recommended)
+```bash
+# Run all quality gates (preflight + golden path + security)
+npm run test:all
+
+# Full test suite (includes idempotency + SSE stress)
+npm run test:full
+```
+
+### Individual Test Scripts
+```bash
+# Preflight: Environment sanity check
+npm run preflight
+
+# Golden Path: Full pipeline integration test
+npm run practice:test
+
+# Security: Handshake verification (401/202 semantics)
+npm run verify:security
+
+# Manifest Runner: Requires netlify dev running
+npm run test:runner
+
+# SSE Stress Test: Load testing
+npm run stress:sse
+
+# Idempotency: Duplicate run protection
+npm run verify:idempotency
+```
+
+### Legacy Smoke Test
 ```bash
 # Smoke test all endpoints
 bash scripts/smoke-test.sh $BASE_URL
@@ -105,18 +136,32 @@ bash scripts/smoke-test.sh $BASE_URL
 # ✅ intake-upload (CORS): PASS
 ```
 
-See `.github/instructions/testing-failover.md` for detailed testing guide.
+See [docs/TESTING.md](docs/TESTING.md) and [docs/READY_TO_TEST.md](docs/READY_TO_TEST.md) for detailed testing guide.
+
+### CI/CD Quality Gates
+The [Pre-Deploy Quality Gates](.github/workflows/pre-deploy-checks.yml) workflow runs on every PR:
+1. **Build** - TypeScript compilation
+2. **Preflight** - Environment sanity
+3. **Security** - Token validation (P7)
+4. **Golden Path** - Full integration + Commons Good attribution
 
 ---
 
 ## 📁 Project Structure
 
 ```
-├── .github/instructions/      # Copilot instructions for AI agents
-│   ├── copilot-instructions.md
-│   ├── agent-development.md
-│   ├── testing-failover.md
-│   └── storage-memory.md
+├── .github/
+│   ├── workflows/             # CI/CD pipelines
+│   │   ├── pre-deploy-checks.yml  # Quality gates
+│   │   ├── build_weekly.yml
+│   │   └── privacy-scan.yml
+│   └── instructions/          # Copilot instructions for AI agents
+├── .claude/
+│   ├── hooks/                 # Claude Code hooks
+│   │   ├── init_hook.sh
+│   │   ├── post_plan_hook.sh
+│   │   └── maintenance_hook.sh
+│   └── skills/                # Agent skill templates
 ├── netlify/functions/         # 7 Agent serverless functions
 │   ├── curate-media.ts        # Director (Vision AI)
 │   ├── narrate-project.ts     # Writer (GPT-4)
@@ -125,27 +170,44 @@ See `.github/instructions/testing-failover.md` for detailed testing guide.
 │   ├── compile-video.ts       # Editor (FFmpeg)
 │   ├── generate-attribution.ts # Attribution
 │   ├── publish.ts             # Publisher
+│   ├── start-pipeline.ts      # Secure Handshake entry
+│   ├── run-pipeline-background.ts # Pipeline orchestrator
 │   ├── progress.ts            # SSE progress streaming
-│   ├── submit-evaluation.ts   # Learning loop feedback
+│   ├── results.ts             # Results API
 │   └── lib/
 │       ├── storage.ts         # Netlify Blobs storage
 │       ├── progress-store.ts  # Progress persistence
-│       ├── vision.ts          # OpenAI Vision API
-│       └── tracing.ts         # OpenTelemetry
+│       ├── runIndex.ts        # Run ledger (index.json)
+│       ├── cost-manifest.ts   # Cost Plus 20% markup
+│       ├── quality-gate.ts    # Output validation
+│       ├── publish.ts         # HMAC signed URLs
+│       └── vision.ts          # OpenAI Vision API
 ├── pipelines/
 │   ├── a2a_manifest.yml       # D2A orchestration manifest
-│   ├── run-manifest.mjs       # Manifest executor
-│   └── scripts/
-│       └── ffmpeg_compile.mjs # FFmpeg video assembly
+│   └── run-manifest.mjs       # Manifest executor
+├── scripts/
+│   ├── verify-golden-path.mjs # Golden Path integration test
+│   ├── verify-security.mjs    # Security handshake test
+│   ├── verify-idempotency.mjs # Duplicate run protection
+│   ├── stress-test-sse.mjs    # SSE load test
+│   └── preflight.mjs          # Environment sanity check
+├── artifacts/                 # Pipeline artifacts (gitkeep)
+├── inputs/                    # Media intake (gitkeep)
+├── output/                    # Final outputs (gitkeep)
+├── plans/                     # Agent plans (gitkeep)
+├── docs/
+│   ├── skills/                # Agent skill documentation
+│   │   ├── SKILL_TEMPLATE.md
+│   │   └── IMAGE_TO_VIDEO_SKILL.md
+│   ├── STATUS_RUN_INDEX.md    # Run ledger documentation
+│   ├── MCP_CONFIG.md          # MCP server configuration
+│   ├── RC1_CHECKLIST.md       # Release candidate checklist
+│   ├── KPIS.md                # Success metrics
+│   ├── TESTING.md
+│   └── READY_TO_TEST.md
 ├── src/components/            # React UI
 │   ├── CreativeHub.tsx        # Main upload + pipeline trigger
-│   ├── PipelineProgress.tsx   # SSE progress display
-│   └── ResultsPreview.tsx     # Video preview + feedback
-├── scripts/
-│   └── smoke-test.sh          # Endpoint smoke tests
-├── docs/                      # Documentation
-│   ├── MEMORY_SCHEMA.md
-│   └── LOCAL_DEV.md
+│   └── PipelineProgress.tsx   # SSE progress display
 └── MASTER.md                  # Build plan (v2.0.1)
 ```
 
