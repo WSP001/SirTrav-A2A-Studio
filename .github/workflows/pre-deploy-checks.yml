@@ -1,5 +1,4 @@
 name: Pre-Deploy Quality Gates
-name: Pre-Deploy Quality Gates
 
 on:
   pull_request:
