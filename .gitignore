@@ -45,3 +45,12 @@ SirJames-A2A-Studio/
 .augment/rules/byterover-rules.md
 .vite/
 evaluation_results.json
+
+# Local development blobs (auto-generated)
+.local-blobs/
+
+# Verify logs (dev only)
+verify_*.txt
+
+# Temp pipeline outputs
+tmp/

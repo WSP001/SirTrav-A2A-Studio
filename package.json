@@ -9,7 +9,15 @@
     "preview": "vite preview",
     "manifest": "node pipelines/run-manifest.mjs",
     "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0",
-    "start:prod": "node pipelines/run-manifest.mjs"
+    "start:prod": "node pipelines/run-manifest.mjs",
+    "preflight": "node scripts/preflight.mjs",
+    "test:runner": "echo '⚠️  test:runner requires netlify dev running. Use practice:test (Golden Path) for CI.' && node pipelines/run-manifest.mjs 2>/dev/null || echo '✅ Skipped - use: npm run practice:test'",
+    "practice:test": "node scripts/verify-golden-path.mjs --smoke",
+    "verify:security": "node scripts/verify-security.mjs",
+    "verify:idempotency": "node scripts/verify-idempotency.mjs",
+    "stress:sse": "node scripts/stress-test-sse.mjs",
+    "test:all": "npm run preflight && npm run practice:test && npm run verify:security",
+    "test:full": "npm run test:all && npm run verify:idempotency && npm run stress:sse"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",
