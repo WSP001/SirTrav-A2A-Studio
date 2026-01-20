@@ -1,0 +1,53 @@
+name: Pre-Deploy Quality Gates
+name: Pre-Deploy Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: TypeScript Compilation (Build)
+        run: npm run build
+      
+      - name: Preflight Environment Check
+        # Validates file structure and critical config
+        run: npm run preflight
+      
+      - name: Security Handshake Verification
+        # Verifies 401/202 responses and Token validation (P7)
+        run: npm run verify:security
+        env:
+          API_SECRET: ${{ secrets.API_SECRET }}
+      
+      - name: Golden Path Integration & Commons Good Check
+        # Runs the full pipeline simulation (practice:test)
+        # Verifies:
+        # 1. Pipeline Execution
+        # 2. SSE Progress Events
+        # 3. Quality Gate (Video Validation)
+        # 4. Attribution Generation (Commons Good)
+        run: npm run practice:test
+        env:
+           # Mocks are used if secrets are missing, ensuring passing CI logic
+           # But mapped here for production readiness
+           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+           URL: http://localhost:8888 
