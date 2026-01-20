@@ -170,15 +170,35 @@ async function executeStep(ctx, step, baseUrl) {
       const result = await response.json();
 
       if (!response.ok || result.ok === false) {
+        console.error(`  ❌ Error details: ${JSON.stringify(result, null, 2)}`);
         throw new Error(result.message || result.error || `HTTP ${response.status}`);
       }
 
       // Success
+      const data = result.data || result;
       const duration = Date.now() - ctx.steps[stepName].startTime;
+      const outputPath = step.output ? ctx.interpolate(step.output) : null;
+
+      // Self-Healing 1: Placeholder artifacts
+      if (data.placeholder && outputPath) {
+        console.log(`  ✨ [Kit] Materializing placeholder artifact: ${outputPath}`);
+        const dir = dirname(outputPath);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        await writeFile(outputPath, `Placeholder artifact for ${stepName}`);
+      }
+
+      // Self-Healing 2: Auto-persist JSON outputs (e.g. from attribution agent)
+      if (outputPath && outputPath.endsWith('.json') && !existsSync(outputPath)) {
+        console.log(`  💾 [Kit] Persisting JSON output: ${outputPath}`);
+        const dir = dirname(outputPath);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        await writeFile(outputPath, JSON.stringify(data, null, 2));
+      }
+
       ctx.steps[stepName] = {
         status: 'completed',
-        output: result.data || result,
-        outputPath: step.output ? ctx.interpolate(step.output) : null,
+        output: data,
+        outputPath: outputPath,
         duration_ms: duration
       };
 
