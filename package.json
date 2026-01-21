@@ -1,0 +1,36 @@
+{
+  "name": "sirtrav-a2a-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "vite build",
+    "lint": "echo \"eslint temporarily disabled due to registry issues\"",
+    "run:manifest": "node --enable-source-maps pipelines/run-manifest.mjs",
+    "test:runner": "npm run run:manifest",
+    "health": "pwsh ./scripts/health.ps1",
+    "preflight": "bash ./scripts/preflight.sh",
+    "precommit:test": "bash scripts/test_runner.sh",
+    "practice:test": "bash ./scripts/practice_test.sh",
+    "verify:flywheel": "bash ./scripts/flywheel.sh",
+    "verify:security": "node ./scripts/verify-security.mjs"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}

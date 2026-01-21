@@ -1,0 +1,6 @@
+{
+  "default": {
+    "voiceId": "ELEVENLABS_DEFAULT_VOICE_ID",
+    "description": "Placeholder voice mapping"
+  }
+}

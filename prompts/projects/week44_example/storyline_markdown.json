@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "sections": [
+    {
+      "title": "Establishing Shot",
+      "description": "Introduce the week with a wide view of the bay.",
+      "asset": "intake/week44/shot01.mp4"
+    },
+    {
+      "title": "Action",
+      "description": "Highlight the top energy moments from the crew.",
+      "asset": "intake/week44/shot05.mp4"
+    },
+    {
+      "title": "Reflective",
+      "description": "Close on a reflective moment with the team.",
+      "asset": "intake/week44/shot09.mp4"
+    }
+  ]
+}

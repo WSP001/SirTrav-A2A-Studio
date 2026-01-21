@@ -1,0 +1,40 @@
+name: privacy-scan
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install detect-secrets
+        run: |
+          python -m pip install --upgrade pip
+          pip install detect-secrets jq
+
+      - name: Run detect-secrets baseline check
+        run: |
+          if [ ! -f .secrets.baseline ]; then
+            echo ".secrets.baseline missing. Add a baseline via detect-secrets scan > .secrets.baseline"
+            exit 1
+          fi
+          detect-secrets scan --baseline .secrets.baseline || true
+          if detect-secrets scan --baseline .secrets.baseline | jq -e '.results | length > 0' >/dev/null 2>&1; then
+            echo "Secrets found; failing."
+            exit 1
+          fi
+          echo "No new secrets found."
+
+      - name: Block known private filename patterns
+        run: |
+          if git ls-files | grep -E '(^intake/|memory_index.json|embeddings/|secrets/|\.env)'; then
+            echo "Private artifact found in repo files — fail."
+            exit 1
+          fi

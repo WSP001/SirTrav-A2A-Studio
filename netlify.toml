@@ -1,0 +1,10 @@
+[build]
+  command = "bash scripts/preflight.sh && npm ci && npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[headers]]
+for = "/public/**"
+  [headers.values]
+  Access-Control-Allow-Origin = "*"
+  Accept-Ranges = "bytes"

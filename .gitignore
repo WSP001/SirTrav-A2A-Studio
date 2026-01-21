@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.tmp/
+tmp/
+.env
+*.log
+public/**/final*.mp4
+# Ensure recap MP4 artifacts aren't committed
+public/**/FINAL_RECAP_*.mp4
+public/**/*.mp4
+
+# Local runtime artifacts (do not commit)
+.local-blobs/
+verify_log*.txt
+verify_output*.txt
+verify_result*.txt
+.claude/settings.local.json

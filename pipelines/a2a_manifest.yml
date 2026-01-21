@@ -1,0 +1,67 @@
+version: 1
+project:
+  id: week44
+  date: 2025-11-01
+  source_root: content/intake/2025-11-01-week44
+  out_dir: public/week44
+
+handoffs:
+  - file: prompts/projects/week44_example/storyline_markdown.json
+  - file: prompts/projects/week44_example/narrative_and_music.json
+
+steps:
+  - name: curate_media
+    endpoint: "${env.URL}/.netlify/functions/curate-media"
+    input:
+      vaultPrefix: "${project.source_root}"
+      maxAssets: 12
+    output: "tmp/${project.id}/curated.json"
+
+  - name: narrate_project
+    endpoint: "${env.URL}/.netlify/functions/narrate-project"
+    input:
+      narrative_file: "prompts/projects/week44_example/narrative_and_music.json"
+      voice_profile_map: "content/voices.json"
+    output: "tmp/${project.id}/tts_urls.json"
+
+  - name: compose_music
+    endpoint: "${env.URL}/.netlify/functions/generate-music"
+    input:
+      music_brief_file: "prompts/projects/week44_example/narrative_and_music.json"
+      durationSec: 90
+    output: "tmp/${project.id}/music.json"
+
+  - name: render_audio
+    endpoint: "${env.URL}/.netlify/functions/evals"
+    input:
+      master_audio: "tmp/${project.id}/master_audio.wav"
+    output: "tmp/${project.id}/evals_audio.json"
+
+  - name: compile_video
+    agent: editor.ffmpeg
+    script: "pipelines/scripts/ffmpeg_compile.mjs"
+    input:
+      storyline: "prompts/projects/week44_example/storyline_markdown.json"
+      beat_grid: "tmp/${project.id}/music.json"
+      master_audio: "tmp/${project.id}/master_audio.wav"
+      media_root: "${project.source_root}"
+      out_mp4: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+    output: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+
+  - name: evals_gate
+    endpoint: "${env.URL}/.netlify/functions/evals"
+    input:
+      video_file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      master_audio: "tmp/${project.id}/master_audio.wav"
+    output: "tmp/${project.id}/evals.json"
+
+  - name: publish_content
+    endpoint: "${env.URL}/.netlify/functions/publish"
+    input:
+      target: "Netlify"
+      file: "${project.out_dir}/FINAL_RECAP_${project.id}.mp4"
+      evals_file: "tmp/${project.id}/evals.json"
+    output: "${project.out_dir}/index.json"
+
+env:
+  URL: "https://your-site.netlify.app"

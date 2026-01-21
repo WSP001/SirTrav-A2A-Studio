@@ -1,0 +1,115 @@
+.pronunciation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dictionary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.dictionary-header h2 {
+  margin-bottom: 0.35rem;
+}
+
+.dictionary-header p {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.dictionary-status {
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.dictionary-status .error {
+  color: #f87171;
+}
+
+.dictionary-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dictionary-search input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.55);
+  color: inherit;
+}
+
+.dictionary-search input:focus {
+  outline: none;
+  border-color: rgba(167, 139, 250, 0.9);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25);
+}
+
+.dictionary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.dictionary-table thead {
+  background: rgba(30, 64, 175, 0.35);
+}
+
+.dictionary-table th,
+.dictionary-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.dictionary-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.dictionary-table tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.dictionary-table code {
+  font-size: 0.8rem;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.5rem;
+}
+
+.dictionary-empty {
+  text-align: center;
+  font-size: 0.85rem;
+  padding: 1.5rem 1rem;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.secondary-btn {
+  align-self: flex-start;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.75);
+  color: #e0e7ff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.secondary-btn:not(:disabled):hover,
+.secondary-btn:not(:disabled):focus {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.45);
+}

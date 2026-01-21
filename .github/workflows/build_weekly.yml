@@ -1,0 +1,43 @@
+name: build_weekly
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pipelines/**'
+      - '.github/workflows/build_weekly.yml'
+      - 'netlify/**'
+      - 'scripts/**'
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Health check (PowerShell)
+        shell: pwsh
+        run: |
+          if (Test-Path ./scripts/health.ps1) {
+            ./scripts/health.ps1
+          } else {
+            echo "No health.ps1 present, skipping"
+          }
+
+      - name: Run manifest
+        env:
+          URL: ${{ secrets.NETLIFY_SITE_URL }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_DEFAULT_VOICE_ID: ${{ secrets.ELEVENLABS_DEFAULT_VOICE_ID }}
+          SUNO_API_KEY: ${{ secrets.SUNO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npm run run:manifest

@@ -1,0 +1,66 @@
+{
+  "version": "1.1.0",
+  "updatedAt": "2025-11-05T18:30:00Z",
+  "entries": [
+    {
+      "term": "Suno",
+      "spelling": "SOO-noh",
+      "notes": "Music generation partner service",
+      "tags": ["vendor", "music"]
+    },
+    {
+      "term": "ElevenLabs",
+      "spelling": "ee-LEV-en labs",
+      "notes": "Primary narration provider",
+      "tags": ["vendor", "tts"]
+    },
+    {
+      "term": "Tavis",
+      "spelling": "TAY-viss",
+      "notes": "Creator persona",
+      "tags": ["persona"]
+    },
+    {
+      "term": "A2A",
+      "spelling": "A-two-A",
+      "notes": "Agent-to-Agent pipeline orchestrator",
+      "tags": ["acronym"]
+    },
+    {
+      "term": "D2A",
+      "spelling": "D-two-A",
+      "notes": "Doc-to-Agent manifest that seeds the run",
+      "tags": ["acronym", "process"]
+    },
+    {
+      "term": "Netlify",
+      "spelling": "NET-luh-fy",
+      "notes": "Hosting provider for the public commons UI",
+      "tags": ["platform"]
+    },
+    {
+      "term": "Gemini",
+      "spelling": "JEH-mih-nee",
+      "notes": "Google's multimodal model powering creative prompts",
+      "tags": ["model", "creative-core"]
+    },
+    {
+      "term": "Beat Grid",
+      "spelling": "beet grid",
+      "notes": "Timestamped downbeats for aligning edits to music",
+      "tags": ["music", "editing"]
+    },
+    {
+      "term": "SSE",
+      "spelling": "ess-ess-ee",
+      "notes": "Server-Sent Events stream used for pipeline updates",
+      "tags": ["protocol", "status"]
+    },
+    {
+      "term": "Curate Media",
+      "spelling": "KYUR-ate mee-dee-uh",
+      "notes": "Director step that selects highlights from the vault",
+      "tags": ["pipeline", "phase8"]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "projectId": "week44",
+  "narrative": [
+    {
+      "id": "intro",
+      "text": "What a week on the water. Let's dive into the highlights.",
+      "voice": "default"
+    },
+    {
+      "id": "mid",
+      "text": "Charlie owned the fast-motion efoil shots, keeping the crew hyped.",
+      "voice": "default"
+    },
+    {
+      "id": "outro",
+      "text": "We wrap with smiles at sunset, ready for the next ride.",
+      "voice": "default"
+    }
+  ],
+  "music": {
+    "style": "uplifting electronic",
+    "tempo_bpm": 128,
+    "duration_sec": 90
+  }
+}

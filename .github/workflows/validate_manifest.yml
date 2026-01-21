@@ -1,0 +1,10 @@
+name: Validate Manifest
+
+on: [push, pull_request]
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node -e "require('fs').readFileSync('pipelines/a2a_manifest.yml') && console.log('Manifest present')"
