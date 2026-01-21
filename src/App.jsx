@@ -106,10 +106,21 @@ function App() {
 
       const startResponse = await fetch('/.netlify/functions/start-pipeline', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer demo',
+        },
         body: JSON.stringify({
           projectId,
           runId: newRunId,
+          platform: targetPlatform,
+          brief: {
+            mood: 'reflective',
+            pace: 'medium',
+            story: `Weekly recap for ${projectId}`,
+            cta: 'Share your story',
+            tone: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'professional' : 'casual',
+          },
           payload: {
             images: files.map(f => ({ id: f.name, url: `uploads/${projectId}/${f.name}` })),
             projectMode: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'business_public' : 'commons_public',
