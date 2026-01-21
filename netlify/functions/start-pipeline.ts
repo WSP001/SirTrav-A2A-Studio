@@ -50,6 +50,17 @@ export const handler: Handler = async (event) => {
     const payload = body.payload || {};
     const userToken = event.headers.authorization?.replace('Bearer ', '') || body.userToken;
 
+    // 🎯 CC-Task 1: Parse platform + brief from Codex UI
+    // These flow to downstream agents for platform-specific processing
+    const platform: string = body.platform || payload.socialPlatform || 'tiktok';
+    const brief: {
+      mood?: string;
+      pace?: string;
+      story?: string;
+      cta?: string;
+      tone?: string;
+    } = body.brief || payload.creativeBrief || {};
+
     // 🔒 SECURE HANDSHAKE: Verify user before allocating resources
     const isAuthorized = await validateUser(userToken);
 
@@ -98,7 +109,7 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Write initial run record
+    // Write initial run record with platform + brief context
     const runRecord = {
       projectId,
       runId,
@@ -109,6 +120,9 @@ export const handler: Handler = async (event) => {
       createdAt: now,
       updatedAt: now,
       payloadSummary: Object.keys(payload),
+      // 🎯 Platform + Brief for downstream agents
+      platform,
+      brief,
     };
 
     await store.setJSON(key, runRecord, {
@@ -116,10 +130,14 @@ export const handler: Handler = async (event) => {
     });
 
     // Create the artifact index immediately so UI can poll results
+    // Include platform + brief so downstream agents can access context
     await updateRunIndex(projectId, runId, {
       status: 'running',
       createdAt: now,
       payloadKey,
+      // @ts-ignore - extending RunArtifacts with platform/brief
+      platform,
+      brief,
     });
 
     // Persist payload separately to avoid background payload limits
@@ -127,20 +145,36 @@ export const handler: Handler = async (event) => {
       metadata: { projectId, runId, kind: 'payload' },
     });
 
-    // Trigger background worker
+    // Trigger background worker with platform + brief context
     const baseUrl = process.env.URL || 'http://localhost:8888';
     const invokeUrl = `${baseUrl}/.netlify/functions/run-pipeline-background`;
 
     await fetch(invokeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId, runId, payloadKey }),
+      body: JSON.stringify({
+        projectId,
+        runId,
+        payloadKey,
+        // 🎯 Pass platform + brief to background worker for agent context
+        platform,
+        brief,
+      }),
     });
 
     return {
       statusCode: 202,
       headers,
-      body: JSON.stringify({ ok: true, runId, projectId, status: 'queued', payloadKey }),
+      body: JSON.stringify({
+        ok: true,
+        runId,
+        projectId,
+        status: 'queued',
+        payloadKey,
+        // 🎯 Echo platform + brief for UI confirmation
+        platform,
+        brief: Object.keys(brief).length > 0 ? brief : undefined,
+      }),
     };
   } catch (error) {
     console.error('start-pipeline error:', error);

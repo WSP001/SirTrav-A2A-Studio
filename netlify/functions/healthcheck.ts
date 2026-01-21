@@ -27,6 +27,14 @@ interface HealthResponse {
     ai_keys: boolean;
     social_keys: boolean;
   };
+  // 🎯 CC-Task 2: Simple JSON snapshot for docs alignment
+  env_snapshot: {
+    openai: boolean;
+    elevenlabs: boolean;
+    suno: boolean;
+    vault_path: string | null;
+    url: string | null;
+  };
 }
 
 const startTime = Date.now();
@@ -106,6 +114,14 @@ export default async () => {
         storage: storageStatus.status === 'ok',
         ai_keys: aiStatus.status === 'ok',
         social_keys: socialStatus.status === 'ok',
+      },
+      // 🎯 CC-Task 2: Simple truthful snapshot matching ENV_SETUP.md
+      env_snapshot: {
+        openai: !!process.env.OPENAI_API_KEY,
+        elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+        suno: !!process.env.SUNO_API_KEY,
+        vault_path: process.env.VAULT_PATH || null,
+        url: process.env.URL || null,
       },
     };
     return new Response(JSON.stringify(response, null, 2), {

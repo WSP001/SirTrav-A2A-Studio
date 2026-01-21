@@ -76,28 +76,47 @@ export default function Upload({
     maxSize,
   });
 
-  const uploadFile = async (uploadFile: UploadedFile): Promise<UploadedFile> => {
-    const formData = new FormData();
-    formData.append('file', uploadFile.file);
-    formData.append('projectId', projectId);
+  // Helper: Convert File to base64
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data:...;base64, prefix
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+    });
 
+  const uploadFile = async (uploadFile: UploadedFile): Promise<UploadedFile> => {
     try {
+      // 🎯 CC-Task 3: Convert to base64 for intake-upload.ts JSON format
+      const fileBase64 = await fileToBase64(uploadFile.file);
+
       const response = await fetch('/.netlify/functions/intake-upload', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          filename: uploadFile.file.name,
+          contentType: uploadFile.file.type,
+          fileBase64,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Upload failed: ${response.statusText}`);
       }
 
       const result = await response.json();
-      
+
       return {
         ...uploadFile,
         status: 'completed',
         progress: 100,
-        url: result.url || result.data?.url,
+        url: result.key, // intake-upload returns { key: "projectId/timestamp-filename" }
       };
     } catch (error) {
       return {
