@@ -219,9 +219,9 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         </div>
       </div>
 
-      {/* Agent Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {AGENTS.map((agent, index) => {
+      {/* Agent Grid - 7 cards: 4 on top row, 3 centered on bottom row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {AGENTS.slice(0, 4).map((agent, index) => {
           const status = getAgentStatus(agent.id);
           return (
             <div
@@ -243,6 +243,54 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
                     <span className="text-sm">{getStatusIcon(status.status)}</span>
                   </div>
                   <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 1}</span>
+                </div>
+              </div>
+              <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
+
+              {/* Status indicator */}
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
+                <span className="text-xs capitalize text-[var(--color-text-secondary)]">
+                  {status.status}
+                  {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
+                </span>
+              </div>
+
+              {/* Error message */}
+              {status.error && (
+                <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
+                  {status.error}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Row 2: Editor, Attribution, Publisher (3 cards centered) */}
+      <div className="grid grid-cols-3 gap-4 mt-4 max-w-3xl mx-auto">
+        {AGENTS.slice(4).map((agent, index) => {
+          const status = getAgentStatus(agent.id);
+          return (
+            <div
+              key={agent.id}
+              className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
+                ? 'border-blue-500 bg-blue-500/10'
+                : status.status === 'completed'
+                  ? 'border-green-500/50 bg-green-500/5'
+                  : status.status === 'failed'
+                    ? 'border-red-500/50 bg-red-500/5'
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">{agent.icon}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[var(--color-text-primary)]">{agent.name}</span>
+                    <span className="text-sm">{getStatusIcon(status.status)}</span>
+                  </div>
+                  <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 5}</span>
                 </div>
               </div>
               <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
