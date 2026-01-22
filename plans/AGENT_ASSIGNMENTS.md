@@ -7,9 +7,9 @@
 
 ## 🚦 Active Ticket (NOW)
 
-**Ticket:** MG-001
-**Owner:** Claude (Backend)
-**Status:** **In-Progress** (2026-01-21)
+**Ticket:** MG-002
+**Owner:** Codex (Frontend/UI)
+**Status:** **Ready** (unblocked by MG-001)
 
 ---
 
@@ -17,34 +17,37 @@
 
 ### P0 — Core Infrastructure
 
-#### 🎬 MG-001 (Claude) — Render Dispatcher Backend
+#### 🎬 MG-001 (Claude) — Render Dispatcher Backend ✅
 *   **ID:** MG-001
 *   **Priority:** P0
 *   **Owner:** Claude
-*   **Status:** **In-Progress**
+*   **Status:** **Done** (2026-01-21)
 *   **Goal:** Implement `renderMediaOnLambda` wrapper returning `{renderId, bucketName}` fast.
 *   **Files:**
-    *   `netlify/functions/render-dispatcher.ts` (new)
-    *   `netlify/functions/render-progress.ts` (new)
-    *   `netlify/functions/lib/remotion-client.ts` (new)
+    *   `netlify/functions/render-dispatcher.ts`
+    *   `netlify/functions/render-progress.ts`
+    *   `netlify/functions/lib/remotion-client.ts`
 *   **DoD:**
-    *   [ ] Zod-validate payload (projectId, compositionId, inputProps)
-    *   [ ] Call Remotion Lambda kickoff via `renderMediaOnLambda`
-    *   [ ] Return within Netlify limits (<10s, no waiting)
-    *   [ ] Store renderId metadata in runs record (Blobs)
-    *   [ ] Return `{ ok, renderId, bucketName, estimatedDuration }`
-    *   [ ] Graceful fallback on errors
+    *   [x] Zod-validate payload (projectId, compositionId, inputProps)
+    *   [x] Call Remotion Lambda kickoff via `renderMediaOnLambda`
+    *   [x] Return within Netlify limits (<10s, no waiting)
+    *   [x] Store renderId metadata in runs record (Blobs)
+    *   [x] Return `{ ok, renderId, bucketName, estimatedDuration }`
+    *   [x] Graceful fallback on errors
 
-#### 🧱 MG-002 (Codex) — Click-to-Kick UI
+#### 🧱 MG-002 (Codex) — Click-to-Kick UI 👈 **NEXT**
 *   **ID:** MG-002
 *   **Priority:** P0
 *   **Owner:** Codex
-*   **Status:** Blocked (Waiting for MG-001)
+*   **Status:** **Ready** (MG-001 done)
 *   **Goal:** UI button triggers dispatcher and polls progress.
+*   **API to call:**
+    *   `POST /render-dispatcher` → `{ renderId, bucketName }`
+    *   `GET /render-progress?renderId=x&bucketName=y` → `{ progress, phase, done, outputFile }`
 *   **DoD:**
-    *   [ ] Button Button states
-    *   [ ] Poll progress endpoint
-    *   [ ] Show percent/stage
+    *   [ ] Button states: idle → rendering → done/error
+    *   [ ] Poll render-progress endpoint every 2s
+    *   [ ] Show percent/stage ("Rendering 45%... Combining...")
 
 #### 🧪 MG-003 (Antigravity) — Motion Render Smoke Test
 *   **ID:** MG-003
@@ -120,6 +123,7 @@
 | CC-Task 2 | Claude | Align healthcheck.ts with ENV docs | 2026-01-21 |
 | CC-Task 3 | Claude | Plug Upload.tsx into intake-upload.ts | 2026-01-21 |
 | CC-Task 4 | Claude | Update App.jsx with Auth header + platform/brief | 2026-01-21 |
+| MG-001 | Claude | Render Dispatcher Backend (renderMediaOnLambda wrapper) | 2026-01-21 |
 
 ---
 
