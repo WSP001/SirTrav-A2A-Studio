@@ -21,6 +21,12 @@ interface HealthResponse {
   environment: string;
   timestamp: string;
   uptime_seconds: number;
+  build: {
+    commit: string;
+    id: string;
+    context: string;
+    branch: string;
+  };
   services: ServiceStatus[];
   checks: {
     storage: boolean;
@@ -108,10 +114,16 @@ export default async () => {
     const overallStatus: HealthResponse['status'] = hasDown ? 'unhealthy' : hasDegraded ? 'degraded' : 'healthy';
     const response: HealthResponse = {
       status: overallStatus,
-      version: '2.0.0',
+      version: '2.1.0',
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
       uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
+      build: {
+        commit: (process.env.COMMIT_REF || 'local').substring(0, 7),
+        id: process.env.BUILD_ID || 'local',
+        context: process.env.CONTEXT || 'development',
+        branch: process.env.BRANCH || 'local',
+      },
       services,
       checks: {
         storage: storageStatus.status === 'ok',

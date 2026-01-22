@@ -1,6 +1,10 @@
 [build]
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
 
 [dev]
   command = "npx vite"
@@ -8,10 +12,28 @@
   targetPort = 5173
   autoLaunch = false
 
+# Production context
+[context.production]
+  environment = { NODE_ENV = "production" }
+
+# Deploy preview context
+[context.deploy-preview]
+  environment = { NODE_ENV = "preview" }
+
+# Functions configuration
+[functions]
+  node_bundler = "esbuild"
+
+# Extended timeout for video processing (26s background limit)
+[functions."compile-video"]
+  timeout = 26
+
+# Background function for pipeline orchestration
+[functions."run-pipeline-background"]
+  timeout = 900
+
+# SPA fallback redirect
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[functions]
-  node_bundler = "esbuild"

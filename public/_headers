@@ -1,6 +1,18 @@
-# Audio & Music Assets
+# Security Headers (all routes)
 
-## Caching Headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Static assets (1 year cache)
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Audio & Music Assets
 
 /music/*
   Content-Type: audio/mpeg
@@ -10,9 +22,15 @@
 /test-assets/*
   Cache-Control: public, max-age=604800
 
-## CORS for API Routes
+# HTML (always fresh)
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# API Functions (no cache + CORS)
 
 /.netlify/functions/*
+  Cache-Control: no-store
   Access-Control-Allow-Origin: *
-  Access-Control-Allow-Headers: Content-Type, Authorization
+  Access-Control-Allow-Headers: Content-Type, Authorization, X-U2A-Session
   Access-Control-Allow-Methods: GET, POST, OPTIONS
