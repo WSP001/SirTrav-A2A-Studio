@@ -15,7 +15,58 @@
 
 ## 📋 Backlog (Prioritized)
 
-### P0 — Core Infrastructure
+### P0 — Core Infrastructure (NEW: Alignment Sprint)
+
+#### 🐦 MG-P0-C (Claude) — X/Twitter Truth Alignment ✅
+*   **ID:** MG-P0-C
+*   **Priority:** P0
+*   **Owner:** Claude
+*   **Reviewer:** Codex
+*   **Tester:** Antigravity
+*   **Status:** **Done** (2026-01-21)
+*   **Goal:** X/Twitter returns explicit `disabled` or `not_implemented`, never fake success.
+*   **Files:**
+    *   `netlify/functions/publish-x.ts`
+    *   `netlify/functions/healthcheck.ts`
+    *   `CLAUDE.md`
+*   **DoD:**
+    *   [x] Return `{ success: false, disabled: true }` when keys missing
+    *   [x] Return 501 `{ not_implemented: true }` when keys present but no implementation
+    *   [x] Add X/Twitter to healthcheck social platforms check
+    *   [x] Add "No Fake Success" constraint to CLAUDE.md
+
+#### 🔧 MG-P0-A (Claude) — Deterministic Local Verification
+*   **ID:** MG-P0-A
+*   **Priority:** P0
+*   **Owner:** Claude
+*   **Reviewer:** Antigravity
+*   **Status:** Ready
+*   **Goal:** Ensure `netlify dev` + healthcheck is deterministic for local testing.
+*   **Files:**
+    *   `scripts/preflight.mjs` (update)
+    *   `docs/LOCAL_DEV.md` (optional)
+*   **DoD:**
+    *   [ ] Preflight pings healthcheck before running tests
+    *   [ ] Clear error message if localhost:8888 not running
+    *   [ ] Document `netlify dev` requirement
+
+#### 🔍 MG-P0-B (Antigravity) — Preflight Ping in Golden Path
+*   **ID:** MG-P0-B
+*   **Priority:** P0
+*   **Owner:** Antigravity
+*   **Reviewer:** Claude
+*   **Status:** Ready (blocked by MG-P0-A)
+*   **Goal:** Golden path verifier fails fast with "run netlify dev" message.
+*   **Files:**
+    *   `scripts/verify-golden-path.mjs`
+*   **DoD:**
+    *   [ ] Ping healthcheck first
+    *   [ ] Exit with clear message if ECONNREFUSED
+    *   [ ] Continue if healthy
+
+---
+
+### P0 — Motion Graphics Infrastructure
 
 #### 🎬 MG-001 (Claude) — Render Dispatcher Backend ✅
 *   **ID:** MG-001
@@ -124,6 +175,7 @@
 | CC-Task 3 | Claude | Plug Upload.tsx into intake-upload.ts | 2026-01-21 |
 | CC-Task 4 | Claude | Update App.jsx with Auth header + platform/brief | 2026-01-21 |
 | MG-001 | Claude | Render Dispatcher Backend (renderMediaOnLambda wrapper) | 2026-01-21 |
+| MG-P0-C | Claude | X/Twitter truth alignment (no fake success) | 2026-01-21 |
 
 ---
 
@@ -133,3 +185,5 @@
 - Use Remotion Lambda kickoff + progress polling
 - Netlify Background Functions max ~26s - video rendering belongs in Remotion Lambda
 - Always thread `runId` through every agent call for tracing
+- **No Fake Success:** Social publishers return `{ success: false, disabled: true }` when keys missing
+- **Local Dev:** Always run `netlify dev` (port 8888) not just `vite dev`

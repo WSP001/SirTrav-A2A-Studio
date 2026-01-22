@@ -63,31 +63,34 @@ const handler: Handler = async (event) => {
         const hasKeys = process.env.TWITTER_API_KEY && process.env.TWITTER_ACCESS_TOKEN;
 
         if (!hasKeys) {
-            // Fallback / Placeholder mode
-            console.log("🐦 [Placeholder] X Publish:", text);
+            // 🎯 MG-P0-C: Explicit "disabled" response - no fake success
+            console.log("🐦 [DISABLED] X/Twitter - missing API keys");
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    success: true,
-                    tweetId: "mock-tweet-id-123",
-                    url: "https://x.com/user/status/mock-123",
-                    isPlaceholder: true,
-                    note: "Add TWITTER_API_KEY to enable real posting"
+                    success: false,
+                    disabled: true,
+                    platform: 'x',
+                    error: "X/Twitter publishing is disabled - missing TWITTER_API_KEY and TWITTER_ACCESS_TOKEN",
+                    note: "Configure Twitter API v2 credentials in Netlify environment variables to enable"
                 })
             };
         }
 
-        // Real Execution would go here
-        // const result = await postToTwitter(text);
-
+        // 🎯 MG-P0-C: Real implementation requires twitter-api-v2 package
+        // Currently NOT implemented - return explicit "not_implemented" status
+        // TODO: Add twitter-api-v2 to package.json and implement OAuth 1.0a signing
+        console.log("🐦 [NOT_IMPLEMENTED] X/Twitter API configured but implementation pending");
         return {
-            statusCode: 200,
+            statusCode: 501,
             headers,
             body: JSON.stringify({
-                success: true,
-                tweetId: "real-tweet-id-456",
-                url: "https://x.com/user/status/real-456"
+                success: false,
+                not_implemented: true,
+                platform: 'x',
+                error: "X/Twitter publishing not yet implemented - twitter-api-v2 package required",
+                note: "API keys are configured but OAuth signing is not implemented"
             })
         };
 
