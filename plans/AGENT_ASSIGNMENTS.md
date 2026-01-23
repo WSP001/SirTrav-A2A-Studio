@@ -166,18 +166,18 @@
 
 ### P2 — Regenerative Loop
 
-#### 🧠 MG-007 (Claude) — Feedback Capture 👈 **IN_PROGRESS**
+#### 🧠 MG-007 (Claude) — Feedback Capture
 *   **ID:** MG-007
 *   **Priority:** P2
 *   **Owner:** Claude
-*   **Status:** **IN_PROGRESS** (2026-01-22)
+*   **Status:** **Done** (2026-01-22)
 *   **Goal:** Write feedback to `memory-index.json`.
 
-#### 🧭 MG-008 (Codex) — Feedback UI
+#### 🧭 MG-008 (Codex) — Feedback UI 👈 **IN_PROGRESS**
 *   **ID:** MG-008
 *   **Priority:** P2
 *   **Owner:** Codex
-*   **Status:** Backlog
+*   **Status:** **IN_PROGRESS** (2026-01-22)
 *   **Goal:** UI for feedback and regeneration.
 
 #### 📜 MG-009 (Claude) — Auto-Update Rules
