@@ -157,20 +157,20 @@
 *   **Status:** **Done** (2026-01-22)
 *   **Goal:** Scripted `npx remotion lambda sites create`.
 
-#### 🧾 MG-006 (Antigravity) — Contract Tests 👈 **IN_PROGRESS**
+#### 🧾 MG-006 (Antigravity) — Contract Tests
 *   **ID:** MG-006
 *   **Priority:** P1
 *   **Owner:** Antigravity
-*   **Status:** **IN_PROGRESS** (2026-01-22)
-*   **Goal:** Validate API response shapes with JSON Schema/AJV.
+*   **Status:** **Done** (2026-01-22)
+*   **Goal:** Validate API response shapes with JSON Schema.
 
 ### P2 — Regenerative Loop
 
-#### 🧠 MG-007 (Claude) — Feedback Capture
+#### 🧠 MG-007 (Claude) — Feedback Capture 👈 **IN_PROGRESS**
 *   **ID:** MG-007
 *   **Priority:** P2
 *   **Owner:** Claude
-*   **Status:** Backlog
+*   **Status:** **IN_PROGRESS** (2026-01-22)
 *   **Goal:** Write feedback to `memory-index.json`.
 
 #### 🧭 MG-008 (Codex) — Feedback UI

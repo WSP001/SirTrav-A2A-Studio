@@ -1,0 +1,111 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SirTrav A2A Studio API Response Contracts",
+    "version": "1.0.0",
+    "definitions": {
+        "RenderProgressResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "renderId": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "phase": {
+                    "type": "string",
+                    "enum": [
+                        "rendering",
+                        "combining",
+                        "encoding",
+                        "done",
+                        "error",
+                        "pending"
+                    ]
+                },
+                "framesRendered": {
+                    "type": "number"
+                },
+                "totalFrames": {
+                    "type": "number"
+                },
+                "done": {
+                    "type": "boolean"
+                },
+                "outputFile": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "uri"
+                },
+                "error": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "fallback": {
+                    "type": "boolean"
+                },
+                "projectId": {
+                    "type": "string"
+                },
+                "runId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ok",
+                "renderId",
+                "progress",
+                "done"
+            ]
+        },
+        "SubmitEvaluationRequest": {
+            "type": "object",
+            "properties": {
+                "projectId": {
+                    "type": "string"
+                },
+                "runId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "bad"
+                    ]
+                },
+                "comments": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object"
+                }
+            },
+            "required": [
+                "projectId",
+                "rating"
+            ]
+        },
+        "SubmitEvaluationResponse": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "type": "string"
+                }
+            },
+            "required": []
+        }
+    }
+}
