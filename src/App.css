@@ -744,3 +744,61 @@ body {
 .text-brand-400 {
   color: #818cf8;
 }
+
+/* 🎯 Codex Fix: Invoice Card Improvements (Job Lot 1.2) */
+.invoice-card {
+  padding: 16px;
+  background: rgba(6, 78, 59, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.invoice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.invoice-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.invoice-id {
+  font-size: 0.625rem;
+  color: rgba(110, 231, 183, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.invoice-cell {
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.invoice-cell-sub {
+  background: rgba(2, 44, 34, 0.4);
+}
+
+.invoice-cell-total {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}

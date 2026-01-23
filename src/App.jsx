@@ -36,6 +36,9 @@ function App() {
   const [targetPlatform, setTargetPlatform] = useState('tiktok'); // tiktok, instagram, youtube_shorts, linkedin, twitter
   const [musicMode, setMusicMode] = useState('manual'); // suno, manual
   const [manualMusicFile, setManualMusicFile] = useState(null); // File object if uploaded
+  // 🎯 MG-002: U2A Preferences
+  const [voiceStyle, setVoiceStyle] = useState('friendly'); // serious, friendly, hype
+  const [videoLength, setVideoLength] = useState('short'); // short (15s), long (60s)
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -116,10 +119,13 @@ function App() {
           platform: targetPlatform,
           brief: {
             mood: 'reflective',
-            pace: 'medium',
+            pace: videoLength === 'short' ? 'fast' : 'medium',
             story: `Weekly recap for ${projectId}`,
             cta: 'Share your story',
             tone: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'professional' : 'casual',
+            // 🎯 MG-002: Pass U2A Preferences
+            voiceStyle,
+            videoLength
           },
           payload: {
             images: files.map(f => ({ id: f.name, url: `uploads/${projectId}/${f.name}` })),
@@ -127,7 +133,10 @@ function App() {
             socialPlatform: targetPlatform,
             outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
             musicMode,
-            manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined
+            manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined,
+            // 🎯 MG-002: Pass U2A Preferences in payload too for explicit agent handling
+            voiceStyle,
+            videoLength
           },
         }),
       });
@@ -428,6 +437,40 @@ function App() {
                 ))}
               </div>
 
+              {/* 🎯 MG-002: Creative Direction (U2A Preferences) */}
+              <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">Creative Direction</label>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Voice Style */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Voice Style</label>
+                    <select
+                      value={voiceStyle}
+                      onChange={(e) => setVoiceStyle(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="serious">🧐 Serious</option>
+                      <option value="friendly">😊 Friendly</option>
+                      <option value="hype">⚡ Hype</option>
+                    </select>
+                  </div>
+
+                  {/* Video Length */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Length</label>
+                    <select
+                      value={videoLength}
+                      onChange={(e) => setVideoLength(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="short">Short (15s)</option>
+                      <option value="long">Long (60s)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Music Mode Toggle */}
               <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
                 <div className="flex items-center justify-between mb-2">
@@ -540,23 +583,23 @@ function App() {
 
                 {/* INVOICE MANIFEST DISPLAY (Task 5) */}
                 {videoResult.invoice && (
-                  <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                  <div className="invoice-card">
+                    <div className="invoice-header">
+                      <h4 className="invoice-title">
                         <DollarSign className="w-4 h-4" /> Cost Plus Invoice
                       </h4>
-                      <span className="text-[10px] text-emerald-300/60 uppercase tracking-widest">{videoResult.invoice.jobId}</span>
+                      <span className="invoice-id">{videoResult.invoice.jobId}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 bg-emerald-950/40 rounded">
+                    <div className="invoice-grid">
+                      <div className="invoice-cell invoice-cell-sub">
                         <p className="text-emerald-500/70">Subtotal</p>
                         <p className="text-emerald-200 font-mono">${videoResult.invoice.subtotal.toFixed(3)}</p>
                       </div>
-                      <div className="p-2 bg-emerald-950/40 rounded">
+                      <div className="invoice-cell invoice-cell-sub">
                         <p className="text-emerald-500/70">Markup (20%)</p>
                         <p className="text-emerald-200 font-mono">${videoResult.invoice.markupTotal.toFixed(3)}</p>
                       </div>
-                      <div className="p-2 bg-emerald-500/20 rounded border border-emerald-500/40">
+                      <div className="invoice-cell invoice-cell-total">
                         <p className="text-emerald-100 font-bold">TOTAL</p>
                         <p className="text-white font-bold font-mono">${videoResult.invoice.totalDue.toFixed(3)}</p>
                       </div>
