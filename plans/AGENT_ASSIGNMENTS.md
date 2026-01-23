@@ -150,18 +150,18 @@
 *   **Status:** **Done** (2026-01-22)
 *   **Goal:** Create `src/remotion` root and branding.
 
-#### ☁️ MG-005 (Claude) — Deploy Site Bundle 👈 **IN_PROGRESS**
+#### ☁️ MG-005 (Claude) — Deploy Site Bundle
 *   **ID:** MG-005
 *   **Priority:** P1
 *   **Owner:** Claude
-*   **Status:** **IN_PROGRESS** (2026-01-22)
+*   **Status:** **Done** (2026-01-22)
 *   **Goal:** Scripted `npx remotion lambda sites create`.
 
-#### 🧾 MG-006 (Antigravity) — Contract Tests
+#### 🧾 MG-006 (Antigravity) — Contract Tests 👈 **IN_PROGRESS**
 *   **ID:** MG-006
 *   **Priority:** P1
 *   **Owner:** Antigravity
-*   **Status:** Backlog
+*   **Status:** **IN_PROGRESS** (2026-01-22)
 *   **Goal:** Validate API response shapes with JSON Schema/AJV.
 
 ### P2 — Regenerative Loop

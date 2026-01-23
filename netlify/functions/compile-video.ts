@@ -249,9 +249,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     };
   }
 
-  // Netlify Function limit is 10s (standard) or 26s (background).
-  // We use 9s safety margin to return a proper 500/Timeout error instead of crashing.
-  const TIMEOUT_MS = 9000;
+  // Netlify Function limit is 10s (standard) or 26s (Background/Pro).
+  // We use 24s safety margin (matching netlify.toml 26s limit) to return a proper 500/Timeout error.
+  const TIMEOUT_MS = 24000;
 
   const processCompilation = async () => {
     const request: CompileRequest = JSON.parse(event.body || '{}');
