@@ -17,14 +17,20 @@ interface AgentStatus {
   error?: string;
 }
 
+interface ProgressEvent {
+  projectId: string;
+  runId?: string;
+  agent: string;
+  status: 'started' | 'running' | 'completed' | 'failed';
+  message: string;
+  timestamp: string;
+  progress: number;
+}
+
 interface ProgressData {
   projectId: string;
-  correlationId: string;
-  currentStep: string;
   status: 'started' | 'running' | 'completed' | 'failed';
-  timestamp: string;
   steps: AgentStatus[];
-  totalSteps?: number;
   error?: string;
 }
 
@@ -46,7 +52,7 @@ const AGENTS = [
 ];
 
 export default function PipelineProgress({ projectId, runId, onComplete, onError }: PipelineProgressProps) {
-  const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -76,8 +82,14 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
         es.addEventListener('progress', (event: any) => {
           try {
-            const data: ProgressData = JSON.parse(event.data);
-            setProgress(data);
+            const evt: ProgressEvent = JSON.parse(event.data);
+            setEvents(prev => {
+              // Avoid duplicates
+              if (prev.find(e => e.timestamp === evt.timestamp && e.agent === evt.agent && e.status === evt.status)) {
+                return prev;
+              }
+              return [...prev, evt];
+            });
           } catch (err) {
             console.error('[PipelineProgress] Parse error:', err);
           }
@@ -118,28 +130,50 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
     const startPolling = () => {
       setConnectionStatus('connected');
 
+      // Adaptive polling state
+      let consecutiveNoChange = 0;
+      let lastEventCount = 0;
+
       const poll = async () => {
         try {
-          const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}`);
+          const res = await fetch(`/.netlify/functions/progress?projectId=${projectId}${runId ? `&runId=${runId}` : ''}`);
           if (res.ok) {
-            const data: ProgressData = await res.json();
-            setProgress(data);
+            const data = await res.json();
+            if (data.events && Array.isArray(data.events)) {
+              // Check if state changed
+              if (data.events.length === lastEventCount) {
+                consecutiveNoChange++;
+              } else {
+                consecutiveNoChange = 0;
+                lastEventCount = data.events.length;
+              }
 
-            if (data.status === 'completed') {
-              onComplete?.(data);
-              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            } else if (data.status === 'failed') {
-              onError?.(data.error || 'Pipeline failed');
-              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              setEvents(data.events);
+
+              // Check completion from events
+              const last = data.events[data.events.length - 1];
+              if (last?.status === 'completed' && last?.agent === 'publisher') {
+                if (pollIntervalRef.current) clearTimeout(pollIntervalRef.current);
+                return;
+              }
             }
           }
         } catch (err) {
           console.error('[PipelineProgress] Poll error:', err);
         }
+
+        // Calculate next interval based on activity (Adaptive Polling)
+        // Active: 2s (first 10 polls with no change)
+        // Idle: 5s (after 10 polls)
+        // Stale: 10s (after 20 polls)
+        const nextInterval = consecutiveNoChange > 20 ? 10000
+          : consecutiveNoChange > 10 ? 5000
+            : 2000;
+
+        pollIntervalRef.current = setTimeout(poll, nextInterval);
       };
 
       poll(); // Initial poll
-      pollIntervalRef.current = setInterval(poll, 2000);
     };
 
     connectSSE();
@@ -154,6 +188,76 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
     };
   }, [projectId, onComplete, onError]);
 
+  // Aggregate events into ProgressStatus
+  const progress: ProgressData | null = React.useMemo(() => {
+    if (events.length === 0) return null;
+
+    const stepsMap = new Map<string, AgentStatus>();
+    // Initialize defaults
+    AGENTS.forEach(a => stepsMap.set(a.id, { name: a.id, status: 'pending' }));
+
+    let pipelineStatus: 'started' | 'running' | 'completed' | 'failed' = 'started';
+    let error: string | undefined;
+
+    // Process events in order
+    events.forEach(evt => {
+      let targets = [evt.agent];
+
+      // Map backend step names to frontend agents
+      if (evt.agent === 'production_parallel') {
+        targets = ['voice', 'composer'];
+      } else if (evt.agent === 'completed') {
+        targets = ['publisher'];
+      } else if (evt.agent === 'pipeline' || evt.agent === 'quality_gate') {
+        targets = []; // These don't map to specific agent visualization cards
+      }
+
+      targets.forEach(agentId => {
+        const current = stepsMap.get(agentId);
+        if (current) {
+          // Map backend status to frontend status
+          let status: any = evt.status;
+          if (status === 'started') status = 'running';
+
+          // Don't overwrite completed status with running if multiple events overlap (rare but possible)
+          if (current.status === 'completed' && status === 'running') return;
+
+          stepsMap.set(agentId, { ...current, status, error: evt.status === 'failed' ? evt.message : undefined });
+        }
+      });
+
+      if (evt.status === 'failed') {
+        pipelineStatus = 'failed';
+        error = evt.message;
+      }
+    });
+
+    // Check if all completed
+    const allCompleted = AGENTS.every(a => {
+      const s = stepsMap.get(a.id)?.status;
+      return s === 'completed' || s === 'fallback'; // fallback treated as success
+    });
+
+    if (allCompleted && pipelineStatus !== 'failed') pipelineStatus = 'completed';
+
+    return {
+      projectId,
+      status: pipelineStatus,
+      steps: Array.from(stepsMap.values()),
+      error
+    };
+  }, [events, projectId]);
+
+  // Handle completion callbacks using effect
+  useEffect(() => {
+    if (progress?.status === 'completed') {
+      // @ts-ignore
+      onComplete?.(progress);
+    } else if (progress?.status === 'failed') {
+      onError?.(progress.error || 'Pipeline failed');
+    }
+  }, [progress?.status]);
+
   // Calculate progress percentage
   const completedSteps = progress?.steps?.filter(s =>
     s.status === 'completed' || s.status === 'fallback'
@@ -163,8 +267,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
   // Get status for each agent
   const getAgentStatus = (agentId: string): AgentStatus => {
-    const step = progress?.steps?.find(s => s.name === agentId);
-    return step || { name: agentId, status: 'pending' };
+    return progress?.steps?.find(s => s.name === agentId) || { name: agentId, status: 'pending' };
   };
 
   const getStatusColor = (status: string) => {

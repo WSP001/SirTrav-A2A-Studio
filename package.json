@@ -17,7 +17,9 @@
     "verify:idempotency": "node scripts/verify-idempotency.mjs",
     "stress:sse": "node scripts/stress-test-sse.mjs",
     "test:all": "npm run preflight && npm run practice:test && npm run verify:security",
-    "test:full": "npm run test:all && npm run verify:idempotency && npm run stress:sse"
+    "test:full": "npm run test:all && npm run verify:idempotency && npm run stress:sse",
+    "test:skill:narrate": "node scripts/test_narrate_project.mjs",
+    "test:motion": "node scripts/test_motion_graphic.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",
