@@ -240,10 +240,11 @@ Before touching code, every agent MUST read these files in order:
 1. `CLAUDE.md`
 2. `plans/AGENT_ASSIGNMENTS.md`
 3. `docs/CODEX_AGENT_PLAYBOOK.md`
-4. `CLAUDE_CODE_HANDOFF.md`
+4. `docs/COMMONS_GOOD_JOBS.md` 👈 **(NEW: Specific Task Allocations)**
+5. `CLAUDE_CODE_HANDOFF.md`
 
 Then begin with this statement:
-> "I read CLAUDE.md + AGENT_ASSIGNMENTS.md + CODEX_AGENT_PLAYBOOK.md + CLAUDE_CODE_HANDOFF.md and I am working ticket MG-XXX."
+> "I read CLAUDE.md + AGENT_ASSIGNMENTS.md + COMMONS_GOOD_JOBS.md and I am working ticket MG-XXX."
 
 ---
 
