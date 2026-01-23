@@ -147,14 +147,14 @@
 *   **ID:** MG-004
 *   **Priority:** P1
 *   **Owner:** Claude
-*   **Status:** Backlog
+*   **Status:** **Done** (2026-01-22)
 *   **Goal:** Create `src/remotion` root and branding.
 
-#### ☁️ MG-005 (Claude) — Deploy Site Bundle
+#### ☁️ MG-005 (Claude) — Deploy Site Bundle 👈 **IN_PROGRESS**
 *   **ID:** MG-005
 *   **Priority:** P1
 *   **Owner:** Claude
-*   **Status:** Backlog
+*   **Status:** **IN_PROGRESS** (2026-01-22)
 *   **Goal:** Scripted `npx remotion lambda sites create`.
 
 #### 🧾 MG-006 (Antigravity) — Contract Tests
@@ -197,7 +197,7 @@
 #### 📣 MG-X-001 — X Release Thread Template
 *   **ID:** MG-X-001
 *   **Owner:** X Agent
-*   **Status:** Backlog
+*   **Status:** **Done** (2026-01-22)
 *   **Goal:** Create `docs/X_RELEASE_TEMPLATE.md` aligned with truth behavior (enabled vs disabled).
 
 #### 📝 MG-X-002 — X Publishing Contract Spec
