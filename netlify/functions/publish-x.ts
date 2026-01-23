@@ -1,5 +1,7 @@
 
 import type { Handler } from "@netlify/functions";
+import OAuth from 'oauth-1.0a';
+import crypto from 'crypto';
 
 // Types
 interface XPublishRequest {
@@ -8,11 +10,11 @@ interface XPublishRequest {
     userId?: string;
 }
 
-interface XPublishResponse {
-    success: boolean;
-    tweetId?: string;
-    url?: string;
-    error?: string;
+interface XManifestEntry {
+    endpoint: string;
+    cost: number;
+    total_due: number;
+    timestamp: string;
 }
 
 const headers = {
@@ -22,26 +24,67 @@ const headers = {
 };
 
 // ----------------------------------------------------------------------------
-// Twitter API Client (Fetch-based to avoid large deps)
+// OAuth 1.0a Helper
 // ----------------------------------------------------------------------------
-async function postToTwitter(text: string, mediaIds: string[] = []): Promise<any> {
-    const apiKey = process.env.TWITTER_API_KEY;
-    const apiSecret = process.env.TWITTER_API_SECRET;
-    const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-    const accessSecret = process.env.TWITTER_ACCESS_SECRET;
+function getAuthHeader(url: string, method: string) {
+    const oauth = new OAuth({
+        consumer: {
+            // Support both old TWITTER_ and new X_ prefixes per Scott's instructions
+            key: process.env.X_API_KEY || process.env.TWITTER_API_KEY || '',
+            secret: process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '',
+        },
+        signature_method: 'HMAC-SHA1',
+        hash_function(base_string, key) {
+            return crypto
+                .createHmac('sha1', key)
+                .update(base_string)
+                .digest('base64');
+        },
+    });
 
-    if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
-        throw new Error("Missing Twitter API credentials");
+    const token = {
+        key: process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '',
+        secret: process.env.X_ACCESS_TOKEN_SECRET || process.env.TWITTER_ACCESS_SECRET || '',
+    };
+
+    return oauth.toHeader(oauth.authorize({ url, method }, token));
+}
+
+// ----------------------------------------------------------------------------
+// X API Client (Fetch-based with OAuth 1.0a)
+// ----------------------------------------------------------------------------
+async function postToTwitter(text: string): Promise<any> {
+    const endpoint = 'https://api.twitter.com/2/tweets';
+
+    // Safety check for keys before attempting
+    const hasKeys = (process.env.X_API_KEY || process.env.TWITTER_API_KEY) &&
+        (process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN);
+
+    if (!hasKeys) throw new Error("Missing X/Twitter keys");
+
+    const authHeader = getAuthHeader(endpoint, 'POST');
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            ...authHeader,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error(`Auth Error (${response.status}): Check keys and permissions.`);
+        }
+        if (response.status === 429) {
+            throw new Error("Rate Limit Exceeded");
+        }
+        const errText = await response.text();
+        throw new Error(`X API Error ${response.status}: ${errText}`);
     }
 
-    // Note: In a real implementation we would use 'twitter-api-v2' or 'oauth-1.0a'
-    // Since we want to keep dependencies light, this is a placeholder for the actual OAuth 1.0a signature logic
-    // For now, we simulate the call or fail if credentials exist but library is missing.
-    // To make this fully functional, we should add 'twitter-api-v2' to package.json.
-
-    // Simulating Success for demonstration if keys are present (or falling back to placeholder in main handler)
-    console.log("🐦 Posting to X:", text, mediaIds);
-    return { data: { id: "123456789", text } };
+    return await response.json();
 }
 
 // ----------------------------------------------------------------------------
@@ -59,11 +102,11 @@ const handler: Handler = async (event) => {
     try {
         const { text, mediaUrls } = JSON.parse(event.body || '{}') as XPublishRequest;
 
-        // Check for API Keys
-        const hasKeys = process.env.TWITTER_API_KEY && process.env.TWITTER_ACCESS_TOKEN;
+        // Check for API Keys (support both prefixes)
+        const hasKeys = (process.env.X_API_KEY || process.env.TWITTER_API_KEY) &&
+            (process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN);
 
         if (!hasKeys) {
-            // 🎯 MG-P0-C: Explicit "disabled" response - no fake success
             console.log("🐦 [DISABLED] X/Twitter - missing API keys");
             return {
                 statusCode: 200,
@@ -72,30 +115,42 @@ const handler: Handler = async (event) => {
                     success: false,
                     disabled: true,
                     platform: 'x',
-                    error: "X/Twitter publishing is disabled - missing TWITTER_API_KEY and TWITTER_ACCESS_TOKEN",
-                    note: "Configure Twitter API v2 credentials in Netlify environment variables to enable"
+                    error: "X/Twitter disabled (missing keys)",
+                    note: "Set X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET to enable."
                 })
             };
         }
 
-        // 🎯 MG-P0-C: Real implementation requires twitter-api-v2 package
-        // Currently NOT implemented - return explicit "not_implemented" status
-        // TODO: Add twitter-api-v2 to package.json and implement OAuth 1.0a signing
-        console.log("🐦 [NOT_IMPLEMENTED] X/Twitter API configured but implementation pending");
+        console.log(`🐦 [X-AGENT] Posting to X: "${text.substring(0, 50)}..."`);
+
+        // Execute Real Post
+        const result = await postToTwitter(text);
+
+        // Job Costing Manifest
+        // Est. $0.001 per post + Commons Good markup
+        const invoiceEntry: XManifestEntry = {
+            endpoint: 'tweets',
+            cost: 0.001,
+            total_due: 0.001 * 1.2, // 20% markup
+            timestamp: new Date().toISOString()
+        };
+
+        console.log(`✅ [X-AGENT] Posted! Tweet ID: ${result.data?.id}`);
+
         return {
-            statusCode: 501,
+            statusCode: 200,
             headers,
             body: JSON.stringify({
-                success: false,
-                not_implemented: true,
+                success: true,
                 platform: 'x',
-                error: "X/Twitter publishing not yet implemented - twitter-api-v2 package required",
-                note: "API keys are configured but OAuth signing is not implemented"
+                tweetId: result.data?.id,
+                url: `https://x.com/user/status/${result.data?.id}`,
+                invoice: invoiceEntry
             })
         };
 
     } catch (error: any) {
-        console.error("❌ X Publish Error:", error);
+        console.error("❌ X Publish Error:", error.message);
         return {
             statusCode: 500,
             headers,

@@ -411,8 +411,7 @@ function App() {
                   { id: 'tiktok', label: 'TikTok', icon: '🎵', ratio: '9:16' },
                   { id: 'instagram', label: 'Reels', icon: '📸', ratio: '9:16' },
                   { id: 'youtube_shorts', label: 'Shorts', icon: '▶️', ratio: '9:16' },
-                  { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' },
-                  { id: 'twitter', label: 'X / Twitter', icon: '🐦', ratio: '16:9' }
+                  { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' }
                 ].map(p => (
                   <button
                     key={p.id}
@@ -435,6 +434,35 @@ function App() {
                     )}
                   </button>
                 ))}
+
+                {/* 🐦 SPECIAL X AGENT TOGGLE (MG-008 Polish) */}
+                <button
+                  onClick={() => {
+                    if (targetPlatform !== 'twitter') {
+                      setTargetPlatform('twitter');
+                      if (files.length > 0) alert("🐦 X Mode Activated: Ready to post to @Sechols002!");
+                    }
+                  }}
+                  disabled={files.length === 0 || pipelineStatus === 'running'}
+                  className={`relative p-3 rounded-lg border text-left transition-all group overflow-hidden ${targetPlatform === 'twitter'
+                    ? 'bg-[#1DA1F2]/20 border-[#1DA1F2] shadow-[0_0_15px_rgba(29,161,242,0.4)]'
+                    : 'bg-gray-900/50 border-gray-700 hover:border-[#1DA1F2]/50'
+                    } ${files.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                >
+                  {/* Remotion Flare Effect */}
+                  <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-[#1DA1F2]/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
+
+                  <div className="flex items-center justify-between mb-1 relative z-10">
+                    <span className="text-lg text-[#1DA1F2]">🐦</span>
+                    <span className="text-[10px] font-mono text-[#1DA1F2]/70 bg-[#1DA1F2]/10 px-1 rounded">16:9</span>
+                  </div>
+                  <span className={`text-xs font-bold block relative z-10 ${targetPlatform === 'twitter' ? 'text-[#1DA1F2]' : 'text-gray-400 group-hover:text-[#1DA1F2]'}`}>
+                    X (Twitter)
+                  </span>
+                  {targetPlatform === 'twitter' && (
+                    <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#1DA1F2] rounded-full animate-pulse shadow-[0_0_8px_#1DA1F2]" />
+                  )}
+                </button>
               </div>
 
               {/* 🎯 MG-002: Creative Direction (U2A Preferences) */}
