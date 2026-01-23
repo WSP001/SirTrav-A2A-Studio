@@ -59,6 +59,7 @@ export default async (req: Request) => {
       comments,
       metadata,
       timestamp: ts,
+      buildId: process.env.BUILD_ID || 'local',
     };
 
     // Persist to Blobs (production path)

@@ -1,21 +1,26 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "SirTrav A2A Studio API Response Contracts",
-    "version": "1.0.0",
+    "version": "1.1.0",
+    "description": "JSON Schema contracts for Antigravity contract tests (MG-006). Defines the expected response shapes for render-progress and submit-evaluation endpoints.",
     "definitions": {
         "RenderProgressResponse": {
+            "description": "GET /.netlify/functions/render-progress response",
             "type": "object",
             "properties": {
                 "ok": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Whether the request succeeded"
                 },
                 "renderId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Remotion Lambda render ID"
                 },
                 "progress": {
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 1
+                    "maximum": 1,
+                    "description": "Overall progress (0-1)"
                 },
                 "phase": {
                     "type": "string",
@@ -26,86 +31,156 @@
                         "done",
                         "error",
                         "pending"
-                    ]
+                    ],
+                    "description": "Current render phase"
                 },
                 "framesRendered": {
-                    "type": "number"
+                    "type": ["number", "null"],
+                    "description": "Number of frames rendered so far"
                 },
                 "totalFrames": {
-                    "type": "number"
+                    "type": ["number", "null"],
+                    "description": "Total frames to render"
                 },
                 "done": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Whether the render is complete"
                 },
                 "outputFile": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "format": "uri"
+                    "type": ["string", "null"],
+                    "description": "URL of the completed video (null until done)"
                 },
                 "error": {
-                    "type": [
-                        "string",
-                        "null"
-                    ]
+                    "type": ["string", "null"],
+                    "description": "Error message if phase is error"
                 },
                 "fallback": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Whether fallback/placeholder mode was used"
                 },
                 "projectId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Project ID (present when queried by projectId+runId)"
                 },
                 "runId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Run ID (present when queried by projectId+runId)"
                 }
             },
             "required": [
                 "ok",
-                "renderId",
                 "progress",
                 "done"
-            ]
+            ],
+            "if": {
+                "properties": { "ok": { "const": true } }
+            },
+            "then": {
+                "required": ["ok", "renderId", "progress", "done"]
+            }
+        },
+        "RenderProgressErrorResponse": {
+            "description": "Error response from render-progress (400/404/500)",
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean",
+                    "const": false
+                },
+                "error": {
+                    "type": "string"
+                },
+                "renderId": {
+                    "type": "string"
+                }
+            },
+            "required": ["ok", "error"]
         },
         "SubmitEvaluationRequest": {
+            "description": "POST /.netlify/functions/submit-evaluation request body",
+            "type": "object",
+            "properties": {
+                "projectId": {
+                    "type": "string",
+                    "description": "Project identifier"
+                },
+                "runId": {
+                    "type": "string",
+                    "description": "Run identifier for tracing"
+                },
+                "rating": {
+                    "type": "string",
+                    "enum": ["good", "bad"],
+                    "description": "User feedback rating"
+                },
+                "comments": {
+                    "type": "string",
+                    "description": "Optional user feedback text"
+                },
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "platform": { "type": "string" },
+                        "theme": { "type": "string" },
+                        "style": { "type": "string" }
+                    },
+                    "description": "Optional context about the evaluated content"
+                }
+            },
+            "required": ["projectId", "rating"]
+        },
+        "SubmitEvaluationResponse": {
+            "description": "POST /.netlify/functions/submit-evaluation success response",
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "const": true
+                }
+            },
+            "required": ["success"]
+        },
+        "SubmitEvaluationErrorResponse": {
+            "description": "POST /.netlify/functions/submit-evaluation error response",
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            },
+            "required": ["error"]
+        },
+        "EvaluationStoredEntry": {
+            "description": "Shape of the evaluation entry stored in Blobs (evals store). Used by Antigravity for data verification.",
             "type": "object",
             "properties": {
                 "projectId": {
                     "type": "string"
                 },
                 "runId": {
-                    "type": "string"
+                    "type": "string",
+                    "default": "unknown"
                 },
                 "rating": {
                     "type": "string",
-                    "enum": [
-                        "good",
-                        "bad"
-                    ]
+                    "enum": ["good", "bad"]
                 },
                 "comments": {
-                    "type": "string"
+                    "type": ["string", "null"]
                 },
                 "metadata": {
-                    "type": "object"
-                }
-            },
-            "required": [
-                "projectId",
-                "rating"
-            ]
-        },
-        "SubmitEvaluationResponse": {
-            "type": "object",
-            "properties": {
-                "success": {
-                    "type": "boolean"
+                    "type": ["object", "null"]
                 },
-                "error": {
-                    "type": "string"
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "buildId": {
+                    "type": "string",
+                    "description": "Netlify BUILD_ID for traceability"
                 }
             },
-            "required": []
+            "required": ["projectId", "runId", "rating", "timestamp", "buildId"]
         }
     }
 }
