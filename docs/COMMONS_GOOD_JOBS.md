@@ -31,7 +31,7 @@ This document distributes specific, attributable "Jobs" to our Agents to ensure 
 ## 📡 Job Lot 2: Signal & Contracts (Claude Code)
 **Agent:** `Claude Code`
 **Goal:** Ensure the backend truthfully serves the frontend and learns from it.
-**Status:** ⏳ PENDING
+**Status:** ✅ DONE (2026-01-23)
 
 ### INSTRUCTIONS:
 1.  **Contract Verification (`MG-006` Support):**

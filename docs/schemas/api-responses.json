@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "SirTrav A2A Studio API Response Contracts",
-    "version": "1.1.0",
-    "description": "JSON Schema contracts for Antigravity contract tests (MG-006). Defines the expected response shapes for render-progress and submit-evaluation endpoints.",
+    "version": "1.2.0",
+    "description": "JSON Schema contracts for Antigravity contract tests (MG-006). Covers render-progress, submit-evaluation, and publish-x endpoints.",
     "definitions": {
         "RenderProgressResponse": {
             "description": "GET /.netlify/functions/render-progress response",
@@ -181,6 +181,69 @@
                 }
             },
             "required": ["projectId", "runId", "rating", "timestamp", "buildId"]
+        },
+        "XPublishRequest": {
+            "description": "POST /.netlify/functions/publish-x request body",
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "maxLength": 280,
+                    "description": "Tweet text content"
+                },
+                "mediaUrls": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uri" },
+                    "description": "Optional media attachment URLs"
+                },
+                "userId": {
+                    "type": "string",
+                    "description": "Optional user identifier for attribution"
+                }
+            },
+            "required": ["text"]
+        },
+        "XPublishSuccessResponse": {
+            "description": "POST /.netlify/functions/publish-x success response",
+            "type": "object",
+            "properties": {
+                "success": { "type": "boolean", "const": true },
+                "platform": { "type": "string", "const": "x" },
+                "tweetId": { "type": "string", "description": "Twitter API tweet ID" },
+                "url": { "type": "string", "description": "Direct link to tweet" },
+                "invoice": {
+                    "type": "object",
+                    "properties": {
+                        "endpoint": { "type": "string", "const": "tweets" },
+                        "cost": { "type": "number", "description": "Raw API cost" },
+                        "total_due": { "type": "number", "description": "Cost + 20% markup" },
+                        "timestamp": { "type": "string", "format": "date-time" }
+                    },
+                    "required": ["endpoint", "cost", "total_due", "timestamp"]
+                }
+            },
+            "required": ["success", "platform", "tweetId", "invoice"]
+        },
+        "XPublishDisabledResponse": {
+            "description": "POST /.netlify/functions/publish-x when keys missing (No Fake Success)",
+            "type": "object",
+            "properties": {
+                "success": { "type": "boolean", "const": false },
+                "disabled": { "type": "boolean", "const": true },
+                "platform": { "type": "string", "const": "x" },
+                "error": { "type": "string" },
+                "note": { "type": "string" }
+            },
+            "required": ["success", "disabled", "platform", "error"]
+        },
+        "XPublishErrorResponse": {
+            "description": "POST /.netlify/functions/publish-x when API call fails",
+            "type": "object",
+            "properties": {
+                "success": { "type": "boolean", "const": false },
+                "error": { "type": "string" }
+            },
+            "required": ["success", "error"]
         }
     }
 }
