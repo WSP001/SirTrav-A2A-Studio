@@ -7,15 +7,15 @@
 
 ## 🚦 Active Ticket (NOW)
 
-**Ticket:** MG-008 & MG-X-LIVE
-**Owner:** Codex & Antigravity
+**Ticket:** MG-X-LIVE & MG-X-002
+**Owner:** Antigravity & X Agent
 **Reviewer:** Claude
 **Status:** **IN_PROGRESS**
 
 ### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Working MG-008 (Feedback UI).
-*   **Antigravity:** Working MG-X-LIVE (X Key Verification).
-*   **Claude:** Support/Review.
+*   **Codex:** Standby (MG-008 Done, X Button UI Added).
+*   **Antigravity:** MG-X-LIVE Done (UI/Backend Wired, Keys Pending).
+*   **X Agent:** Working MG-X-002 (Engagement Loop).
 
 ---
 
@@ -59,15 +59,23 @@
 
 ## 🐦 X Agent Backlog (Parallel / Non-Colliding)
 
-#### 🔑 MG-X-LIVE (Antigravity) — Verify X Keys & Publishing 👈 **IN_PROGRESS**
+#### 🔑 MG-X-LIVE (Antigravity) — Verify X Keys & Publishing ✅
 *   **ID:** MG-X-LIVE
 *   **Owner:** Antigravity (Test Ops)
-*   **Status:** **IN_PROGRESS** (2026-01-22)
+*   **Status:** **DONE** (Functions Ready, UI Added, 401 Confirmed)
 *   **Goal:** Verify LIVE X API keys function correctly (no "fake success").
-*   **Instructions:**
-    1.  **SysAdmin (User):** Set `X_API_KEY`, etc. in Netlify Env.
-    2.  **Antigravity:** Run `curl localhost:8888/.netlify/functions/healthcheck` -> Assert 'x' is 'configured'.
-    3.  **Antigravity:** Run `node scripts/test_motion_graphic.mjs` -> Assert real success or explicit auth error (not disabled).
+*   **Note:** Backend and UI are wired. Keys failed 401 verification (Mismatch). User is aware.
+*   **Outcome:** `publish-x.ts` uses OAuth 1.0a. UI has "Post to X" button.
+
+#### 📣 MG-X-002 (X Agent) — Engagement Loop 👈 **IN_PROGRESS**
+*   **ID:** MG-X-002
+*   **Owner:** X Agent (Ops)
+*   **Status:** **IN_PROGRESS**
+*   **Goal:** Read replies from X and feed them back into the Memory system for "Regenerative Content" (U2A Feedback).
+*   **Deliverables:**
+    1.  `netlify/functions/check-x-engagement.ts` (Backend)
+    2.  `docs/ENGAGEMENT_TO_MEMORY.md` (Spec)
+    3.  Integration with `memory-vault` (Read comments -> Store in Vault).
 
 #### 📣 MG-X-001 — X Release Thread Template
 *   **ID:** MG-X-001
@@ -167,6 +175,9 @@ Then begin with this statement:
 | MG-P0-C | Claude | X/Twitter truth alignment (no fake success) | 2026-01-21 |
 | MG-002 | Codex | Click-to-Kick UI + Progress + U2A Prefs | 2026-01-22 |
 | MG-003 | Antigravity | Motion Render Smoke Test (scripts/test_motion_graphic.mjs) | 2026-01-22 |
+| MG-007 | Claude | Feedback Capture Backend | 2026-01-22 |
+| MG-008 | Codex | Feedback UI (Toasts + Error Handling) | 2026-01-23 |
+| MG-X-LIVE | Antigravity | X Publishing Backend & UI (OAuth 1.0a Wired) | 2026-01-23 |
 
 ---
 

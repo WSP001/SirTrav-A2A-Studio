@@ -44,6 +44,10 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
   const [comments, setComments] = useState('');
   const [selectedRating, setSelectedRating] = useState<'good' | 'bad' | null>(null);
 
+  // X Posting State
+  const [isPostingX, setIsPostingX] = useState(false);
+  const [xPostResult, setXPostResult] = useState<{ success: boolean; message?: string } | null>(null);
+
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = result.videoUrl;
@@ -155,6 +159,70 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
           >
             🔗 Open in New Tab
           </a>
+
+          {/* X (Twitter) Publish Button */}
+          <button
+            onClick={async () => {
+              if (isPostingX) return;
+              setIsPostingX(true);
+              setXPostResult(null);
+
+              try {
+                const res = await fetch('/.netlify/functions/publish-x', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    text: `Check out my new AI video! 🎥✨ #${result.projectId} #SirTravStudio`,
+                    // Future: Add media upload logic here
+                  }),
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                  setXPostResult({ success: true, message: 'Posted to X!' });
+                } else if (data.disabled || data.error?.includes('Auth') || data.error?.includes('401')) {
+                  setXPostResult({ success: false, message: 'Auth Error: Check Netlify Keys' });
+                } else {
+                  setXPostResult({ success: false, message: 'Failed to post' });
+                }
+              } catch (err) {
+                setXPostResult({ success: false, message: 'Network Error' });
+              } finally {
+                setIsPostingX(false);
+              }
+            }}
+            className={`x-publish-button ${isPostingX ? 'loading' : ''} ${xPostResult?.success ? 'success' : ''} ${xPostResult?.success === false ? 'error' : ''}`}
+            disabled={isPostingX || xPostResult?.success}
+            style={{
+              background: xPostResult?.success ? '#10B981' : xPostResult?.success === false ? '#EF4444' : '#000000',
+              color: 'white',
+              border: '1px solid #333',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              marginTop: '10px',
+              cursor: isPostingX || xPostResult?.success ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {isPostingX ? (
+              <span>⏳ Posting...</span>
+            ) : xPostResult?.success ? (
+              <span>✅ Posted to X!</span>
+            ) : xPostResult?.success === false ? (
+              <span>❌ {xPostResult.message}</span>
+            ) : (
+              <>
+                <span>🐦</span> Post to X
+              </>
+            )}
+          </button>
         </div>
 
         {/* Feedback Section */}
@@ -256,7 +324,7 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 
