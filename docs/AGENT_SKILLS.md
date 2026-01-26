@@ -7,40 +7,39 @@
 
 ---
 
-## 🔐 OAuth 1.0a Signing (Claude Code - fc96ceb)
+## 🔐 Twitter API v2 OAuth (Claude Code - Updated 2026-01-26)
 
 ### Critical Discovery
 Healthcheck checks `TWITTER_API_KEY` + `TWITTER_ACCESS_TOKEN` (not X_ prefix).
-Publish function supports BOTH prefixes. X_ takes priority if both set.
+Publish function supports BOTH prefixes. TWITTER_ takes priority.
 **Set TWITTER_* vars in Netlify for healthcheck to report "configured".**
 
-### Package: oauth-1.0a (lighter than twitter-api-v2)
+### Package: twitter-api-v2
 ```bash
-npm list oauth-1.0a  # => oauth-1.0a@2.2.6
+npm list twitter-api-v2  # => twitter-api-v2@1.29.0
 ```
 
 ### Verified Working (from netlify/functions/publish-x.ts)
 ```typescript
-import OAuth from 'oauth-1.0a';
-import crypto from 'crypto';
+import { TwitterApi } from 'twitter-api-v2';
 
-function getAuthHeader(url: string, method: string) {
-  const oauth = new OAuth({
-    consumer: {
-      key: process.env.X_API_KEY || process.env.TWITTER_API_KEY || '',
-      secret: process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '',
-    },
-    signature_method: 'HMAC-SHA1',
-    hash_function(base_string, key) {
-      return crypto.createHmac('sha1', key).update(base_string).digest('base64');
-    },
-  });
-  const token = {
-    key: process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '',
-    secret: process.env.X_ACCESS_TOKEN_SECRET || process.env.TWITTER_ACCESS_SECRET || '',
-  };
-  return oauth.toHeader(oauth.authorize({ url, method }, token));
-}
+// Environment Check (TWITTER_ prefix per Netlify Agent findings)
+const appKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
+const appSecret = process.env.TWITTER_API_SECRET || process.env.X_API_SECRET;
+const accessToken = process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN;
+const accessSecret = process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_SECRET;
+
+// Initialize Twitter Client (OAuth 1.0a User Context via v2 library)
+const userClient = new TwitterApi({
+  appKey,
+  appSecret,
+  accessToken,
+  accessSecret,
+});
+
+// Post via v2 endpoint
+const result = await userClient.v2.tweet(text);
+const tweetId = result.data.id;
 ```
 
 ### No Fake Success (Verified)
@@ -63,16 +62,17 @@ if (!hasKeys) {
 ### 20% Markup Pattern (Verified)
 ```typescript
 const invoiceEntry = {
-  endpoint: 'tweets',
+  endpoint: 'POST /2/tweets',
   cost: 0.001,
   total_due: 0.001 * 1.2,  // 20% Commons Good markup
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  buildId: process.env.BUILD_ID || 'local-dev'  // Traceability
 };
 ```
 
 ### Response includes invoice
 ```json
-{ "success": true, "tweetId": "...", "url": "...", "invoice": { "endpoint": "tweets", "cost": 0.001, "total_due": 0.0012 } }
+{ "success": true, "platform": "x", "tweetId": "...", "url": "...", "invoice": { "endpoint": "POST /2/tweets", "cost": 0.001, "total_due": 0.0012, "buildId": "..." } }
 ```
 
 ---
