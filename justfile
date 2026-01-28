@@ -323,12 +323,12 @@ test-x-disabled:
 # 🤖 GITHUB CLI HELPERS
 # ============================================
 
-# Install GitHub Copilot CLI extension
+# Install GitHub Copilot CLI extension (DEPRECATED - use Windsurf AI instead)
 gh-copilot-install:
-    @echo "🤖 Installing GitHub Copilot CLI extension..."
-    @echo "⚠️  First, authenticate with: gh auth login"
-    gh extension install github/gh-copilot
-    @echo "✅ Copilot CLI installed! Try: gh copilot suggest"
+    @echo "⚠️  The gh-copilot extension was deprecated in Sept 2025."
+    @echo "📖 See: https://github.blog/changelog/2025-09-25-upcoming-deprecation-of-gh-copilot-cli-extension"
+    @echo ""
+    @echo "✅ You don't need it - use Windsurf/Antigravity AI assistants instead!"
 
 # Check gh extensions status
 gh-extensions:
