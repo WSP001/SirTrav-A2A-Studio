@@ -7,15 +7,22 @@
 
 ## 🚦 Active Ticket (NOW)
 
-**Ticket:** MG-X-LIVE & MG-X-002
-**Owner:** Antigravity & X Agent
+**Ticket:** M0: Social Platform Integration
+**Owner:** Antigravity + User
 **Reviewer:** Claude
 **Status:** **IN_PROGRESS**
 
 ### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Standby (MG-008 Done, X Button UI Added).
-*   **Antigravity:** MG-X-LIVE Done (UI/Backend Wired, Keys Pending).
-*   **X Agent:** Working MG-X-002 (Engagement Loop).
+*   **Codex:** Standby (MG-008 Done, Feedback UI Complete).
+*   **Antigravity:** M0-X-FIX In Progress (Keys need alignment from X Developer Portal).
+*   **X Agent:** Blocked on key fix, then MG-X-002 (Engagement Loop).
+
+### 🔴 BLOCKING ISSUE:
+X API keys are from **different** X Developer Apps = 401 authentication error.
+**Fix:** Go to X Developer Portal → Get ALL 4 keys from SAME app → Update Netlify.
+
+### 🔧 Workflow Available:
+Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
 
 ---
 

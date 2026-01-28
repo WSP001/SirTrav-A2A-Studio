@@ -1,9 +1,10 @@
 
 import type { Handler } from "@netlify/functions";
-import OAuth from 'oauth-1.0a';
-import crypto from 'crypto';
+import { TwitterApi } from 'twitter-api-v2';
 
+// ----------------------------------------------------------------------------
 // Types
+// ----------------------------------------------------------------------------
 interface XPublishRequest {
     text: string;
     mediaUrls?: string[];
@@ -15,8 +16,12 @@ interface XManifestEntry {
     cost: number;
     total_due: number;
     timestamp: string;
+    buildId: string;
 }
 
+// ----------------------------------------------------------------------------
+// Headers
+// ----------------------------------------------------------------------------
 const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -24,118 +29,78 @@ const headers = {
 };
 
 // ----------------------------------------------------------------------------
-// OAuth 1.0a Helper
-// ----------------------------------------------------------------------------
-function getAuthHeader(url: string, method: string) {
-    const oauth = new OAuth({
-        consumer: {
-            // Support both old TWITTER_ and new X_ prefixes per Scott's instructions
-            key: process.env.X_API_KEY || process.env.TWITTER_API_KEY || '',
-            secret: process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '',
-        },
-        signature_method: 'HMAC-SHA1',
-        hash_function(base_string, key) {
-            return crypto
-                .createHmac('sha1', key)
-                .update(base_string)
-                .digest('base64');
-        },
-    });
-
-    const token = {
-        key: process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '',
-        secret: process.env.X_ACCESS_TOKEN_SECRET || process.env.TWITTER_ACCESS_SECRET || '',
-    };
-
-    return oauth.toHeader(oauth.authorize({ url, method }, token));
-}
-
-// ----------------------------------------------------------------------------
-// X API Client (Fetch-based with OAuth 1.0a)
-// ----------------------------------------------------------------------------
-async function postToTwitter(text: string): Promise<any> {
-    const endpoint = 'https://api.twitter.com/2/tweets';
-
-    // Safety check for keys before attempting
-    const hasKeys = (process.env.X_API_KEY || process.env.TWITTER_API_KEY) &&
-        (process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN);
-
-    if (!hasKeys) throw new Error("Missing X/Twitter keys");
-
-    const authHeader = getAuthHeader(endpoint, 'POST');
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            ...authHeader,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-    });
-
-    if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-            throw new Error(`Auth Error (${response.status}): Check keys and permissions.`);
-        }
-        if (response.status === 429) {
-            throw new Error("Rate Limit Exceeded");
-        }
-        const errText = await response.text();
-        throw new Error(`X API Error ${response.status}: ${errText}`);
-    }
-
-    return await response.json();
-}
-
-// ----------------------------------------------------------------------------
 // Handler
 // ----------------------------------------------------------------------------
 const handler: Handler = async (event) => {
+    // 1. CORS Preflight
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 200, headers, body: '' };
     }
 
+    // 2. Method Check
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, headers, body: 'Method Not Allowed' };
     }
 
+    console.log("🐦 [X-AGENT] Received publish request");
+
+    // 3. Environment Check (TWITTER_ prefix per Netlify Agent findings)
+    const appKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
+    const appSecret = process.env.TWITTER_API_SECRET || process.env.X_API_SECRET;
+    const accessToken = process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN;
+    const accessSecret = process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_SECRET;
+
+    if (!appKey || !appSecret || !accessToken || !accessSecret) {
+        console.warn("⚠️ [DISABLED] Missing one or more Twitter/X API keys.");
+        return {
+            statusCode: 200, // Return 200 so UI can handle "disabled" state gracefully
+            headers,
+            body: JSON.stringify({
+                success: false,
+                disabled: true,
+                platform: 'x',
+                error: "X/Twitter disabled (missing keys)",
+                note: "Set TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET in Netlify."
+            })
+        };
+    }
+
     try {
-        const { text, mediaUrls } = JSON.parse(event.body || '{}') as XPublishRequest;
+        const { text } = JSON.parse(event.body || '{}') as XPublishRequest;
 
-        // Check for API Keys (support both prefixes)
-        const hasKeys = (process.env.X_API_KEY || process.env.TWITTER_API_KEY) &&
-            (process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN);
-
-        if (!hasKeys) {
-            console.log("🐦 [DISABLED] X/Twitter - missing API keys");
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    disabled: true,
-                    platform: 'x',
-                    error: "X/Twitter disabled (missing keys)",
-                    note: "Set X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET to enable."
-                })
-            };
+        if (!text) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing 'text' in payload" }) };
         }
 
-        console.log(`🐦 [X-AGENT] Posting to X: "${text.substring(0, 50)}..."`);
+        // 4. Initialize Twitter Client (OAuth 1.0a User Context)
+        const userClient = new TwitterApi({
+            appKey,
+            appSecret,
+            accessToken,
+            accessSecret,
+        });
 
-        // Execute Real Post
-        const result = await postToTwitter(text);
+        console.log(`🐦 [X-AGENT] Posting: "${text.substring(0, 50)}..."`);
 
-        // Job Costing Manifest
-        // Est. $0.001 per post + Commons Good markup
+        // 5. Execute Post (v2 endpoint)
+        const result = await userClient.v2.tweet(text);
+
+        if (result.errors && result.errors.length > 0) {
+            throw new Error(`Twitter API Error: ${result.errors[0].detail || result.errors[0].title}`);
+        }
+
+        const tweetId = result.data.id;
+        console.log(`✅ [X-AGENT] Success! Tweet ID: ${tweetId}`);
+
+        // 6. Job Costing Manifest
+        // Est. $0.001 per post (credit calc) + 20% Markup
         const invoiceEntry: XManifestEntry = {
-            endpoint: 'tweets',
+            endpoint: 'POST /2/tweets',
             cost: 0.001,
-            total_due: 0.001 * 1.2, // 20% markup
-            timestamp: new Date().toISOString()
+            total_due: 0.001 * 1.2,
+            timestamp: new Date().toISOString(),
+            buildId: process.env.BUILD_ID || 'local-dev'
         };
-
-        console.log(`✅ [X-AGENT] Posted! Tweet ID: ${result.data?.id}`);
 
         return {
             statusCode: 200,
@@ -143,18 +108,48 @@ const handler: Handler = async (event) => {
             body: JSON.stringify({
                 success: true,
                 platform: 'x',
-                tweetId: result.data?.id,
-                url: `https://x.com/user/status/${result.data?.id}`,
+                tweetId: tweetId,
+                url: `https://twitter.com/user/status/${tweetId}`, // Generic URL since we don't have username handy without another call
                 invoice: invoiceEntry
             })
         };
 
     } catch (error: any) {
-        console.error("❌ X Publish Error:", error.message);
+        console.error("❌ [X-AGENT] Error:", error);
+
+        // Rate Limit Handling
+        if (error.code === 429) {
+            return {
+                statusCode: 429,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: "Rate Limit Exceeded. Please try again later.",
+                    retryAfter: 60 // Simple default
+                })
+            };
+        }
+
+        // Auth Handling
+        if (error.code === 401 || error.message?.includes('401')) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: "Authentication Failed. Check API Keys.",
+                    keysPresent: true
+                })
+            };
+        }
+
         return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ success: false, error: error.message }),
+            body: JSON.stringify({
+                success: false,
+                error: error.message || "Internal Server Error"
+            })
         };
     }
 };

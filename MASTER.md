@@ -24,6 +24,87 @@ Build a production‑ready, user‑friendly video automation platform where user
 | **Progress Tracking** | ✅ SSE + Blobs | Real-time updates |
 | **Voice Agent** | 🟡 Ready | Needs `ELEVENLABS_API_KEY` |
 | **Composer Agent** | 🟡 Ready | Needs `SUNO_API_KEY` |
+| **X/Twitter API** | 🔴 401 Error | Keys from different apps |
+| **LinkedIn API** | 🔴 No Keys | Backend ready, needs credentials |
+| **YouTube API** | ✅ Configured | Keys in Netlify |
+
+---
+
+## 🚀 EXECUTABLE MILESTONES (NOW) ⚡
+
+### M0: Social Platform Integration (NOW) 🐦
+**Target:** Get X + LinkedIn publishing working
+**KPI:** 2/5 social platforms GREEN in healthcheck
+
+- [ ] Fix X API keys: Align all 4 keys from SAME X Developer App
+- [ ] Test X publish: `node scripts/test-x-publish.mjs --live`
+- [ ] Verify X post appears on timeline
+- [ ] Set up LinkedIn Developer App
+- [ ] Add LinkedIn keys to Netlify
+- [ ] Test LinkedIn publish
+
+**Commands to Execute:**
+```bash
+# Step 1: Check current Netlify env vars
+netlify env:list | grep -E "(TWITTER|X_|LINKEDIN)"
+
+# Step 2: Clean up duplicate X_ variables (optional)
+netlify env:unset X_CONSUMER_KEY
+netlify env:unset X_CONSUMER_SECRET
+netlify env:unset X_ACCESS_TOKEN
+netlify env:unset X_ACCESS_TOKEN_SECRET
+
+# Step 3: After getting correct keys from X Developer Portal
+netlify env:set TWITTER_API_KEY "your_api_key_from_same_app"
+netlify env:set TWITTER_API_SECRET "your_api_secret_from_same_app"
+netlify env:set TWITTER_ACCESS_TOKEN "your_access_token_from_same_app"
+netlify env:set TWITTER_ACCESS_SECRET "your_access_secret_from_same_app"
+
+# Step 4: Restart dev server and test
+netlify dev  # (in terminal 1)
+node scripts/test-x-publish.mjs --live  # (in terminal 2)
+
+# Step 5: Add LinkedIn keys (after Developer Portal setup)
+netlify env:set LINKEDIN_CLIENT_ID "your_linkedin_client_id"
+netlify env:set LINKEDIN_CLIENT_SECRET "your_linkedin_client_secret"
+netlify env:set LINKEDIN_ACCESS_TOKEN "your_linkedin_access_token"
+```
+
+---
+
+### M1: Platform Toggle UI (This Week) 🎛️
+**Target:** Users can select which platforms to publish to
+**KPI:** Toggle UI visible, respects healthcheck status
+
+- [ ] Create `src/components/PlatformToggle.tsx`
+- [ ] Wire to `/healthcheck` endpoint for platform status
+- [ ] Add to `ResultsPreview.tsx`
+- [ ] Disable unavailable platforms (greyed out)
+- [ ] Show cost estimate per platform
+
+---
+
+### M2: Engagement Loop (Next Sprint) 🧠
+**Target:** X mentions feed into Memory Vault for regenerative content
+**KPI:** `check-x-engagement.ts` populates `data/vault/inbox.json`
+
+- [ ] Verify `check-x-engagement.ts` works with valid keys
+- [ ] Create manual trigger in UI
+- [ ] Test sentiment parsing
+- [ ] Wire Director Agent to read inbox
+
+---
+
+### 📋 Milestones Summary Table
+
+| Milestone | Target | Tasks | KPI |
+|-----------|--------|-------|-----|
+| **M0: Social Platforms** | NOW ⚡ | Fix X keys, Add LinkedIn | 2/5 platforms GREEN |
+| **M1: Platform Toggle** | This Week | Create UI component | Toggle visible in UI |
+| **M2: Engagement Loop** | Next Sprint | Wire mentions → vault | inbox.json populated |
+| **M3: Instagram API** | Feb 2026 | Meta Business Manager | 3/5 platforms GREEN |
+| **M4: TikTok API** | Feb 2026 | TikTok Developer Portal | 4/5 platforms GREEN |
+| **M5: Production Deploy** | Feb 2026 | Full pipeline live | All tests pass |
 
 ---
 

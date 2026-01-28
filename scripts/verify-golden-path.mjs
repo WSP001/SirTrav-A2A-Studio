@@ -22,12 +22,13 @@ async function run() {
         // 0. Preflight Health Check
         console.log('[0] Preflight: Checking Backend Health...');
         try {
-            const healthRes = await fetch(`${BASE_URL}/health`);
+            // MG-P0-B: Deterministic Preflight Ping
+            const healthRes = await fetch(`${BASE_URL}/healthcheck`); // healthcheck.ts is the file
             if (!healthRes.ok) throw new Error(`Health check failed: ${healthRes.status}`);
             const healthData = await healthRes.json();
-            console.log('✅ Backend Online:', healthData);
+            console.log('✅ Backend Online (Deterministic Verification Runtime):', healthData.version);
         } catch (e) {
-            throw new Error(`\n🛑 BACKEND OFFLINE. Please run 'npm run dev' or 'netlify dev' in a separate terminal.\n   Error: ${e.message}`);
+            throw new Error(`\n🛑 BACKEND OFFLINE (MG-P0-B Gate).\n   Reason: ${e.cause?.code || e.message}\n   Fix: Run 'netlify dev' in a separate terminal to open port 8888.`);
         }
 
         // 1. Start Pipeline

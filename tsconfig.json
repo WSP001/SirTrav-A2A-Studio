@@ -1,0 +1,58 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "useDefineForClassFields": true,
+        "lib": [
+            "ES2022",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "module": "ESNext",
+        "skipLibCheck": true,
+        /* Bundler mode */
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noFallthroughCasesInSwitch": true,
+        /* Path Aliases - Clean imports like Next.js */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ],
+            "@/components/*": [
+                "src/components/*"
+            ],
+            "@/remotion/*": [
+                "src/remotion/*"
+            ],
+            "@/lib/*": [
+                "src/lib/*"
+            ],
+            "@/hooks/*": [
+                "src/hooks/*"
+            ],
+            "@/types/*": [
+                "src/types/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "netlify/**/*",
+        "scripts/**/*",
+        "pipelines/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        ".netlify"
+    ]
+}

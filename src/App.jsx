@@ -39,6 +39,7 @@ function App() {
   // 🎯 MG-002: U2A Preferences
   const [voiceStyle, setVoiceStyle] = useState('friendly'); // serious, friendly, hype
   const [videoLength, setVideoLength] = useState('short'); // short (15s), long (60s)
+  const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -200,15 +201,32 @@ function App() {
       });
 
       if (response.ok) {
-        alert(`Thanks for your feedback: ${rating === 'good' ? '👍' : '👎'}`);
+        setToast({ message: `Feedback Received: ${rating === 'good' ? '👍' : '👎'}`, type: 'success' });
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        throw new Error('Submission failed');
       }
     } catch (error) {
       console.error('Feedback submission failed:', error);
+      setToast({ message: 'Failed to submit feedback. Check connection.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
   return (
-    <div className="app min-h-screen">
+    <div className="app min-h-screen relative">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl backdrop-blur-md border animate-fade-in ${toast.type === 'success'
+          ? 'bg-green-500/20 border-green-500/30 text-green-300'
+          : 'bg-red-500/20 border-red-500/30 text-red-300'
+          }`}>
+          <div className="flex items-center gap-3">
+            {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
+            <p className="font-medium text-sm">{toast.message}</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="header">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">

@@ -288,3 +288,82 @@ help:
     @echo "  just deploy-preview - Deploy preview"
     @echo ""
     @echo "Run 'just --list' for all commands"
+
+# ============================================
+# 🔗 CROSS-PROJECT NAVIGATION (Multi-Agent)
+# ============================================
+
+# Jump to WSP2agent project
+wsp2:
+    @echo "🔗 Switching to WSP2agent..."
+    @echo "Run: cd c:/Users/Roberto002/OneDrive/DevHub/WSP2agent && just --list"
+
+# Show both project statuses
+projects-status:
+    @echo "📊 Multi-Project Status"
+    @echo "========================"
+    @echo ""
+    @echo "📁 SirTrav-A2A-Studio (current)"
+    @git status --short 2>$null || echo "  Not in git repo"
+    @echo ""
+    @echo "📁 WSP2agent"
+    @powershell -Command "Push-Location c:/Users/Roberto002/OneDrive/DevHub/WSP2agent; git status --short 2>$null; Pop-Location" || echo "  Not accessible"
+
+# Test LinkedIn disabled state (No Fake Success pattern)
+test-linkedin-disabled:
+    @echo "🧪 Verifying LinkedIn 'No Fake Success' pattern..."
+    node scripts/test-linkedin-publish.mjs
+
+# Test X disabled state (No Fake Success pattern)
+test-x-disabled:
+    @echo "🧪 Verifying X/Twitter 'No Fake Success' pattern..."
+    node scripts/test-x-publish.mjs
+
+# ============================================
+# 🤖 GITHUB CLI HELPERS
+# ============================================
+
+# Install GitHub Copilot CLI extension
+gh-copilot-install:
+    @echo "🤖 Installing GitHub Copilot CLI extension..."
+    @echo "⚠️  First, authenticate with: gh auth login"
+    gh extension install github/gh-copilot
+    @echo "✅ Copilot CLI installed! Try: gh copilot suggest"
+
+# Check gh extensions status
+gh-extensions:
+    @echo "🔌 GitHub CLI Extensions:"
+    gh extension list
+
+# Authenticate GitHub CLI
+gh-auth:
+    @echo "🔐 Authenticating GitHub CLI..."
+    gh auth login
+
+# ============================================
+# 🏆 GOLDEN PATH (Combined Tests)
+# ============================================
+
+# Full Golden Path test (all services)
+golden-path-full:
+    @echo "🏆 Running Full Golden Path Test..."
+    @echo ""
+    @echo "Step 1: Contract Validation"
+    @just validate-contracts
+    @echo ""
+    @echo "Step 2: Social Media Dry-Runs"
+    @just x-dry
+    @just linkedin-dry
+    @echo ""
+    @echo "Step 3: Motion Graphics"
+    @just motion-test
+    @echo ""
+    @echo "✅ Golden Path Complete!"
+
+# Quick Golden Path (just healthcheck + contracts)
+golden-path-quick:
+    @echo "🏆 Quick Golden Path..."
+    @just validate-contracts
+    @just healthcheck
+    @echo "✅ Quick Golden Path Complete!"
+

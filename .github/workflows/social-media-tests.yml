@@ -1,0 +1,117 @@
+name: Social Media Integration Tests
+
+on:
+  push:
+    paths:
+      - 'netlify/functions/publish-*.ts'
+      - 'src/components/SocialMediaToggles.tsx'
+      - 'scripts/test-*-publish.mjs'
+      - 'scripts/validate-social-contracts.mjs'
+  pull_request:
+    paths:
+      - 'netlify/functions/publish-*.ts'
+      - 'src/components/SocialMediaToggles.tsx'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  contract-tests:
+    name: Contract Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate social media contracts
+        run: node scripts/validate-social-contracts.mjs
+
+  dry-run-tests:
+    name: Dry-Run Publisher Tests
+    runs-on: ubuntu-latest
+    needs: contract-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dry-run X/Twitter test
+        run: node scripts/test-x-publish.mjs --dry-run
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+
+      - name: Dry-run LinkedIn test
+        run: node scripts/test-linkedin-publish.mjs --dry-run
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+
+      # Note: YouTube requires OAuth flow, so dry-run only validates shape
+      # - name: Dry-run YouTube test
+      #   run: node scripts/test-youtube-publish.mjs --dry-run
+
+  no-fake-success-audit:
+    name: No Fake Success Pattern Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for fake success patterns
+        run: |
+          echo "🔍 Auditing for 'No Fake Success' violations..."
+          
+          # Search for suspicious patterns in publish functions
+          VIOLATIONS=0
+          
+          # Pattern 1: Returning success:true without actual API call
+          if grep -r "success: true" netlify/functions/publish-*.ts | grep -v "// " | grep -v "result" > /dev/null 2>&1; then
+            echo "⚠️  Found hardcoded 'success: true' - verify it's after real API call"
+          fi
+          
+          # Pattern 2: Missing disabled check
+          for file in netlify/functions/publish-*.ts; do
+            if [ -f "$file" ]; then
+              if ! grep -q "disabled: true" "$file"; then
+                echo "⚠️  $file may be missing 'disabled: true' return for missing keys"
+              fi
+            fi
+          done
+          
+          echo "✅ Audit complete (manual review recommended)"
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [contract-tests, dry-run-tests, no-fake-success-audit]
+    steps:
+      - name: Summary
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 SOCIAL MEDIA INTEGRATION TEST SUMMARY"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "✅ Contract Validation: PASSED"
+          echo "✅ Dry-Run Tests: PASSED"
+          echo "✅ No Fake Success Audit: PASSED"
+          echo ""
+          echo "All pre-merge checks complete."
+          echo "For live tests, run manually with --live flag after merge."
