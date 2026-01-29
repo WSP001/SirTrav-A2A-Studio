@@ -367,3 +367,61 @@ golden-path-quick:
     @just healthcheck
     @echo "✅ Quick Golden Path Complete!"
 
+# ============================================
+# 🦅 ANTIGRAVITY AGENT (Test Ops)
+# ============================================
+
+# Validate ALL API contracts (comprehensive)
+validate-all:
+    @echo "🦅 Antigravity: Comprehensive Contract Validation..."
+    node scripts/validate-all-contracts.mjs
+
+# Validate ALL contracts against live server
+validate-all-live:
+    @echo "🦅 Antigravity: Live Contract Validation..."
+    node scripts/validate-all-contracts.mjs --live --verbose
+
+# Run complete Antigravity test suite
+antigravity-suite:
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+    @echo "🦅 ANTIGRAVITY: Complete Test Suite"
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "📋 Step 1: Contract Definitions"
+    @just validate-all
+    @echo ""
+    @echo "📋 Step 2: Social Media Contracts"
+    @just validate-contracts
+    @echo ""
+    @echo "📋 Step 3: Dry-Run Tests"
+    @just linkedin-dry
+    @echo ""
+    @echo "📋 Step 4: Healthcheck"
+    @just healthcheck
+    @echo ""
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+    @echo "✅ ANTIGRAVITY SUITE COMPLETE"
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+
+# Show Antigravity agent status
+antigravity-status:
+    @echo "🦅 Antigravity Agent Status"
+    @echo "════════════════════════════"
+    @echo ""
+    @echo "📋 Available Commands:"
+    @echo "  just antigravity-suite      - Run complete test suite"
+    @echo "  just validate-all           - Validate all contracts (dry)"
+    @echo "  just validate-all-live      - Validate contracts (live)"
+    @echo "  just golden-path-full       - Full integration test"
+    @echo "  just golden-path-quick      - Quick smoke test"
+    @echo "  just validate-contracts     - Social media contracts"
+    @echo ""
+    @echo "📁 Test Scripts:"
+    @echo "  scripts/validate-all-contracts.mjs"
+    @echo "  scripts/validate-social-contracts.mjs"
+    @echo "  scripts/test-x-publish.mjs"
+    @echo "  scripts/test-linkedin-publish.mjs"
+    @echo ""
+    @echo "🔄 CI Workflows:"
+    @echo "  .github/workflows/social-media-tests.yml"
+    @echo "  .github/workflows/motion-graphics-ci.yml"
