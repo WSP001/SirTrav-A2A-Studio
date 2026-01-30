@@ -408,7 +408,7 @@ antigravity-status:
     @echo "🦅 Antigravity Agent Status"
     @echo "════════════════════════════"
     @echo ""
-    @echo "📋 Available Commands:"
+    @echo "🧪 TESTING COMMANDS:"
     @echo "  just antigravity-suite      - Run complete test suite"
     @echo "  just validate-all           - Validate all contracts (dry)"
     @echo "  just validate-all-live      - Validate contracts (live)"
@@ -416,12 +416,49 @@ antigravity-status:
     @echo "  just golden-path-quick      - Quick smoke test"
     @echo "  just validate-contracts     - Social media contracts"
     @echo ""
-    @echo "📁 Test Scripts:"
-    @echo "  scripts/validate-all-contracts.mjs"
-    @echo "  scripts/validate-social-contracts.mjs"
-    @echo "  scripts/test-x-publish.mjs"
-    @echo "  scripts/test-linkedin-publish.mjs"
+    @echo "🎨 DESIGN COMMANDS:"
+    @echo "  just design-status          - Show design system info"
+    @echo "  just design-tokens          - Export design tokens"
+    @echo "  just design-audit           - Check design files"
+    @echo ""
+    @echo "📁 Key Files:"
+    @echo "  .agent/skills/ANTIGRAVITY_AGENT.md   - Agent documentation"
+    @echo "  runbooks/stitch-design.md            - Design system runbook"
+    @echo "  artifacts/antigravity/               - Design outputs"
     @echo ""
     @echo "🔄 CI Workflows:"
     @echo "  .github/workflows/social-media-tests.yml"
     @echo "  .github/workflows/motion-graphics-ci.yml"
+
+# ============================================
+# 🎨 ANTIGRAVITY DESIGN (Stitch MCP)
+# ============================================
+
+# Show design system status
+design-status:
+    @echo "🎨 SirTrav Design System"
+    @echo "════════════════════════════"
+    @echo ""
+    @echo "📋 Brand Colors:"
+    @echo "  Primary:    #1a1a2e (Dark Navy)"
+    @echo "  Secondary:  #16213e (Deep Blue)"
+    @echo "  Accent:     #e94560 (Coral)"
+    @echo "  Success:    #0f3460 (Ocean Blue)"
+    @echo ""
+    @echo "📝 Typography: Inter, JetBrains Mono"
+    @echo "📐 Spacing: 8px grid system"
+    @echo "📁 Design Runbook: runbooks/stitch-design.md"
+    @echo ""
+    @echo "🎨 To generate designs (requires Stitch MCP):"
+    @echo "  /design [component description]"
+
+# Export design tokens as JSON
+design-tokens:
+    @echo "🎨 Exporting design tokens..."
+    @echo '{"colors":{"primary":"#1a1a2e","secondary":"#16213e","accent":"#e94560","success":"#0f3460","text":"#ffffff","textMuted":"#a0a0a0","border":"#2a2a4a"},"fonts":{"heading":"Inter","body":"Inter","mono":"JetBrains Mono"},"spacing":{"xs":"4px","sm":"8px","md":"16px","lg":"24px","xl":"32px"},"radii":{"sm":"4px","md":"8px","lg":"16px","pill":"9999px"}}' > artifacts/antigravity/design-tokens.json
+    @echo "✅ Exported to artifacts/antigravity/design-tokens.json"
+
+# Audit design artifacts
+design-audit:
+    @echo "🎨 Auditing design artifacts..."
+    @if (Test-Path artifacts/antigravity) { Get-ChildItem artifacts/antigravity -Recurse | Format-Table Name, Length, LastWriteTime } else { echo "No artifacts found. Run design commands first." }
