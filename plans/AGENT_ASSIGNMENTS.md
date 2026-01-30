@@ -14,7 +14,7 @@
 
 ### ONE-TICKET RULE (Per Agent)
 *   **Codex:** Standby (MG-008 Done, Feedback UI Complete).
-*   **Antigravity:** M0-X-FIX In Progress (Keys need alignment from X Developer Portal).
+*   **Antigravity:** ✅ AG-001 DONE (Contract Validation Suite), MG-003 WAITING on Codex.
 *   **X Agent:** Blocked on key fix, then MG-X-002 (Engagement Loop).
 
 ### 🔴 BLOCKING ISSUE:
