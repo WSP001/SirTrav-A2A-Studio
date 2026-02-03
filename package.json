@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "netlify dev",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build": "npx vite build",
+    "preview": "npx vite preview",
     "manifest": "node pipelines/run-manifest.mjs",
     "precommit:secrets": "echo \"Run detect-secrets before committing\" && exit 0",
     "start:prod": "node pipelines/run-manifest.mjs",
