@@ -50,17 +50,27 @@ class BlobsStoreWrapper {
   }
 
   private getStore() {
+    // In Netlify Functions production, getStore() works automatically via NETLIFY_BLOBS_CONTEXT
+    // For local dev or explicit auth, we need siteID + token
+    const hasNetlifyContext = !!process.env.NETLIFY_BLOBS_CONTEXT;
     const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
     const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
 
-    // If no credentials, use file-system fallback for local dev
-    if (!siteID || !token) {
-      if (!this.isLocalFallback) {
-        this.isLocalFallback = true;
-      }
-      return null;
+    // Production: use automatic context (no credentials needed)
+    if (hasNetlifyContext) {
+      return getStore(this.storeName);
     }
-    return getStore({ name: this.storeName, siteID, token });
+
+    // Explicit credentials provided
+    if (siteID && token) {
+      return getStore({ name: this.storeName, siteID, token });
+    }
+
+    // Local dev fallback to filesystem
+    if (!this.isLocalFallback) {
+      this.isLocalFallback = true;
+    }
+    return null;
   }
 
   // Local FS Helpers
