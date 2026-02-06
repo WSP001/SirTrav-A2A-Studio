@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --include=dev && npm run build && cp -r dist/* landing/ 2>/dev/null || xcopy /E /I /Y dist landing"
+  command = "npm install --include=dev && npm run build && mkdir -p landing && cp -r dist/* landing/"
   publish = "landing"
   functions = "netlify/functions"
 
