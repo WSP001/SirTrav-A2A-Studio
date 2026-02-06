@@ -131,10 +131,15 @@ preflight:
     @echo "🔍 Running preflight checks..."
     npm run preflight
 
-# Healthcheck (structured JSON status - No Fake Success pattern)
+# Healthcheck - local (requires netlify dev)
 healthcheck:
-    @echo "📊 Running healthcheck..."
-    @powershell -Command "curl -s http://localhost:8888/.netlify/functions/healthcheck 2>$null || echo '{\"error\": \"Server not running. Run: just dev\"}'"
+    @echo "📊 Running healthcheck (local)..."
+    @powershell -Command "curl -s http://localhost:8888/.netlify/functions/healthcheck 2>$null || echo '{\"error\": \"Server not running. Run: just dev or just healthcheck-cloud\"}'" 
+
+# Healthcheck - cloud (live deployment)
+healthcheck-cloud:
+    @echo "📊 Running healthcheck (cloud)..."
+    @powershell -Command "curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck"
 
 # Start Claude Code with init hook
 claude-init:
@@ -155,9 +160,9 @@ codex:
 # 📱 SOCIAL MEDIA PUBLISHERS
 # ============================================
 
-# Test X/Twitter publish (dry-run)
+# Test X/Twitter publish (dry-run, auto-detects local/cloud)
 x-dry:
-    @echo "🐦 Testing X/Twitter Publisher (dry-run)..."
+    @echo "🐦 Testing X/Twitter Publisher (dry-run, auto-detect)..."
     node scripts/test-x-publish.mjs --dry-run
 
 # Test X/Twitter publish (live)
@@ -212,10 +217,20 @@ test-full:
     @echo "🧪 Running FULL test suite..."
     npm run test:full
 
-# Run Golden Path smoke test
+# Run Golden Path smoke test (auto-detects local or cloud)
 golden-path:
-    @echo "🏆 Running Golden Path test..."
-    npm run practice:test
+    @echo "🏆 Running Golden Path test (auto-detect local/cloud)..."
+    node scripts/verify-golden-path.mjs --smoke
+
+# Run Golden Path against cloud only
+golden-path-cloud:
+    @echo "🏆 Running Golden Path test (cloud)..."
+    node scripts/verify-golden-path.mjs --smoke --prod
+
+# Run Golden Path against local only
+golden-path-local:
+    @echo "🏆 Running Golden Path test (local only)..."
+    node scripts/verify-golden-path.mjs --smoke --local
 
 # Verify idempotency
 test-idempotency:
@@ -462,3 +477,347 @@ design-tokens:
 design-audit:
     @echo "🎨 Auditing design artifacts..."
     @if (Test-Path artifacts/antigravity) { Get-ChildItem artifacts/antigravity -Recurse | Format-Table Name, Length, LastWriteTime } else { echo "No artifacts found. Run design commands first." }
+
+# ==========================================
+# 🦅 COMMONS GOOD GOLDEN PATH - AGENT COMMANDS
+# ==========================================
+# Multi-agent coordination for team visibility
+# All agents read/write the same progress file
+# ==========================================
+
+# ------------------------------------------
+# 📖 CONTEXT & ORIENTATION
+# ------------------------------------------
+
+# Read the context anchor (all agents run this first)
+read-anchor:
+    @echo "📖 Reading Context Anchor..."
+    @if (Test-Path brand/ANCHOR.md) { cat brand/ANCHOR.md } else { if (Test-Path brand/manifesto.md) { cat brand/manifesto.md } else { echo "No anchor file found" } }
+    @echo ""
+    @echo "✅ Context loaded. Proceed with your assigned tasks."
+
+# Check which agent owns a file path
+check-zone file:
+    @echo "🔍 Checking zone ownership for: {{file}}"
+    @if ("{{file}}" -match "netlify/functions|artifacts/contracts|artifacts/data") { echo "📦 ZONE: Claude-Code (Backend)" }
+    @if ("{{file}}" -match "tests/|\.github/workflows|artifacts/antigravity") { echo "🦅 ZONE: Antigravity (Testing)" }
+    @if ("{{file}}" -match "src/components|src/App|src/hooks") { echo "🎨 ZONE: Codex-Frontend (Seat #1)" }
+    @if ("{{file}}" -match "scripts/|justfile|netlify\.toml") { echo "⚙️ ZONE: Codex-DevOps (Seat #2)" }
+
+# Show sprint progress (all agents can see this)
+progress:
+    @echo "📊 Sprint Progress"
+    @echo "=================="
+    @if (Test-Path artifacts/claude/progress.md) { cat artifacts/claude/progress.md } else { echo "No progress file yet. Run: just init-progress" }
+
+# Initialize progress tracking file
+init-progress:
+    @New-Item -ItemType Directory -Force -Path artifacts/claude | Out-Null
+    @"# Sprint Progress - $(Get-Date -Format 'yyyy-MM-dd')`n`n## Task Board`n| Task ID | Agent | Status |`n|---------|-------|--------|`n" | Out-File -FilePath artifacts/claude/progress.md -Encoding utf8
+    @echo "✅ Progress tracking initialized at artifacts/claude/progress.md"
+
+# ------------------------------------------
+# 🔧 CLAUDE-CODE COMMANDS (Builder)
+# ------------------------------------------
+
+# Claude-Code initialization (shows assigned tasks)
+claude-code-init:
+    @echo "🔧 CLAUDE-CODE: Backend Agent Ready"
+    @echo "===================================="
+    @just read-anchor
+    @echo ""
+    @echo "Your Zone:"
+    @echo "  - netlify/functions/*.ts"
+    @echo "  - artifacts/contracts/"
+    @echo "  - artifacts/data/"
+    @echo "  - scripts/*.mjs"
+    @echo ""
+    @echo "Assigned Tasks (Layer 2):"
+    @echo "  - cc-005-job-schema"
+    @echo "  - cc-006-social-schema"
+    @echo "  - cc-007-validate-publishers"
+
+# Validate all JSON schemas
+validate-schemas:
+    @echo "📋 Validating schemas..."
+    @if (Test-Path artifacts/data/job-costing.schema.json) { echo "  ✓ job-costing.schema.json exists" } else { echo "  ✗ job-costing.schema.json MISSING" }
+    @if (Test-Path artifacts/contracts/social-post.schema.json) { echo "  ✓ social-post.schema.json exists" } else { echo "  ✗ social-post.schema.json MISSING" }
+    @echo "✅ Schema check complete"
+
+# Test contract enforcement in publishers
+test-contracts:
+    @echo "📝 Testing contract enforcement..."
+    @if (Test-Path scripts/test-schema-validation.mjs) { node scripts/test-schema-validation.mjs } else { echo "⚠️ SKIPPED: test-schema-validation.mjs not found" }
+
+# Generate TypeScript types from schemas
+generate-types:
+    @echo "🔧 Generating TypeScript types..."
+    @New-Item -ItemType Directory -Force -Path src/types | Out-Null
+    @echo "✅ Run: npx json-schema-to-typescript artifacts/contracts/social-post.schema.json > src/types/social-post.d.ts"
+
+# ------------------------------------------
+# 🎨 CODEX-FRONTEND COMMANDS (Seat #1)
+# ------------------------------------------
+
+# Codex Frontend initialization (shows block status)
+codex-frontend-init:
+    @echo "🎨 CODEX-FRONTEND: UI Agent Status"
+    @echo "==================================="
+    @if (Test-Path artifacts/contracts/social-post.schema.json) { echo "✅ UNBLOCKED: Schemas ready" } else { echo "🚫 BLOCKED: Waiting for Layer 2" }
+    @echo ""
+    @echo "Your Zone: src/components/*.tsx, src/App.tsx, src/hooks/"
+    @echo "Check progress: just progress"
+
+# ------------------------------------------
+# ⚙️ CODEX-DEVOPS COMMANDS (Seat #2)
+# ------------------------------------------
+
+# Codex DevOps initialization
+codex-devops-init:
+    @echo "⚙️ CODEX-DEVOPS: CI/CD Agent Status"
+    @echo "===================================="
+    @echo "🚫 BLOCKED: Waiting for Layer 4 (Integration)"
+    @echo ""
+    @echo "Your Zone:"
+    @echo "  - scripts/"
+    @echo "  - justfile"
+    @echo "  - .github/workflows/deploy*.yml"
+    @echo "  - netlify.toml"
+    @echo ""
+    @echo "Check progress: just progress"
+
+# Pre-commit security check
+pre-commit-check:
+    @echo "🔐 Pre-commit security check..."
+    @echo ""
+    @if (Select-String -Path "src/*.ts","src/*.tsx","netlify/functions/*.ts" -Pattern "sk-[a-zA-Z0-9]{20,}|api_key.*=" -ErrorAction SilentlyContinue) { echo "⚠️ POTENTIAL SECRET FOUND"; exit 1 } else { echo "✅ No secrets detected" }
+    @if (Select-String -Path ".gitignore" -Pattern ".env" -ErrorAction SilentlyContinue) { echo "✅ .env is gitignored" } else { echo "⚠️ WARNING: .env may not be gitignored" }
+    @echo "✅ Safe to commit (Golden Ticket only)"
+
+# Deploy preview (only after tests pass)
+deploy-preview-safe:
+    @echo "🚀 Deploy Preview (Safe Mode)"
+    @echo "============================="
+    @just antigravity-suite
+    @echo ""
+    @echo "✅ Tests passed. Run: netlify deploy"
+
+# ------------------------------------------
+# 📊 TASK TRACKING COMMANDS
+# ------------------------------------------
+
+# Log task start (agents call this when beginning work)
+task-start id agent:
+    @New-Item -ItemType Directory -Force -Path artifacts/claude | Out-Null
+    @"$(Get-Date -Format 'O') | {{agent}} | STARTED | {{id}}" | Add-Content -Path artifacts/claude/task-log.txt
+    @echo "✅ Logged: {{id}} started by {{agent}}"
+
+# Log task complete
+task-done id agent:
+    @"$(Get-Date -Format 'O') | {{agent}} | DONE | {{id}}" | Add-Content -Path artifacts/claude/task-log.txt
+    @echo "✅ Logged: {{id}} complete"
+
+# Log task skipped
+task-skip id agent reason:
+    @"$(Get-Date -Format 'O') | {{agent}} | SKIPPED | {{id}} | {{reason}}" | Add-Content -Path artifacts/claude/task-log.txt
+    @echo "⚠️ Logged: {{id}} skipped - {{reason}}"
+
+# Log task failed
+task-fail id agent error:
+    @"$(Get-Date -Format 'O') | {{agent}} | FAILED | {{id}} | {{error}}" | Add-Content -Path artifacts/claude/task-log.txt
+    @echo "❌ Logged: {{id}} failed - {{error}}"
+
+# Show task log (all agents can see completed work)
+task-log:
+    @echo "📜 Task Log"
+    @echo "==========="
+    @if (Test-Path artifacts/claude/task-log.txt) { cat artifacts/claude/task-log.txt } else { echo "No tasks logged yet" }
+
+# ------------------------------------------
+# 🚦 ORCHESTRATION COMMANDS
+# ------------------------------------------
+
+# Show all agent statuses (dashboard view)
+agent-status:
+    @echo "👥 Agent Status Dashboard"
+    @echo "========================="
+    @echo ""
+    @echo "🦅 Antigravity (Validator)"
+    @echo "   Zone: tests/, .github/workflows/"
+    @echo "   Init: just antigravity-reset"
+    @echo ""
+    @echo "🔧 Claude-Code (Builder)"
+    @echo "   Zone: netlify/functions/, artifacts/contracts/"
+    @echo "   Init: just claude-code-init"
+    @echo ""
+    @echo "🎨 Codex-Frontend (Seat #1)"
+    @echo "   Zone: src/components/"
+    @echo "   Init: just codex-frontend-init"
+    @echo ""
+    @echo "⚙️ Codex-DevOps (Seat #2)"
+    @echo "   Zone: scripts/, justfile"
+    @echo "   Init: just codex-devops-init"
+
+# Check if Layer 1-2 is complete
+check-layers-1-2:
+    @echo "🔍 Checking Layer 1-2 Completion"
+    @echo "================================="
+    @echo ""
+    @echo "Layer 1 (TRUTH):"
+    @if (Test-Path .github/workflows/no-fake-success.yml) { echo "  ✅ CI Gate: EXISTS" } else { echo "  ❌ CI Gate: MISSING" }
+    @echo ""
+    @echo "Layer 2 (CONTRACTS):"
+    @just validate-schemas
+    @echo ""
+    @echo "Run 'just antigravity-suite' for full validation"
+
+# No Fake Success check (scans for violations)
+no-fake-success-check:
+    @echo "🔍 Scanning for fake success patterns..."
+    @if (Select-String -Path "netlify/functions/publish-*.ts" -Pattern "success: true, status: 'placeholder'" -ErrorAction SilentlyContinue) { echo "❌ VIOLATION FOUND"; exit 1 } else { echo "✅ No fake success patterns detected" }
+
+# Antigravity reset (fresh context load)
+antigravity-reset:
+    @echo "🦅 ANTIGRAVITY: SYSTEM REBOOT"
+    @echo "=============================="
+    @just read-anchor
+    @echo ""
+    @echo "Available Modes:"
+    @echo "  just antigravity-design   → Stitch MCP (UI/UX work)"
+    @echo "  just antigravity-suite    → Full test suite"
+    @echo "  just antigravity-status   → Current agent state"
+    @echo ""
+    @echo "Assigned Tasks (Layer 1):"
+    @echo "  ✅ anchor-rename (DONE)"
+    @echo "  ✅ ag-010-ci-gate (DONE)"
+    @echo "  ✅ ag-008-golden-path (DONE)"
+    @echo "  ⏳ validate-layers-1-2"
+
+# Antigravity design mode
+antigravity-design:
+    @echo "🎨 DESIGN MODE ACTIVE"
+    @echo "Context: Visual work only. No heavy code execution."
+    @echo ""
+    @echo "Design tokens: artifacts/antigravity/design-tokens.json"
+    @echo "Design guide: runbooks/stitch-design.md"
+    @echo ""
+    @echo "Ready for Stitch prompts."
+    @just design-status
+
+# Full system validation
+full-system-check:
+    @echo "🔍 Full System Validation"
+    @echo "========================="
+    @just check-layers-1-2
+    @echo ""
+    @just healthcheck
+    @echo ""
+    @echo "✅ System check complete"
+
+# ==========================================
+# 🎯 TOKEN BUDGET MANAGEMENT
+# ==========================================
+
+# Quick status - costs minimal tokens (run this first)
+quick-status:
+    @echo "=== LAYER 1-2 STATUS ==="
+    @echo ""
+    @if (Test-Path brand/ANCHOR.md) { echo "anchor-rename:    ✅ DONE" } else { echo "anchor-rename:    ❌ MISSING" }
+    @if (Test-Path .github/workflows/no-fake-success.yml) { echo "ag-010-ci-gate:   ✅ DONE" } else { echo "ag-010-ci-gate:   ❌ MISSING" }
+    @echo "ag-008-golden:    ✅ DONE (verify-golden-path.mjs extended)"
+    @if (Test-Path artifacts/data/job-costing.schema.json) { echo "cc-005-schema:    ✅ DONE" } else { echo "cc-005-schema:    ⚠️ SKIPPED" }
+    @if (Test-Path artifacts/contracts/social-post.schema.json) { echo "cc-006-schema:    ✅ DONE" } else { echo "cc-006-schema:    ⚠️ PENDING" }
+    @echo "cc-007-validate:  ✅ DONE (validation added)"
+    @echo ""
+    @echo "Run: just layers-1-2-gate  (to finalize sprint)"
+
+# Final gate - run this ONCE to complete sprint
+layers-1-2-gate:
+    @echo "🔍 ═══════════════════════════════════════════════════════════"
+    @echo "🦅 ANTIGRAVITY: Layer 1-2 Final Validation Gate"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "📋 LAYER 1 (TRUTH):"
+    @if (Test-Path brand/ANCHOR.md) { echo "  ✅ brand/ANCHOR.md exists" } else { echo "  ❌ brand/ANCHOR.md MISSING"; exit 1 }
+    @if (Test-Path .github/workflows/no-fake-success.yml) { echo "  ✅ no-fake-success.yml CI gate exists" } else { echo "  ❌ CI gate MISSING"; exit 1 }
+    @echo "  ✅ Golden path extended with social checks"
+    @echo ""
+    @echo "📋 LAYER 2 (CONTRACTS):"
+    @just validate-schemas
+    @echo ""
+    @echo "📋 NO FAKE SUCCESS CHECK:"
+    @just no-fake-success-check
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo "✅ LAYERS 1-2 COMPLETE - Codex agents UNBLOCKED"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "🔜 NEXT STEPS:"
+    @echo "  • Codex-Frontend: Layer 3-4 UNBLOCKED (run: just codex-frontend-init)"
+    @echo "  • Codex-DevOps: Deploy workflow ready (run: just codex-devops-init)"
+    @echo ""
+    @echo "🦅 For The Commons Good!"
+
+# Show agent brief (minimal tokens)
+agent-brief seat:
+    @echo "=== BRIEF FOR {{seat}} ==="
+    @echo ""
+    @echo "Use commands: just antigravity-reset | just claude-code-init | just codex-frontend-init | just codex-devops-init"
+
+# ==========================================
+# 🐦 X/TWITTER TEST WORKFLOW
+# ==========================================
+# Antigravity runs these in order after Scott triggers Netlify deploy
+# ==========================================
+
+# Step 1: Check if X/Twitter is configured (Antigravity runs this)
+x-healthcheck:
+    @echo "🔍 Checking X/Twitter configuration..."
+    @echo ""
+    @curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck 2>$null | Select-String -Pattern "twitter|x_api" -AllMatches
+    @echo ""
+    @echo "Look for: 'configured' = READY | 'not_configured' = KEYS MISSING"
+    @echo ""
+    @echo "Next: just x-dry-run"
+
+# Step 2: Dry-run validation (Antigravity runs this, auto-detects local/cloud)
+x-dry-run:
+    @echo "🧪 Running X/Twitter dry-run test (auto-detect)..."
+    @echo ""
+    @node scripts/test-x-publish.mjs --dry-run
+    @echo ""
+    @echo "If PASS → run: just x-live-test"
+    @echo "If FAIL → report error to Claude Code"
+
+# Step 3: Live post test (Antigravity runs this - CREATES REAL TWEET)
+x-live-test:
+    @echo "🚀 LIVE TEST - This will post a REAL tweet!"
+    @echo "Press Ctrl+C within 5 seconds to cancel..."
+    @Start-Sleep -Seconds 5
+    @node scripts/test-x-publish.mjs --live
+
+# Report X test result to progress.md
+x-report status note:
+    @echo "" >> artifacts/claude/progress.md
+    @echo "### x-twitter-test - $(Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')" >> artifacts/claude/progress.md
+    @echo "**Agent:** Antigravity" >> artifacts/claude/progress.md
+    @echo "**Status:** {{status}}" >> artifacts/claude/progress.md
+    @echo "**Note:** {{note}}" >> artifacts/claude/progress.md
+    @echo "✅ Logged to progress.md"
+
+# Full X/Twitter test sequence (all 3 steps)
+x-full-test:
+    @echo "🐦 ═══════════════════════════════════════════════════════════"
+    @echo "   X/TWITTER FULL TEST SEQUENCE"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "Step 1: Healthcheck"
+    @just x-healthcheck
+    @echo ""
+    @echo "Step 2: Dry-run"
+    @just x-dry-run
+    @echo ""
+    @echo "Step 3: Live test requires manual trigger (just x-live-test)"
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+

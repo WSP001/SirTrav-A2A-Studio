@@ -1,7 +1,12 @@
 /**
  * Golden Path Verification Script
  * 
- * Usage: node scripts/verify-golden-path.mjs [projectId]
+ * Usage: node scripts/verify-golden-path.mjs [options] [projectId]
+ * 
+ * Options:
+ *   --smoke         Fast execution mode
+ *   --prod          Force production URL (skip auto-detect)
+ *   --local         Force localhost (no fallback)
  * 
  * Flow:
  * 1. Start Pipeline (POST /start-pipeline)
@@ -11,20 +16,59 @@
  * 5. Verify Artifacts
  * 
  * Environment:
- *   URL           - Base function URL (default: http://127.0.0.1:8888/.netlify/functions)
+ *   URL           - Base function URL (overrides auto-detect)
  *   SOCIAL_ENABLED - Comma-separated platforms to test (default: all)
  *                    e.g. SOCIAL_ENABLED=twitter,youtube
  *   SSE_TIMEOUT_MS - Max ms to wait for SSE events (default: 15000)
  */
 
-const BASE_URL = process.env.URL || 'http://127.0.0.1:8888/.netlify/functions';
-const PROJECT_ID = process.argv[2] || `verify-${Date.now()}`;
+const LOCAL_URL = 'http://127.0.0.1:8888/.netlify/functions';
+const CLOUD_URL = 'https://sirtrav-a2a-studio.netlify.app/.netlify/functions';
+
+// Parse flags vs positional args
+const args = process.argv.slice(2);
+const flags = args.filter(a => a.startsWith('--'));
+const positional = args.filter(a => !a.startsWith('--'));
+
+const isSmoke = flags.includes('--smoke');
+const forceProd = flags.includes('--prod');
+const forceLocal = flags.includes('--local');
+
+const PROJECT_ID = positional[0] || `verify-${Date.now()}`;
 const SSE_TIMEOUT_MS = parseInt(process.env.SSE_TIMEOUT_MS || '15000', 10);
 
 // If SOCIAL_ENABLED is set, only test those platforms; otherwise test all
 const SOCIAL_ENABLED = process.env.SOCIAL_ENABLED
     ? process.env.SOCIAL_ENABLED.split(',').map(s => s.trim().toLowerCase())
     : null; // null = test all
+
+/**
+ * Auto-detect: try localhost first, fall back to cloud.
+ * --prod forces cloud, --local forces localhost, URL env overrides all.
+ */
+async function resolveBaseUrl() {
+    if (process.env.URL) return process.env.URL;
+    if (forceProd) return CLOUD_URL;
+    if (forceLocal) return LOCAL_URL;
+
+    // Auto-detect: ping localhost healthcheck
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${LOCAL_URL}/healthcheck`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            console.log('🔍 Auto-detect: localhost:8888 is UP → using local');
+            return LOCAL_URL;
+        }
+    } catch (_) {
+        // localhost not available
+    }
+    console.log('🔍 Auto-detect: localhost:8888 is DOWN → using cloud');
+    return CLOUD_URL;
+}
+
+const BASE_URL = await resolveBaseUrl();
 
 console.log(`🚀 Verifying Golden Path for Project: ${PROJECT_ID}`);
 console.log(`📍 Target: ${BASE_URL}`);
@@ -155,7 +199,6 @@ async function run() {
 
         // 1. Start Pipeline
         console.log('\n[1] Starting Pipeline...');
-        const isSmoke = process.argv.includes('--smoke');
         if (isSmoke) console.log('🌪️ Smoke Mode: Requesting fast execution');
 
         const startRes = await fetch(`${BASE_URL}/start-pipeline`, {

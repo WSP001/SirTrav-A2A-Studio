@@ -267,3 +267,59 @@ This is expected — the test passes if the pipeline starts, SSE streams, and no
 3. F12 → Console & Network — save screenshot & notes in ticket.
 
 **Rules:** No CLI version hopping (`netlify-cli`) unless explicitly assigned.
+
+---
+
+## 🔴 ANTIGRAVITY STATUS REPORT — 8 BLOCKERS (2026-02-06)
+
+> Source: Antigravity MASTER.md comparison (Nov 2025 → Jan 2026)
+> Overall Progress: ~85% Complete | 28 GREEN | 6 YELLOW | 8 RED
+
+### P0 — CRITICAL (Blocks Pipeline)
+
+| # | Blocker | Location | Owner | Impact |
+|---|---------|----------|-------|--------|
+| 1 | **compile-video 100% crash** | `netlify/functions/compile-video.ts` | Claude Code | Pipeline stops at Step 5 — no video output. FFmpeg not available in Netlify Functions. Fix: MG-001 Render Dispatcher (`renderMediaOnLambda`). |
+| 2 | **X/Twitter 401 auth** | Netlify env vars | Human (Scott) | `TWITTER_*` vs `X_*` naming conflict. Standardize to `TWITTER_*` only. |
+| 3 | **generate-attribution.ts missing** | Not created | Claude Code | 7th Agent from MASTER.md ("Attribution Agent") doesn't exist. Creates `credits.json` with Suno/ElevenLabs attribution. |
+| 4 | **submit-evaluation.ts missing** | Not created | Claude Code | User feedback loop (👍/👎 buttons → `memory_index.json`) doesn't exist. |
+
+### P1 — HIGH (Blocks Invoicing & Quality)
+
+| # | Blocker | Location | Owner | Impact |
+|---|---------|----------|-------|--------|
+| 5 | **Cost Manifest not wired** | `lib/cost-manifest.ts` exists but never called in `run-pipeline-background.ts` | Claude Code | Invoice never generated during pipeline run. |
+| 6 | **Quality Gate not wired** | `quality-gate.ts` exists but never called | Claude Code | Bad outputs pass through without checks, billing not blocked for failures. |
+
+### P2 — MEDIUM
+
+| # | Blocker | Location | Owner | Impact |
+|---|---------|----------|-------|--------|
+| 7 | **MG-001 Render Dispatcher** | Not implemented | Claude Code | `renderMediaOnLambda` not built. Blocks Editor Agent + compile-video. |
+| 8 | **UI Agent Cards CSS overflow** | Dashboard components | Codex | Agent cards "poking out of box". Visual bug. |
+
+### Pipeline Status (Steps 1–7)
+
+```
+1. Director    ✅
+2. Writer      ✅
+3. Voice       ✅ (ElevenLabs + Adam)
+4. Composer    ✅ (Suno)
+5. Editor      ❌ CRASHES ← compile-video (FFmpeg)
+6. Attribution ❌ NOT CREATED
+7. Publisher   ❌ NEVER RUNS (blocked by 5+6)
+```
+
+### Fix Order
+
+**THIS WEEK (Unblock Pipeline):**
+1. MG-001 Render Dispatcher → Fixes compile-video
+2. X/Twitter key standardization → Fixes 401
+3. Wire Cost Manifest → Enables invoicing
+4. Wire Quality Gate → Prevents bad billing
+
+**NEXT WEEK (Feature Complete):**
+5. Create `generate-attribution.ts` (7th Agent)
+6. Create `submit-evaluation.ts` (Feedback Loop)
+7. Fix CSS overflow
+8. LinkedIn app setup
