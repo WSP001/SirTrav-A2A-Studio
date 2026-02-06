@@ -1,0 +1,5 @@
+# Netlify SPA redirect - all routes serve index.html
+# This ensures React Router / client-side routing works correctly
+# API and function routes are handled by Netlify Functions automatically
+/.netlify/*  /.netlify/:splat  200
+/*           /index.html       200

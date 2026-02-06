@@ -20,7 +20,7 @@ export default defineConfig({
 
   // Build optimizations
   build: {
-    outDir: "landing", // Output directly to landing for Netlify
+    outDir: "dist",
     emptyOutDir: true,
     target: "es2022",
     sourcemap: true,
@@ -29,7 +29,7 @@ export default defineConfig({
         manualChunks: {
           // Split vendor chunks for better caching
           react: ["react", "react-dom"],
-          remotion: ["remotion", "@remotion/cli"],
+          remotion: ["remotion"],
         },
       },
     },
