@@ -92,22 +92,22 @@ export const handler: Handler = async (event) => {
     const store = runsStore();
 
     // Simple lock: if a run record already exists and is not failed, refuse to start a duplicate
-    // Optimistic lock: set a lock key once per run
+    // Check-then-set: Netlify Blobs does not support onlyIfNew
     const lockKey = `${projectId}/${runId}.lock`;
-    const lock = await store.set(lockKey, 'locked', {
-      metadata: { projectId, runId, type: 'lock' },
-      // onlyIfNew ensures we don't overwrite an existing lock
-      // @ts-ignore netlify types may not yet expose onlyIfNew
-      onlyIfNew: true,
-    }).catch(() => null);
+    const existingLock = await store.get(lockKey, { type: 'text' }).catch(() => null);
 
-    if (!lock) {
+    if (existingLock) {
       return {
         statusCode: 409,
         headers,
         body: JSON.stringify({ ok: false, error: 'run_already_exists', runId, projectId }),
       };
     }
+
+    // Set the lock
+    await store.set(lockKey, 'locked', {
+      metadata: { projectId, runId, type: 'lock' },
+    });
 
     // Write initial run record with platform + brief context
     const runRecord = {
