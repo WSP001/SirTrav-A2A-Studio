@@ -1,6 +1,6 @@
 # NETLIFY BUILD RULES — SirTrav A2A Studio
 > **Owner:** Roberto002 (WSP001)  
-> **Last Updated:** 2026-02-06  
+> **Last Updated:** 2026-02-06 (v2 — Windsurf Master verified)  
 > **Enforcement:** ALL agents and humans MUST follow these rules. No exceptions.
 
 ---
@@ -17,6 +17,14 @@ Other copies (OneDrive, Google Drive, WSP001 mirror) are **backups only** and mu
 
 ---
 
+## 0. Who May Touch Build Settings
+
+- **Only:** Netlify Platform Engineer, Release Manager, or Roberto002 (WSP001).
+- **No agent** (Codex, Claude, Antigravity, X Agent) may change Netlify UI build settings without a ticket.
+- Build config lives in `netlify.toml` and `vite.config.js`. Netlify UI **must mirror** these values.
+
+---
+
 ## 2. Netlify Build Settings (AUTHORITATIVE)
 
 These are the **only** correct settings. Any deviation causes a blank page.
@@ -24,7 +32,7 @@ These are the **only** correct settings. Any deviation causes a blank page.
 ### netlify.toml (repo)
 ```toml
 [build]
-  command = "npm ci && npm run build"
+  command = "npm install --include=dev && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 ```
@@ -32,7 +40,7 @@ These are the **only** correct settings. Any deviation causes a blank page.
 ### Netlify Dashboard (must match)
 | Setting | Correct Value |
 |---------|---------------|
-| **Build command** | `npm ci && npm run build` |
+| **Build command** | `npm install --include=dev && npm run build` |
 | **Publish directory** | `dist` |
 | **Production branch** | `main` |
 
@@ -47,6 +55,7 @@ build: {
 | Setting | Forbidden Value | Why |
 |---------|----------------|-----|
 | Build command | `echo 'Static site - no build needed'` | Serves stale committed assets |
+| Build command | `npm ci && npm run build` | `npm ci` fails on Netlify when lockfile drifts — use `npm install` |
 | Publish directory | `landing` | Dual-source deploy causes stale index.html |
 | outDir | `"landing"` | Must match publish directory = `dist` |
 
@@ -58,7 +67,7 @@ build: {
 
 ```toml
 [build]
-  command = "npm ci && npm run build"
+  command = "npm install --include=dev && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
@@ -96,6 +105,14 @@ The `dist/` folder is gitignored (as it should be). Netlify builds it fresh on e
 
 ---
 
+## 4b. Storage Mode
+
+- **Production target:** Netlify Blobs via `NETLIFY_BLOBS_CONTEXT` (auto-injected).
+- **Fallback (Lambda only):** `/tmp` (never `/var/task` — it is read-only on Lambda).
+- Every function should log one line: `storage_mode=blobs|tmp` (for debugging, no secrets).
+
+---
+
 ## 5. Fix MIME Type Error / Module Script for Netlify Deploy
 
 ### Symptom
@@ -125,7 +142,7 @@ The JS file URL returns `index.html` instead of the actual JS file. This happens
 1. Go to https://app.netlify.com/projects/sirtrav-a2a-studio/deploys
 2. Click the latest deploy
 3. Check the **Deploy log** for:
-   - `Build command: npm ci && npm run build` (NOT `echo 'Static site...'`)
+   - Build command: `npm install --include=dev && npm run build` (NOT `echo 'Static site...'`)
    - `Publish directory: dist` (NOT `landing`)
    - `✓ built in X.XXs` from Vite
    - `dist/index.html` in the output
