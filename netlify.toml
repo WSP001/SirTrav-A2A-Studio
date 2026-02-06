@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --include=dev && npm run build && mkdir -p landing && cp -r dist/* landing/"
+  command = "npm install --include=dev && npm run build"
   publish = "landing"
   functions = "netlify/functions"
 

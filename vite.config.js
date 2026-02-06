@@ -20,6 +20,8 @@ export default defineConfig({
 
   // Build optimizations
   build: {
+    outDir: "landing", // Output directly to landing for Netlify
+    emptyOutDir: true,
     target: "es2022",
     sourcemap: true,
     rollupOptions: {
