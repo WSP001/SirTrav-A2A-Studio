@@ -33,8 +33,9 @@ class BlobsStoreWrapper {
 
   constructor(name: string) {
     this.storeName = name;
-    // Use a local directory for persistence across function restarts/isolates
-    this.localDir = path.resolve(process.cwd(), '.local-blobs', name);
+    // Use /tmp for Lambda compatibility (process.cwd() = /var/task is read-only)
+    const baseDir = process.env.LAMBDA_TASK_ROOT ? '/tmp' : process.cwd();
+    this.localDir = path.resolve(baseDir, '.local-blobs', name);
   }
 
   private initLocalDir() {
@@ -58,7 +59,11 @@ class BlobsStoreWrapper {
 
     // Production: use automatic context (no credentials needed)
     if (hasNetlifyContext) {
-      return getStore(this.storeName);
+      try {
+        return getStore(this.storeName);
+      } catch (e) {
+        console.warn(`[Storage] NETLIFY_BLOBS_CONTEXT set but getStore failed for ${this.storeName}:`, e);
+      }
     }
 
     // Explicit credentials provided
