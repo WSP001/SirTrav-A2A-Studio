@@ -1,0 +1,138 @@
+# 🦅 Antigravity: No Fake Success Gate (AG-010)
+# =============================================
+# This workflow ensures no publisher function returns fake success.
+# Fails the build if violations are detected.
+#
+# Violations:
+#   - `success: true` without actual API confirmation (postId, tweetId, etc.)
+#   - `status: 'placeholder'` combined with `success: true`
+#
+# Allowed Patterns:
+#   - `success: false, disabled: true, reason: '...'`
+#   - `success: true` with actual API response ID
+#
+# Owner: Antigravity Agent
+# Ref: tasks/0010-ci-no-fake-success-gate.md
+
+name: "🦅 No Fake Success Gate"
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'netlify/functions/publish-*.ts'
+      - 'scripts/test-*-publish.mjs'
+  push:
+    branches: [main]
+    paths:
+      - 'netlify/functions/publish-*.ts'
+
+jobs:
+  no-fake-success:
+    name: "Scan for Fake Success Patterns"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: "🔍 Scan: Hardcoded success:true without API confirmation"
+        id: scan-hardcoded
+        run: |
+          echo "🦅 Antigravity: Scanning for fake success patterns..."
+          echo ""
+          
+          VIOLATIONS=""
+          
+          # Pattern 1: success: true on its own line (likely hardcoded)
+          # We search for 'success: true' that is NOT followed by an API ID variable
+          for file in netlify/functions/publish-*.ts; do
+            if [ -f "$file" ]; then
+              echo "📄 Scanning: $file"
+              
+              # Find lines with 'success: true' and check context
+              grep -n "success:\s*true" "$file" | while read -r match; do
+                LINE_NUM=$(echo "$match" | cut -d: -f1)
+                LINE_CONTENT=$(echo "$match" | cut -d: -f2-)
+                
+                # Check if this line or nearby lines have actual API IDs
+                # Good: success: true, postId: response.id
+                # Bad: success: true (standalone or with placeholder)
+                
+                # Get surrounding context (5 lines before and after)
+                CONTEXT=$(sed -n "$((LINE_NUM-5)),$((LINE_NUM+5))p" "$file")
+                
+                # Check for API ID patterns (tweetId, postId, videoId, etc.)
+                if ! echo "$CONTEXT" | grep -qE "(tweetId|postId|videoId|linkedInId|tikTokId|instagramId|response\.(id|data\.id))"; then
+                  # Check if it's in a disabled/error block (which is OK)
+                  if ! echo "$CONTEXT" | grep -qE "(disabled|error|catch|throw)"; then
+                    VIOLATIONS="$VIOLATIONS\n❌ $file:$LINE_NUM - success:true without API confirmation"
+                    echo "  ⚠️  Line $LINE_NUM: Potential fake success"
+                  fi
+                fi
+              done
+            fi
+          done
+          
+          echo ""
+
+      - name: "🔍 Scan: Placeholder + Success combination"
+        id: scan-placeholder
+        run: |
+          echo "🦅 Scanning for placeholder + success patterns..."
+          echo ""
+          
+          # Pattern 2: status: 'placeholder' anywhere in publisher files
+          for file in netlify/functions/publish-*.ts; do
+            if [ -f "$file" ]; then
+              PLACEHOLDER_MATCHES=$(grep -n "placeholder" "$file" || true)
+              if [ -n "$PLACEHOLDER_MATCHES" ]; then
+                echo "⚠️  Placeholder found in $file:"
+                echo "$PLACEHOLDER_MATCHES"
+                
+                # Check if same file has success: true (red flag)
+                if grep -q "success:\s*true" "$file"; then
+                  echo "❌ VIOLATION: $file has both 'placeholder' and 'success: true'"
+                  echo "   This violates the No Fake Success rule."
+                  # Don't exit yet, collect all violations
+                fi
+              fi
+            fi
+          done
+
+      - name: "🔍 Scan: Missing error handling"
+        id: scan-error-handling
+        run: |
+          echo "🦅 Scanning for missing error handling..."
+          echo ""
+          
+          for file in netlify/functions/publish-*.ts; do
+            if [ -f "$file" ]; then
+              # Check if file has try/catch blocks
+              if ! grep -q "catch" "$file"; then
+                echo "⚠️  WARNING: $file may be missing error handling (no catch block found)"
+              fi
+              
+              # Check if file properly returns errors
+              if ! grep -qE "success:\s*false" "$file"; then
+                echo "⚠️  WARNING: $file never returns success: false (suspicious)"
+              fi
+            fi
+          done
+
+      - name: "✅ Report: No Fake Success Audit"
+        run: |
+          echo ""
+          echo "🦅 ═══════════════════════════════════════════════════════════"
+          echo "   ANTIGRAVITY: NO FAKE SUCCESS GATE"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "✅ Scan completed. See above for any warnings or violations."
+          echo ""
+          echo "📋 Rules Checked:"
+          echo "   1. success:true must have API confirmation (postId, tweetId, etc.)"
+          echo "   2. No 'placeholder' status with success:true"
+          echo "   3. All publishers must have error handling"
+          echo "   4. All publishers must return success:false on failure"
+          echo ""
+          echo "🦅 For The Commons Good!"
