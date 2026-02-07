@@ -164,65 +164,61 @@ function estimateCost(duration: number, resolution: string): number {
  * - AWS Lambda with FFmpeg layer
  * - Dedicated video processing service (Mux, Cloudinary, etc.)
  */
-async function compileWithFFmpeg(request: CompileRequest, duration: number): Promise<Buffer | null> {
-  const ffmpegServiceUrl = process.env.FFMPEG_SERVICE_URL;
-
-  if (!ffmpegServiceUrl) {
-    console.log('⚠️ No FFmpeg service URL, using placeholder mode');
-    console.log('📋 FFmpeg command would be:');
-    console.log(generateFFmpegCommand(request, duration));
-    return null;
-  }
+async function compileWithFFmpeg(request: CompileRequest, duration: number): Promise<any> {
+  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
-    console.log(`🎬 Calling FFmpeg service: ${ffmpegServiceUrl}`);
+    console.log(`🎬 Calling Render Dispatcher: ${baseUrl}/.netlify/functions/render-dispatcher`);
 
-    // Merge ducking config for the request
-    const duckingConfig: DuckingConfig = {
-      ...DEFAULT_DUCKING_CONFIG,
-      ...request.duckingConfig,
-    };
-
-    const response = await fetch(ffmpegServiceUrl, {
+    const response = await fetch(`${baseUrl}/.netlify/functions/render-dispatcher`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.FFMPEG_API_KEY || ''}`,
       },
       body: JSON.stringify({
         projectId: request.projectId,
-        images: request.images,
-        narrationUrl: request.narrationUrl,
-        musicUrl: request.musicUrl,
-        resolution: request.resolution || '1080p',
-        fps: request.fps || 30,
-        lufsTarget: request.lufsTarget || -14,
-        // v2.0.0: Include ducking parameters
-        narrationSegments: request.narrationSegments,
-        duckingConfig,
-        useSidechainDucking: request.useSidechainDucking || false,
+        compositionId: 'FinalVideo', // Default composition
+        inputProps: {
+          images: request.images,
+          narrationUrl: request.narrationUrl,
+          musicUrl: request.musicUrl,
+          resolution: request.resolution,
+          durationInSeconds: duration,
+          // Pass ducking config
+          duckingConfig: request.duckingConfig,
+          narrationSegments: request.narrationSegments
+        }
       }),
     });
 
     if (!response.ok) {
-      console.error('FFmpeg service error:', response.statusText);
+      console.error('Render Dispatcher error:', response.statusText);
       return null;
     }
 
-    // Check if response is video or job ID
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('video')) {
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
+    const result = await response.json();
+    console.log('Render Dispatcher result:', result);
+
+    if (result.ok && result.renderId) {
+      // Return the render info - the handler will need to handle this new return type
+      // For now, we return null to force "placeholder" mode in the handler 
+      // UNLESS we update the handler logic too. 
+      // But the plan says: "return { success: true, renderId, ... }"
+
+      // To fit into the existing handler structure which expects a Buffer or null:
+      // We need to change how the handler processes this.
+      // But for minimal destruction, let's return a special object and handle it.
+      return {
+        renderId: result.renderId,
+        bucketName: result.bucketName,
+        dispatch: true
+      };
     }
 
-    // Async job - would need polling
-    const result = await response.json();
-    console.log('FFmpeg job started:', result.jobId);
-    return null; // Would poll for completion
+    return null;
 
   } catch (error) {
-    console.error('FFmpeg request failed:', error);
+    console.error('Render Dispatcher request failed:', error);
     return null;
   }
 }
@@ -291,8 +287,40 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       console.log(`🔊 Audio ducking enabled: -${Math.round(-20 * Math.log10(duckingConfig.narrationVolume))}dB cut`);
     }
 
-    // Try FFmpeg service, fallback to placeholder
-    const videoBuffer = await compileWithFFmpeg(request, duration);
+    // Try Render Dispatcher, fallback to placeholder
+    const dispatchResult = await compileWithFFmpeg(request, duration);
+
+    // Check if we got a dispatcher response (not a Buffer, and has renderId)
+    if (dispatchResult && dispatchResult.dispatch && dispatchResult.renderId) {
+      console.log(`✅ Editor Agent: Dispatched render ${dispatchResult.renderId}`);
+
+      const response: CompileResponse = {
+        success: true,
+        projectId: request.projectId,
+        videoUrl: '', // No video URL yet
+        duration,
+        resolution: request.resolution,
+        stored: false,
+        placeholder: false,
+        cost: estimateCost(duration, request.resolution),
+        jobId: dispatchResult.renderId,
+        duckingApplied,
+      };
+
+      return {
+        statusCode: 202, // Accepted
+        headers,
+        body: JSON.stringify({
+          ...response,
+          status: 'rendering',
+          pollUrl: `/.netlify/functions/render-progress?renderId=${dispatchResult.renderId}`
+        }),
+      };
+    }
+
+    // If dispatchResult is null or not a dispatch object, treat as failure/placeholder
+    // (Existing placeholder logic)
+    const videoBuffer = (dispatchResult instanceof Buffer) ? dispatchResult : null;
     const isPlaceholder = !videoBuffer;
 
     let videoUrl: string;

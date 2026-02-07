@@ -845,3 +845,15 @@ x-full-test:
     @echo ""
     @echo "═══════════════════════════════════════════════════════════"
 
+
+# Release Candidate 1 Verification
+rc1-verify:
+    @echo "🦅 ANTIGRAVITY: RC1 Verification Sequence"
+    @echo "========================================"
+    @echo "1. Testing Golden Path (Pipeline Logic)..."
+    @just golden-path
+    @echo "2. Testing X/Twitter Integration (Dry Run)..."
+    @just x-dry-run
+    @echo "3. Verifying Render Dispatcher wiring..."
+    @powershell -Command "curl -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/compile-video -H 'Content-Type: application/json' -d '{\"projectId\":\"test\",\"runId\":\"wiring-check\",\"images\":[]}' -UseBasicParsing"
+    @echo "✅ RC1 Verification Complete"

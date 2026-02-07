@@ -174,7 +174,6 @@ function App() {
       creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
       generatedAt: new Date().toISOString(),
       pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
-      pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
       isPlaceholder: !isRealVideo,
       invoice: data.artifacts?.invoice, // Extract Invoice for display
     });

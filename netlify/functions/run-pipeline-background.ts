@@ -739,6 +739,7 @@ export const handler: Handler = async (event) => {
         creditsUrl: finalArtifacts.creditsUrl,
         invoice: finalArtifacts.invoice, // 💰 Cost Plus Manifest
         pipelineMode: finalArtifacts.pipelineMode,
+        commonsGood: true,
       })
     };
 
