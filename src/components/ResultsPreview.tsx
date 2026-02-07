@@ -14,6 +14,12 @@ import './ResultsPreview.css';
 export interface VideoResult {
   videoUrl: string;
   projectId: string;
+  invoice?: {
+    jobId: string;
+    subtotal: number;
+    markupTotal: number;
+    totalDue: number;
+  };
   metadata?: {
     duration?: number;
     resolution?: string;
@@ -142,6 +148,30 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
                 💾 {(result.metadata.fileSize / 1024 / 1024).toFixed(2)} MB
               </span>
             )}
+          </div>
+        )}
+
+        {/* Invoice */}
+        {result.invoice && (
+          <div className="invoice-card">
+            <div className="invoice-header">
+              <h4 className="invoice-title">💸 Cost Plus Invoice</h4>
+              <span className="invoice-id">{result.invoice.jobId}</span>
+            </div>
+            <div className="invoice-grid">
+              <div className="invoice-cell invoice-cell-sub">
+                <p className="text-emerald-500/70">Subtotal</p>
+                <p className="text-emerald-200 font-mono">${result.invoice.subtotal.toFixed(3)}</p>
+              </div>
+              <div className="invoice-cell invoice-cell-sub">
+                <p className="text-emerald-500/70">Markup (20%)</p>
+                <p className="text-emerald-200 font-mono">${result.invoice.markupTotal.toFixed(3)}</p>
+              </div>
+              <div className="invoice-cell invoice-cell-total">
+                <p className="text-emerald-100 font-bold">TOTAL</p>
+                <p className="text-white font-bold font-mono">${result.invoice.totalDue.toFixed(3)}</p>
+              </div>
+            </div>
           </div>
         )}
 
