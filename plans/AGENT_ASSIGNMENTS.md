@@ -185,6 +185,15 @@ Then begin with this statement:
 | MG-007 | Claude | Feedback Capture Backend | 2026-01-22 |
 | MG-008 | Codex | Feedback UI (Toasts + Error Handling) | 2026-01-23 |
 | MG-X-LIVE | Antigravity | X Publishing Backend & UI (OAuth 1.0a Wired) | 2026-01-23 |
+| WM-001 | Windsurf Master | Corrected 8→3 blockers, proved pipeline FULLY WIRED (12/12 checks) | 2026-02-06 |
+| WM-002 | Windsurf Master | `just wiring-verify` + `just no-fake-success-check` + `just rc1-verify` + `just master-status` | 2026-02-06 |
+| WM-003 | Windsurf Master | Updated NETLIFY_AGENT_PROMPT.md with Remotion Lambda + X/Twitter env vars | 2026-02-06 |
+| WM-004 | Windsurf Master | Auto-detect local/cloud in verify-golden-path.mjs + test-x-publish.mjs | 2026-02-06 |
+| WM-005 | Windsurf Master | `just golden-path-cloud` + `just healthcheck-cloud` + `just golden-path-local` | 2026-02-06 |
+| CC-NFS-1 | Claude Code | No Fake Success on all 5 publishers (disabled:true, not placeholder) | 2026-02-06 |
+| CC-VAL-1 | Claude Code | Payload validation: validateXPayload, validateLinkedInPayload, validateYouTubePayload | 2026-02-06 |
+| CC-ENV-1 | Claude Code | .env.example updated with TWITTER_* + LINKEDIN_* templates | 2026-02-06 |
+| CC-HC-1 | Claude Code | healthcheck.ts: better error messages for missing social keys | 2026-02-06 |
 
 ---
 
