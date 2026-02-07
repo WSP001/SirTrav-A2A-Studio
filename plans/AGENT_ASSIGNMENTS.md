@@ -270,56 +270,63 @@ This is expected — the test passes if the pipeline starts, SSE streams, and no
 
 ---
 
-## 🔴 ANTIGRAVITY STATUS REPORT — 8 BLOCKERS (2026-02-06)
+## 🔴➡️🟢 WINDSURF MASTER VERIFICATION — CORRECTED STATUS (2026-02-06 17:00 PST)
 
-> Source: Antigravity MASTER.md comparison (Nov 2025 → Jan 2026)
-> Overall Progress: ~85% Complete | 28 GREEN | 6 YELLOW | 8 RED
+> Source: Windsurf Master code inspection of ALL 6 critical files
+> **CORRECTION**: Antigravity's report had 5 false negatives. Most "blockers" are already wired.
+> The real issue is **missing Netlify environment variables**, not missing code.
 
-### P0 — CRITICAL (Blocks Pipeline)
+### ✅ ALREADY WIRED (Antigravity Report Was Wrong)
 
-| # | Blocker | Location | Owner | Impact |
-|---|---------|----------|-------|--------|
-| 1 | **compile-video 100% crash** | `netlify/functions/compile-video.ts` | Claude Code | Pipeline stops at Step 5 — no video output. FFmpeg not available in Netlify Functions. Fix: MG-001 Render Dispatcher (`renderMediaOnLambda`). |
-| 2 | **X/Twitter 401 auth** | Netlify env vars | Human (Scott) | `TWITTER_*` vs `X_*` naming conflict. Standardize to `TWITTER_*` only. |
-| 3 | **generate-attribution.ts missing** | Not created | Claude Code | 7th Agent from MASTER.md ("Attribution Agent") doesn't exist. Creates `credits.json` with Suno/ElevenLabs attribution. |
-| 4 | **submit-evaluation.ts missing** | Not created | Claude Code | User feedback loop (👍/👎 buttons → `memory_index.json`) doesn't exist. |
+| # | Reported As | Actual Status | Evidence |
+|---|------------|---------------|----------|
+| 1 | compile-video NOT wired to render-dispatcher | **WIRED** | `compile-video.ts:171-223` calls render-dispatcher, handles 202 response |
+| 3 | generate-attribution.ts NOT CREATED | **EXISTS + UPDATED** | 207 lines, has `for_the_commons_good`, `ai_attribution`, `cost_plus_20_percent` |
+| 5 | Cost Manifest NOT CALLED | **WIRED** | `run-pipeline-background.ts:16` imports, line 532 instantiates, lines 552-709 tracks all 6 agents |
+| 6 | Quality Gate NOT CALLED | **WIRED** | `run-pipeline-background.ts:17` imports, lines 667-690 checks + blocks on failure |
+| 7 | MG-001 Render Dispatcher NOT BUILT | **EXISTS** | `render-dispatcher.ts` (260 lines) + `remotion-client.ts` (294 lines) with full Remotion Lambda integration |
 
-### P1 — HIGH (Blocks Invoicing & Quality)
+### Pipeline Code Status — ALL 7 STEPS WIRED
 
-| # | Blocker | Location | Owner | Impact |
-|---|---------|----------|-------|--------|
-| 5 | **Cost Manifest not wired** | `lib/cost-manifest.ts` exists but never called in `run-pipeline-background.ts` | Claude Code | Invoice never generated during pipeline run. |
-| 6 | **Quality Gate not wired** | `quality-gate.ts` exists but never called | Claude Code | Bad outputs pass through without checks, billing not blocked for failures. |
-
-### P2 — MEDIUM
-
-| # | Blocker | Location | Owner | Impact |
-|---|---------|----------|-------|--------|
-| 7 | **MG-001 Render Dispatcher** | Not implemented | Claude Code | `renderMediaOnLambda` not built. Blocks Editor Agent + compile-video. |
-| 8 | **UI Agent Cards CSS overflow** | Dashboard components | Codex | Agent cards "poking out of box". Visual bug. |
-
-### Pipeline Status (Steps 1–7)
-
-```
-1. Director    ✅
-2. Writer      ✅
-3. Voice       ✅ (ElevenLabs + Adam)
-4. Composer    ✅ (Suno)
-5. Editor      ❌ CRASHES ← compile-video (FFmpeg)
-6. Attribution ❌ NOT CREATED
-7. Publisher   ❌ NEVER RUNS (blocked by 5+6)
+```text
+1. Director    ✅ WIRED → curate-media (OpenAI Vision)
+2. Writer      ✅ WIRED → narrate-project (GPT-4)
+3. Voice       ✅ WIRED → text-to-speech (ElevenLabs)
+4. Composer    ✅ WIRED → generate-music (Suno)
+5. Editor      ✅ WIRED → compile-video → render-dispatcher → remotion-client
+6. Attribution ✅ WIRED → generate-attribution (Commons Good credits)
+7. Publisher   ✅ WIRED → publishVideo (secure signed URL)
++  Cost Manifest ✅ WIRED (20% markup on every agent)
++  Quality Gate  ✅ WIRED (blocks pipeline on failures)
 ```
 
-### Fix Order
+**The pipeline runs end-to-end in FALLBACK/PLACEHOLDER mode because env vars are missing.**
+When Remotion Lambda env vars are set, Step 5 will produce real video instead of placeholder.
 
-**THIS WEEK (Unblock Pipeline):**
-1. MG-001 Render Dispatcher → Fixes compile-video
-2. X/Twitter key standardization → Fixes 401
-3. Wire Cost Manifest → Enables invoicing
-4. Wire Quality Gate → Prevents bad billing
+### 🔴 REAL REMAINING BLOCKERS (3 items, not 8)
 
-**NEXT WEEK (Feature Complete):**
-5. Create `generate-attribution.ts` (7th Agent)
-6. Create `submit-evaluation.ts` (Feedback Loop)
-7. Fix CSS overflow
-8. LinkedIn app setup
+| # | Blocker | Type | Owner | Fix |
+|---|---------|------|-------|-----|
+| 1 | **Remotion Lambda env vars missing** | CONFIG | Human (Scott) | Set 4 env vars in Netlify Dashboard: `REMOTION_FUNCTION_NAME`, `REMOTION_SERVE_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Without these, compile-video returns placeholder. |
+| 2 | **X/Twitter 401 auth** | CONFIG | Human (Scott) | All 4 `TWITTER_*` keys must be from the **same** Twitter Developer App. Currently mixed. |
+| 3 | **submit-evaluation.ts missing** | CODE | Claude Code | The only truly missing function. User feedback loop (👍/👎 → `memory_index.json`). |
+
+### 🟡 NICE-TO-HAVE (Not blocking pipeline)
+
+| # | Item | Owner | Notes |
+|---|------|-------|-------|
+| 4 | UI Agent Cards CSS overflow | Codex | Visual bug, not blocking functionality |
+| 5 | LinkedIn app OAuth setup | Human (Scott) | Needs LinkedIn Developer App registration |
+| 6 | Azure AI Evaluation (`evaluate.py`) | Future | Not run regularly, deferred |
+
+### 🎯 CORRECTED FIX ORDER
+
+**HUMAN TASKS (Scott — do first, agents can't help):**
+1. Set Remotion Lambda env vars in Netlify Dashboard → Enables real video rendering
+2. Fix X/Twitter API keys (same app) → Fixes 401
+3. (Optional) Set up LinkedIn Developer App → Enables LinkedIn publishing
+
+**AGENT TASKS (after env vars are set):**
+1. Claude Code: Create `submit-evaluation.ts` (feedback loop)
+2. Codex: Fix CSS overflow
+3. Antigravity: Re-run `just golden-path-cloud` to verify real video output

@@ -17,6 +17,34 @@ Go to: **Netlify Dashboard → Site Settings → Environment Variables**
 
 Add these variables:
 
+#### 🚨 Remotion Lambda (CRITICAL — Blocker #1 for real video)
+
+> Without these 4 vars, compile-video returns PLACEHOLDER video.
+> The code is fully wired (`compile-video.ts → render-dispatcher.ts → remotion-client.ts`)
+> but falls back to placeholder mode when these env vars are missing.
+
+```env
+# 🔴 CRITICAL - Enables real video rendering via Remotion Lambda
+REMOTION_FUNCTION_NAME=remotion-render-4-0-0
+REMOTION_SERVE_URL=https://your-remotion-bundle-url.s3.amazonaws.com/...
+REMOTION_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...your-aws-key...
+AWS_SECRET_ACCESS_KEY=...your-aws-secret...
+```
+
+#### 🚨 X/Twitter Keys (CRITICAL — Blocker #2, currently 401)
+
+> All 4 keys MUST be from the SAME Twitter Developer App.
+> Currently mixed between different apps, causing 401 auth errors.
+
+```env
+# 🔴 CRITICAL - Must all be from the SAME app
+TWITTER_API_KEY=...from-one-app...
+TWITTER_API_SECRET=...from-same-app...
+TWITTER_ACCESS_TOKEN=...from-same-app...
+TWITTER_ACCESS_SECRET=...from-same-app...
+```
+
 #### Core AI Services (ALL REQUIRED for real video production)
 
 ```env
@@ -31,11 +59,10 @@ SUNO_API_KEY=...your-suno-key...
 SUNO_API_URL=https://api.suno.ai/v1
 ```
 
-#### Video Processing (OPTIONAL - uses placeholder without)
+#### LinkedIn Publishing (OPTIONAL)
 
-```
-FFMPEG_SERVICE_URL=...your-ffmpeg-service-url...
-FFMPEG_API_KEY=...your-ffmpeg-api-key...
+```env
+LINKEDIN_ACCESS_TOKEN=...from-linkedin-developer-portal...
 ```
 
 #### YouTube Publishing (OPTIONAL)
@@ -164,15 +191,27 @@ After verification, update MASTER.md:
 
 ---
 
-## 🎯 PRIORITY ORDER
+## 🎯 PRIORITY ORDER (Corrected by Windsurf Master 2026-02-06)
 
-1. **🔴 REQUIRED:** Set `OPENAI_API_KEY` (Director/Writer agents)
-2. **🔴 REQUIRED:** Set `ELEVENLABS_API_KEY` (Voice agent - AI narration)
-3. **🔴 REQUIRED:** Set `SUNO_API_KEY` (Composer agent - AI music)
-4. **🟡 OPTIONAL:** Social publishing OAuth (YouTube, TikTok, Instagram)
+1. **� BLOCKER:** Set Remotion Lambda env vars (4 vars) → Enables REAL video
+2. **🚨 BLOCKER:** Fix X/Twitter keys (all 4 from SAME app) → Fixes 401
+3. **�🔴 REQUIRED:** Set `OPENAI_API_KEY` (Director/Writer agents)
+4. **🔴 REQUIRED:** Set `ELEVENLABS_API_KEY` (Voice agent - AI narration)
+5. **🔴 REQUIRED:** Set `SUNO_API_KEY` (Composer agent - AI music)
+6. **🟡 OPTIONAL:** Social publishing OAuth (YouTube, TikTok, Instagram, LinkedIn)
 
-⚠️ **All three AI keys are REQUIRED for real video production.**
-Without them, the pipeline produces placeholder/mock output only.
+⚠️ **The pipeline code is FULLY WIRED (all 7 steps + cost manifest + quality gate).**
+⚠️ **It runs end-to-end in FALLBACK/PLACEHOLDER mode because env vars are missing.**
+⚠️ **Setting the env vars above will activate REAL output — no code changes needed.**
+
+### Verification After Setting Env Vars
+
+```bash
+# From project root (no netlify dev needed):
+just golden-path-cloud          # Full pipeline test against live site
+just healthcheck-cloud           # Quick health ping
+node scripts/test-x-publish.mjs --prod --dry-run  # X/Twitter verification
+```
 
 ---
 
@@ -196,4 +235,5 @@ Without them, the pipeline produces placeholder/mock output only.
 ---
 
 **Created:** 2025-12-07
-**For:** SirTrav A2A Studio v2.0.0
+**Updated:** 2026-02-06 (Windsurf Master — corrected blockers after code inspection)
+**For:** SirTrav A2A Studio v2.1.0

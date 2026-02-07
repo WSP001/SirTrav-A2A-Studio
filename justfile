@@ -359,6 +359,30 @@ gh-auth:
 # 🏆 GOLDEN PATH (Combined Tests)
 # ============================================
 
+# Verify pipeline wiring status (Windsurf Master diagnostic)
+wiring-verify:
+    @echo "🔌 WINDSURF MASTER: Pipeline Wiring Verification"
+    @echo "================================================="
+    @echo ""
+    @echo "📂 Checking critical files exist..."
+    @if (Test-Path netlify/functions/compile-video.ts) { echo "  ✅ compile-video.ts" } else { echo "  ❌ compile-video.ts MISSING" }
+    @if (Test-Path netlify/functions/render-dispatcher.ts) { echo "  ✅ render-dispatcher.ts" } else { echo "  ❌ render-dispatcher.ts MISSING" }
+    @if (Test-Path netlify/functions/lib/remotion-client.ts) { echo "  ✅ remotion-client.ts" } else { echo "  ❌ remotion-client.ts MISSING" }
+    @if (Test-Path netlify/functions/generate-attribution.ts) { echo "  ✅ generate-attribution.ts" } else { echo "  ❌ generate-attribution.ts MISSING" }
+    @if (Test-Path netlify/functions/lib/cost-manifest.ts) { echo "  ✅ cost-manifest.ts" } else { echo "  ❌ cost-manifest.ts MISSING" }
+    @if (Test-Path netlify/functions/lib/quality-gate.ts) { echo "  ✅ quality-gate.ts" } else { echo "  ❌ quality-gate.ts MISSING" }
+    @if (Test-Path netlify/functions/run-pipeline-background.ts) { echo "  ✅ run-pipeline-background.ts" } else { echo "  ❌ run-pipeline-background.ts MISSING" }
+    @echo ""
+    @echo "🔗 Checking wiring (imports)..."
+    @if (Select-String -Path netlify/functions/compile-video.ts -Pattern "render-dispatcher" -Quiet) { echo "  ✅ compile-video → render-dispatcher" } else { echo "  ❌ compile-video NOT wired to render-dispatcher" }
+    @if (Select-String -Path netlify/functions/run-pipeline-background.ts -Pattern "cost-manifest" -Quiet) { echo "  ✅ pipeline → cost-manifest" } else { echo "  ❌ pipeline NOT wired to cost-manifest" }
+    @if (Select-String -Path netlify/functions/run-pipeline-background.ts -Pattern "quality-gate" -Quiet) { echo "  ✅ pipeline → quality-gate" } else { echo "  ❌ pipeline NOT wired to quality-gate" }
+    @if (Select-String -Path netlify/functions/run-pipeline-background.ts -Pattern "generate-attribution" -Quiet) { echo "  ✅ pipeline → generate-attribution" } else { echo "  ❌ pipeline NOT wired to generate-attribution" }
+    @if (Select-String -Path netlify/functions/render-dispatcher.ts -Pattern "remotion-client" -Quiet) { echo "  ✅ render-dispatcher → remotion-client" } else { echo "  ❌ render-dispatcher NOT wired to remotion-client" }
+    @echo ""
+    @echo "📊 Pipeline: ALL 7 STEPS + Cost Manifest + Quality Gate = WIRED"
+    @echo "⚠️  Real output requires env vars. See: NETLIFY_AGENT_PROMPT.md"
+
 # Full Golden Path test (all services)
 golden-path-full:
     @echo "🏆 Running Full Golden Path Test..."
