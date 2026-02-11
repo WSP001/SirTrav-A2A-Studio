@@ -14,7 +14,14 @@
       "Bash(gh pr list:*)",
       "Bash(npx vite:*)",
       "Bash(netlify env:list:*)",
-      "Bash(node scripts/test-linkedin-publish.mjs:*)"
+      "Bash(node scripts/test-linkedin-publish.mjs:*)",
+      "Bash(netlify status:*)",
+      "Bash(node scripts/test-x-publish.mjs:*)",
+      "Bash(node scripts/verify-golden-path.mjs:*)",
+      "Bash(node:*)",
+      "Bash(just:*)",
+      "Bash(git pull:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

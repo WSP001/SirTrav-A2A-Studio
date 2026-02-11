@@ -212,17 +212,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const businessId = process.env.INSTAGRAM_BUSINESS_ID;
     
     if (!accessToken || !businessId) {
-      console.log('⚠️ No Instagram credentials, using placeholder mode');
-      const response: InstagramResponse = {
-        success: true,
-        projectId: request.projectId,
-        status: 'placeholder',
-        instagramUrl: `https://instagram.com/reel/PLACEHOLDER_${request.projectId}`,
-      };
+      console.warn('⚠️ [DISABLED] Instagram credentials not configured');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(response),
+        body: JSON.stringify({
+          success: false,
+          disabled: true,
+          platform: 'instagram',
+          projectId: request.projectId,
+          error: 'Instagram disabled (missing INSTAGRAM_ACCESS_TOKEN or INSTAGRAM_BUSINESS_ID)',
+          note: 'Set INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_BUSINESS_ID in Netlify.',
+        }),
       };
     }
     

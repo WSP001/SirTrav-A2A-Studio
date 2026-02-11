@@ -20,6 +20,51 @@ interface XManifestEntry {
 }
 
 // ----------------------------------------------------------------------------
+// Payload Validation (social-post.schema.json contract for platform: "x")
+// ----------------------------------------------------------------------------
+function validateXPayload(body: unknown): { valid: true; data: XPublishRequest } | { valid: false; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!body || typeof body !== 'object') {
+        return { valid: false, errors: ['Payload must be a JSON object'] };
+    }
+
+    const payload = body as Record<string, unknown>;
+
+    // Required: text (maps to "content" in social-post schema)
+    if (typeof payload.text !== 'string' || payload.text.trim().length === 0) {
+        errors.push("'text' is required and must be a non-empty string");
+    } else if (payload.text.length > 280) {
+        errors.push(`'text' exceeds 280 character limit (got ${payload.text.length})`);
+    }
+
+    // Optional: mediaUrls must be string array if present
+    if (payload.mediaUrls !== undefined) {
+        if (!Array.isArray(payload.mediaUrls) || !payload.mediaUrls.every((u: unknown) => typeof u === 'string')) {
+            errors.push("'mediaUrls' must be an array of strings");
+        }
+    }
+
+    // Optional: userId must be string if present
+    if (payload.userId !== undefined && typeof payload.userId !== 'string') {
+        errors.push("'userId' must be a string");
+    }
+
+    if (errors.length > 0) {
+        return { valid: false, errors };
+    }
+
+    return {
+        valid: true,
+        data: {
+            text: payload.text as string,
+            mediaUrls: payload.mediaUrls as string[] | undefined,
+            userId: payload.userId as string | undefined,
+        }
+    };
+}
+
+// ----------------------------------------------------------------------------
 // Headers
 // ----------------------------------------------------------------------------
 const headers = {
@@ -66,11 +111,22 @@ const handler: Handler = async (event) => {
     }
 
     try {
-        const { text } = JSON.parse(event.body || '{}') as XPublishRequest;
+        const parsed = JSON.parse(event.body || '{}');
+        const validation = validateXPayload(parsed);
 
-        if (!text) {
-            return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing 'text' in payload" }) };
+        if (!validation.valid) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: 'Invalid payload',
+                    details: validation.errors,
+                })
+            };
         }
+
+        const { text } = validation.data;
 
         // 4. Initialize Twitter Client (OAuth 1.0a User Context)
         const userClient = new TwitterApi({

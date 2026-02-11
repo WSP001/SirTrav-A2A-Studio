@@ -95,7 +95,7 @@ function checkSocial(): ServiceStatus {
   const missing = platforms.filter(p => !p.ok).map(p => p.name);
   if (configured === 5) return { name: 'social_publishing', status: 'ok' };
   if (configured > 0) return { name: 'social_publishing', status: 'degraded', error: `${configured}/5 platforms (missing: ${missing.join(', ')})` };
-  return { name: 'social_publishing', status: 'disabled', error: 'No social publishing keys (placeholder mode)' };
+  return { name: 'social_publishing', status: 'disabled', error: `No social publishing keys configured (missing: ${missing.join(', ')})` };
 }
 
 export default async () => {

@@ -39,6 +39,48 @@ interface YouTubeResponse {
   thumbnailUrl?: string;
 }
 
+// ----------------------------------------------------------------------------
+// Payload Validation (social-post.schema.json contract for platform: "youtube")
+// ----------------------------------------------------------------------------
+function validateYouTubePayload(body: unknown): { valid: true; data: YouTubeRequest } | { valid: false; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!body || typeof body !== 'object') {
+    return { valid: false, errors: ['Payload must be a JSON object'] };
+  }
+
+  const p = body as Record<string, unknown>;
+
+  if (typeof p.projectId !== 'string' || p.projectId.trim().length === 0) {
+    errors.push("'projectId' is required and must be a non-empty string");
+  }
+  if (typeof p.videoUrl !== 'string' || p.videoUrl.trim().length === 0) {
+    errors.push("'videoUrl' is required and must be a non-empty string");
+  }
+  if (typeof p.title !== 'string' || p.title.trim().length === 0) {
+    errors.push("'title' is required and must be a non-empty string");
+  } else if (p.title.length > 200) {
+    errors.push(`'title' exceeds 200 character limit (got ${(p.title as string).length})`);
+  }
+  if (p.description !== undefined && typeof p.description !== 'string') {
+    errors.push("'description' must be a string");
+  }
+  if (p.tags !== undefined) {
+    if (!Array.isArray(p.tags) || !p.tags.every((t: unknown) => typeof t === 'string')) {
+      errors.push("'tags' must be an array of strings");
+    }
+  }
+  if (p.privacy !== undefined && !['private', 'unlisted', 'public'].includes(p.privacy as string)) {
+    errors.push("'privacy' must be one of: private, unlisted, public");
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+
+  return { valid: true, data: p as unknown as YouTubeRequest };
+}
+
 /**
  * Get OAuth2 access token from refresh token
  */
@@ -232,15 +274,22 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
   
   try {
-    const request: YouTubeRequest = JSON.parse(event.body || '{}');
-    
-    if (!request.projectId || !request.videoUrl || !request.title) {
+    const parsed = JSON.parse(event.body || '{}');
+    const validation = validateYouTubePayload(parsed);
+
+    if (!validation.valid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'projectId, videoUrl, and title are required' }),
+        body: JSON.stringify({
+          success: false,
+          error: 'Invalid payload',
+          details: validation.errors,
+        }),
       };
     }
+
+    const request = validation.data;
     
     // Build description with Commons Good credits
     let description = request.description || '';
@@ -253,17 +302,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const accessToken = await getAccessToken();
     
     if (!accessToken) {
-      console.log('⚠️ No YouTube credentials, using placeholder mode');
-      const response: YouTubeResponse = {
-        success: true,
-        projectId: request.projectId,
-        status: 'placeholder',
-        youtubeUrl: `https://youtube.com/watch?v=PLACEHOLDER_${request.projectId}`,
-      };
+      console.warn('⚠️ [DISABLED] YouTube credentials not configured');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(response),
+        body: JSON.stringify({
+          success: false,
+          disabled: true,
+          platform: 'youtube',
+          projectId: request.projectId,
+          error: 'YouTube disabled (missing credentials)',
+          note: 'Set YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN in Netlify.',
+        }),
       };
     }
     

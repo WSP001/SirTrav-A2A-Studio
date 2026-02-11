@@ -251,17 +251,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const accessToken = await getAccessToken();
     
     if (!accessToken) {
-      console.log('⚠️ No TikTok credentials, using placeholder mode');
-      const response: TikTokResponse = {
-        success: true,
-        projectId: request.projectId,
-        status: 'placeholder',
-        tiktokUrl: `https://tiktok.com/@sirtrav/video/PLACEHOLDER_${request.projectId}`,
-      };
+      console.warn('⚠️ [DISABLED] TikTok credentials not configured');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(response),
+        body: JSON.stringify({
+          success: false,
+          disabled: true,
+          platform: 'tiktok',
+          projectId: request.projectId,
+          error: 'TikTok disabled (missing credentials)',
+          note: 'Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_ACCESS_TOKEN in Netlify.',
+        }),
       };
     }
     

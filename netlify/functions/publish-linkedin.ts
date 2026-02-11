@@ -44,6 +44,51 @@ interface LinkedInResponse {
   urn?: string;
 }
 
+// ----------------------------------------------------------------------------
+// Payload Validation (social-post.schema.json contract for platform: "linkedin")
+// ----------------------------------------------------------------------------
+function validateLinkedInPayload(body: unknown): { valid: true; data: LinkedInRequest } | { valid: false; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!body || typeof body !== 'object') {
+    return { valid: false, errors: ['Payload must be a JSON object'] };
+  }
+
+  const p = body as Record<string, unknown>;
+
+  if (typeof p.projectId !== 'string' || p.projectId.trim().length === 0) {
+    errors.push("'projectId' is required and must be a non-empty string");
+  }
+  if (typeof p.videoUrl !== 'string' || p.videoUrl.trim().length === 0) {
+    errors.push("'videoUrl' is required and must be a non-empty string");
+  }
+  if (typeof p.title !== 'string' || p.title.trim().length === 0) {
+    errors.push("'title' is required and must be a non-empty string");
+  } else if (p.title.length > 200) {
+    errors.push(`'title' exceeds 200 character limit (got ${(p.title as string).length})`);
+  }
+  if (p.description !== undefined && typeof p.description !== 'string') {
+    errors.push("'description' must be a string");
+  }
+  if (p.visibility !== undefined && !['PUBLIC', 'CONNECTIONS', 'LOGGED_IN'].includes(p.visibility as string)) {
+    errors.push("'visibility' must be one of: PUBLIC, CONNECTIONS, LOGGED_IN");
+  }
+  if (p.postType !== undefined && !['personal', 'organization'].includes(p.postType as string)) {
+    errors.push("'postType' must be one of: personal, organization");
+  }
+  if (p.hashtags !== undefined) {
+    if (!Array.isArray(p.hashtags) || !p.hashtags.every((h: unknown) => typeof h === 'string')) {
+      errors.push("'hashtags' must be an array of strings");
+    }
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+
+  return { valid: true, data: p as unknown as LinkedInRequest };
+}
+
 const headers = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -233,17 +278,17 @@ async function createVideoPost(
 }
 
 /**
- * Generate placeholder response when LinkedIn credentials are missing
+ * No Fake Success: Return disabled status when LinkedIn credentials are missing
  */
-function placeholderResponse(request: LinkedInRequest): LinkedInResponse {
-  console.log('📋 LinkedIn placeholder mode - credentials not configured');
+function disabledResponse(request: LinkedInRequest): object {
+  console.warn('⚠️ [DISABLED] LinkedIn credentials not configured');
   return {
-    success: true,
+    success: false,
+    disabled: true,
+    platform: 'linkedin',
     projectId: request.projectId,
-    linkedinId: `placeholder-${Date.now()}`,
-    linkedinUrl: `https://linkedin.com/feed/update/placeholder-${request.projectId}`,
-    status: 'placeholder',
-    urn: `urn:li:share:placeholder-${Date.now()}`,
+    error: 'LinkedIn disabled (missing LINKEDIN_ACCESS_TOKEN)',
+    note: 'Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN in Netlify.',
   };
 }
 
@@ -262,15 +307,22 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
 
   try {
-    const request: LinkedInRequest = JSON.parse(event.body || '{}');
-    
-    if (!request.projectId || !request.videoUrl || !request.title) {
+    const parsed = JSON.parse(event.body || '{}');
+    const validation = validateLinkedInPayload(parsed);
+
+    if (!validation.valid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Missing required fields: projectId, videoUrl, title' }),
+        body: JSON.stringify({
+          success: false,
+          error: 'Invalid payload',
+          details: validation.errors,
+        }),
       };
     }
+
+    const request = validation.data;
 
     console.log(`🔗 LinkedIn publish request for project: ${request.projectId}`);
     
@@ -282,7 +334,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(placeholderResponse(request)),
+        body: JSON.stringify(disabledResponse(request)),
       };
     }
 
