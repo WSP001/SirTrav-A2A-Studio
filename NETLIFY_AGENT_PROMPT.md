@@ -1,239 +1,297 @@
-# NETLIFY AGENT PROMPT - Manual Deployment Tasks
+# NETLIFY AGENT PROMPT — Handoff from Windsurf Master
 
-**For:** Netlify Agent / Human Operator
-**Purpose:** Complete the RED → GREEN tasks that require Netlify dashboard access
-
----
-
-## 🔴 MANUAL TASKS CHECKLIST
-
-These tasks cannot be automated and require human action in the Netlify dashboard or browser OAuth flows.
+**Site:** `sirtrav-a2a-studio.netlify.app`
+**Repo:** `github.com/WSP001/SirTrav-A2A-Studio` (branch: `main`)
+**Date:** 2026-02-10
+**From:** Windsurf Master (code-side agent — can edit files, run justfile, commit/push)
+**To:** Netlify Agent (platform-side agent — can check dashboard, set env vars, read function logs, trigger deploys)
 
 ---
 
-### 1. ⚙️ SET ENVIRONMENT VARIABLES IN NETLIFY
+## SITUATION REPORT — What Windsurf Master Already Verified
 
-Go to: **Netlify Dashboard → Site Settings → Environment Variables**
+The codebase is **fully wired**. Every pipeline step exists, imports are correct, and the build deploys successfully. But the pipeline runs in **PLACEHOLDER/FALLBACK mode** because critical environment variables are not set in the Netlify Dashboard.
 
-Add these variables:
+**Windsurf Master ran these checks (all PASS):**
 
-#### 🚨 Remotion Lambda (CRITICAL — Blocker #1 for real video)
+| Check | Result | What It Proves |
+|-------|--------|----------------|
+| `just wiring-verify` | **12/12 ✅** | All 7 pipeline files exist + imports wired correctly |
+| `just no-fake-success-check` | **8/8 ✅** | All 5 publishers return `{success:false, disabled:true}` when keys missing |
+| Build commit `9d1eae2` | **Deployed ✅** | 1854 bytes, fresh asset hashes, loading fallback works |
 
-> Without these 4 vars, compile-video returns PLACEHOLDER video.
-> The code is fully wired (`compile-video.ts → render-dispatcher.ts → remotion-client.ts`)
-> but falls back to placeholder mode when these env vars are missing.
+**What Windsurf Master CANNOT do (your job):**
+- Read or set Netlify Dashboard environment variables
+- Read Netlify function logs
+- Trigger deploys or clear cache
+- Complete OAuth browser flows
+- Verify that `NETLIFY_BLOBS_CONTEXT` is injected at runtime
 
-```env
-# 🔴 CRITICAL - Enables real video rendering via Remotion Lambda
-REMOTION_FUNCTION_NAME=remotion-render-4-0-0
-REMOTION_SERVE_URL=https://your-remotion-bundle-url.s3.amazonaws.com/...
-REMOTION_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIA...your-aws-key...
-AWS_SECRET_ACCESS_KEY=...your-aws-secret...
-```
+---
 
-#### 🚨 X/Twitter Keys (CRITICAL — Blocker #2, currently 401)
+## TASK 1 — DIAGNOSE: Check Current Environment Variables
 
-> All 4 keys MUST be from the SAME Twitter Developer App.
-> Currently mixed between different apps, causing 401 auth errors.
+**Go to:** Netlify Dashboard → Site Settings → Environment Variables
 
-```env
-# 🔴 CRITICAL - Must all be from the SAME app
-TWITTER_API_KEY=...from-one-app...
-TWITTER_API_SECRET=...from-same-app...
-TWITTER_ACCESS_TOKEN=...from-same-app...
-TWITTER_ACCESS_SECRET=...from-same-app...
-```
+**Report back which of these exist (YES/NO for each):**
 
-#### Core AI Services (ALL REQUIRED for real video production)
-
-```env
-# 🔴 REQUIRED - Director & Writer Agents (GPT-4 Vision)
-OPENAI_API_KEY=sk-...your-openai-key...
-
-# 🔴 REQUIRED - Voice Agent (AI Narration)
-ELEVENLABS_API_KEY=...your-elevenlabs-key...
-
-# 🔴 REQUIRED - Composer Agent (AI Music)
-SUNO_API_KEY=...your-suno-key...
-SUNO_API_URL=https://api.suno.ai/v1
-```
-
-#### LinkedIn Publishing (OPTIONAL)
-
-```env
-LINKEDIN_ACCESS_TOKEN=...from-linkedin-developer-portal...
-```
-
-#### YouTube Publishing (OPTIONAL)
+### Tier 1: BLOCKERS (pipeline stuck in placeholder without these)
 
 ```
-YOUTUBE_CLIENT_ID=...from-google-cloud-console...
-YOUTUBE_CLIENT_SECRET=...from-google-cloud-console...
-YOUTUBE_REFRESH_TOKEN=...from-oauth-flow...
+REMOTION_FUNCTION_NAME    = ???
+REMOTION_SERVE_URL        = ???
+AWS_ACCESS_KEY_ID         = ???
+AWS_SECRET_ACCESS_KEY     = ???
 ```
 
-#### TikTok Publishing (OPTIONAL)
+> **Why:** `netlify/functions/lib/remotion-client.ts` line 65 checks `isRemotionConfigured()`.
+> If ANY of these 4 are missing → `compile-video` returns a placeholder video, not a real render.
+
+### Tier 2: BLOCKERS (X/Twitter 401 auth error)
 
 ```
-TIKTOK_CLIENT_KEY=...from-tiktok-developer-portal...
-TIKTOK_CLIENT_SECRET=...from-tiktok-developer-portal...
-TIKTOK_ACCESS_TOKEN=...from-oauth-flow...
-TIKTOK_REFRESH_TOKEN=...from-oauth-flow...
+TWITTER_API_KEY           = ???
+TWITTER_API_SECRET        = ???
+TWITTER_ACCESS_TOKEN      = ???
+TWITTER_ACCESS_SECRET     = ???
 ```
 
-#### Instagram Publishing (OPTIONAL)
+> **Why:** All 4 must come from the **SAME** Twitter Developer App.
+> Mixed keys from different apps cause 401 Unauthorized.
+
+### Tier 3: REQUIRED (AI agents need these for real content)
 
 ```
-INSTAGRAM_ACCESS_TOKEN=...from-facebook-developer-portal...
-INSTAGRAM_BUSINESS_ID=...your-instagram-business-account-id...
+OPENAI_API_KEY            = ???
+ELEVENLABS_API_KEY        = ???
+SUNO_API_KEY              = ???
+SUNO_API_URL              = ???
 ```
 
-#### Utilities (OPTIONAL)
+### Tier 4: OPTIONAL (social publishing — skip if not ready)
 
 ```
-BITLY_ACCESS_TOKEN=...for-short-urls...
-SHARE_SECRET=...random-string-for-private-links...
-MCP_SECRET_TOKEN=...random-string-for-mcp-gateway...
+LINKEDIN_ACCESS_TOKEN     = ???
+YOUTUBE_CLIENT_ID         = ???
+YOUTUBE_CLIENT_SECRET     = ???
+YOUTUBE_REFRESH_TOKEN     = ???
+TIKTOK_CLIENT_KEY         = ???
+TIKTOK_CLIENT_SECRET      = ???
+TIKTOK_ACCESS_TOKEN       = ???
+TIKTOK_REFRESH_TOKEN      = ???
+INSTAGRAM_ACCESS_TOKEN    = ???
+INSTAGRAM_BUSINESS_ID     = ???
+```
+
+### Tier 5: UTILITIES (optional)
+
+```
+BITLY_ACCESS_TOKEN        = ???
+SHARE_SECRET              = ???
+MCP_SECRET_TOKEN          = ???
 ```
 
 ---
 
-### 2. 🔐 COMPLETE OAUTH FLOWS
+## TASK 2 — DIAGNOSE: Verify Build Settings
 
-These require browser-based authentication:
+**Go to:** Netlify Dashboard → Site Settings → Build & Deploy → Build settings
 
-#### YouTube OAuth
+**Confirm these EXACTLY match (report any mismatch):**
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create OAuth 2.0 credentials for "Desktop App"
-3. Enable YouTube Data API v3
-4. Run OAuth flow to get refresh token:
-   ```bash
-   # Use Google's OAuth Playground or a local script
-   # Scopes needed: https://www.googleapis.com/auth/youtube.upload
-   ```
-5. Save the `refresh_token` to Netlify env vars
+| Setting | Must Be | Why |
+|---------|---------|-----|
+| **Build command** | `npm install --include=dev && npm run build` | `netlify.toml` line 2 |
+| **Publish directory** | `dist` | `netlify.toml` line 3 |
+| **Functions directory** | `netlify/functions` | `netlify.toml` line 4 |
+| **Node version** | `22` | `netlify.toml` line 7 |
 
-#### TikTok OAuth
-
-1. Go to [TikTok Developer Portal](https://developers.tiktok.com/)
-2. Create an app with "Content Posting API" permission
-3. Complete OAuth flow to get access token
-4. Save tokens to Netlify env vars
-
-#### Instagram OAuth
-
-1. Go to [Facebook Developer Portal](https://developers.facebook.com/)
-2. Create an app with Instagram Graph API permissions
-3. Connect your Instagram Business Account
-4. Generate long-lived access token
-5. Save token and business ID to Netlify env vars
+> **CRITICAL:** If the Dashboard overrides ANY of these, the Dashboard wins.
+> A past bug had the Dashboard set to `echo 'Static site - no build needed'` which served stale files.
 
 ---
 
-### 3. 🚀 TRIGGER DEPLOYMENT
+## TASK 3 — DIAGNOSE: Check Function Logs for Blobs Issue
 
-After setting environment variables:
+**Go to:** Netlify Dashboard → Functions → `healthcheck` → Logs
 
-1. Go to **Netlify Dashboard → Deploys**
-2. Click **"Trigger deploy"** → **"Deploy site"**
-3. Wait for build to complete
+**Look for this pattern:**
+
+```
+[Storage] NETLIFY_BLOBS_CONTEXT set but getStore failed
+```
+
+OR:
+
+```
+[Storage] Using local fallback for sirtrav-runs
+```
+
+> **Why:** `storage.ts` line 56 checks `process.env.NETLIFY_BLOBS_CONTEXT`.
+> In production Netlify Functions, this should be **auto-injected** by the platform.
+> If it's missing, Blobs storage falls back to `/var/task/.local-blobs/` (read-only → errors).
+
+**Also check function logs for:**
+- `run-pipeline-background` — any 500 errors or timeout issues
+- `compile-video` — whether it says "placeholder mode" or "Remotion Lambda"
+- `publish-x` — whether it says "disabled" or "401"
 
 ---
 
-### 4. ✅ VERIFY DEPLOYMENT
+## TASK 4 — FIX: Set Missing Environment Variables
 
-Run these curl commands to verify functions are working:
+For any variable from TASK 1 that is missing, set it:
 
-```bash
-# Set your Netlify URL
-URL="https://sirtrav-a2a-studio.netlify.app"
+**Go to:** Netlify Dashboard → Site Settings → Environment Variables → Add a variable
 
-# 1. Healthcheck
-curl "$URL/.netlify/functions/healthcheck"
+**Priority order:**
 
-# 2. Test progress endpoint
-curl -X POST "$URL/.netlify/functions/progress" \
-  -H "Content-Type: application/json" \
-  -d '{"projectId":"test","agent":"director","status":"started","message":"Test"}'
+1. **REMOTION_FUNCTION_NAME** — the Lambda function name (e.g. `remotion-render-4-0-0`)
+2. **REMOTION_SERVE_URL** — the S3 bundle URL for Remotion
+3. **AWS_ACCESS_KEY_ID** — IAM user with Remotion Lambda permissions
+4. **AWS_SECRET_ACCESS_KEY** — matching secret
+5. **TWITTER_API_KEY** + **TWITTER_API_SECRET** + **TWITTER_ACCESS_TOKEN** + **TWITTER_ACCESS_SECRET** — all from ONE app
+6. **OPENAI_API_KEY** — for Director/Writer agents
+7. **ELEVENLABS_API_KEY** — for Voice agent
+8. **SUNO_API_KEY** + **SUNO_API_URL** — for Composer agent
 
-# 3. Get progress (JSON)
-curl "$URL/.netlify/functions/progress?projectId=test"
+---
 
-# 4. Get progress (SSE)
-curl -N -H "Accept: text/event-stream" "$URL/.netlify/functions/progress?projectId=test"
+## TASK 5 — FIX: Trigger Clean Deploy
 
-# 5. Test evals endpoint
-curl "$URL/.netlify/functions/evals"
+After setting env vars:
 
-# 6. Test MCP gateway
-curl "$URL/.netlify/functions/mcp"
+1. **Go to:** Netlify Dashboard → Deploys
+2. Click **"Trigger deploy"** → **"Clear cache and deploy site"**
+3. Wait for build to complete (should take ~60-90 seconds)
+4. Verify build log shows `npm install --include=dev && npm run build` (not a Dashboard override)
+
+---
+
+## TASK 6 — VERIFY: Hit These Endpoints
+
+After deploy completes, test these URLs and **report the response**:
+
+```
+GET  https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck
+```
+
+**Expected response shape:**
+```json
+{
+  "status": "ok",
+  "services": {
+    "storage": { "status": "ok" },
+    "remotion": { "status": "ok" },
+    "social_publishing": { "status": "ok" or "degraded" }
+  }
+}
+```
+
+If `remotion.status` is still `"disabled"` after setting env vars → the vars aren't reaching the function.
+
+```
+POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-x
+Content-Type: application/json
+
+{"text": "Netlify Agent dry-run test", "dryRun": true}
+```
+
+**Expected:** If X keys are set correctly → `{ success: true, tweetId: "..." }`
+**If still broken:** `{ success: false, disabled: true }` or 401
+
+```
+GET  https://sirtrav-a2a-studio.netlify.app/.netlify/functions/progress?projectId=test
+```
+
+```
+POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/start-pipeline
+Content-Type: application/json
+
+{"projectId": "netlify-agent-test", "platform": "test", "brief": "Test run from Netlify Agent"}
 ```
 
 ---
 
-### 5. 📊 MARK TASKS COMPLETE
+## TASK 7 — REPORT BACK
 
-After verification, update MASTER.md:
+Copy this checklist, fill it in, and report back to the team:
 
 ```markdown
-## Manual Deployment Checklist
-- [x] Environment variables set in Netlify
-- [x] YouTube OAuth completed (or skipped)
-- [x] TikTok OAuth completed (or skipped)
-- [x] Instagram OAuth completed (or skipped)
-- [x] Deployment triggered
-- [x] Healthcheck passing
-- [x] Progress SSE working
-- [x] Evals endpoint working
+## Netlify Agent Diagnostic Report — [DATE]
+
+### Environment Variables
+- [ ] REMOTION_FUNCTION_NAME: SET / MISSING
+- [ ] REMOTION_SERVE_URL: SET / MISSING
+- [ ] AWS_ACCESS_KEY_ID: SET / MISSING
+- [ ] AWS_SECRET_ACCESS_KEY: SET / MISSING
+- [ ] TWITTER_API_KEY: SET / MISSING
+- [ ] TWITTER_API_SECRET: SET / MISSING
+- [ ] TWITTER_ACCESS_TOKEN: SET / MISSING
+- [ ] TWITTER_ACCESS_SECRET: SET / MISSING
+- [ ] OPENAI_API_KEY: SET / MISSING
+- [ ] ELEVENLABS_API_KEY: SET / MISSING
+- [ ] SUNO_API_KEY: SET / MISSING
+
+### Build Settings
+- [ ] Build command matches netlify.toml: YES / NO (actual: ___)
+- [ ] Publish directory = dist: YES / NO (actual: ___)
+- [ ] Node version = 22: YES / NO (actual: ___)
+
+### Function Logs
+- [ ] NETLIFY_BLOBS_CONTEXT present in runtime: YES / NO
+- [ ] healthcheck returns storage.status=ok: YES / NO
+- [ ] healthcheck returns remotion.status=ok: YES / NO (or disabled?)
+- [ ] Any 500 errors in function logs: YES / NO (details: ___)
+
+### Endpoint Tests
+- [ ] /healthcheck response: ___
+- [ ] /publish-x dry-run response: ___
+- [ ] /progress response: ___
+- [ ] /start-pipeline response: ___
+
+### Actions Taken
+- [ ] Set missing env vars: (list which ones)
+- [ ] Triggered clean deploy: YES / NO
+- [ ] Build succeeded after redeploy: YES / NO
 ```
 
 ---
 
-## 🎯 PRIORITY ORDER (Corrected by Windsurf Master 2026-02-06)
+## REFERENCE: Code ↔ Env Var Mapping
 
-1. **� BLOCKER:** Set Remotion Lambda env vars (4 vars) → Enables REAL video
-2. **🚨 BLOCKER:** Fix X/Twitter keys (all 4 from SAME app) → Fixes 401
-3. **�🔴 REQUIRED:** Set `OPENAI_API_KEY` (Director/Writer agents)
-4. **🔴 REQUIRED:** Set `ELEVENLABS_API_KEY` (Voice agent - AI narration)
-5. **🔴 REQUIRED:** Set `SUNO_API_KEY` (Composer agent - AI music)
-6. **🟡 OPTIONAL:** Social publishing OAuth (YouTube, TikTok, Instagram, LinkedIn)
-
-⚠️ **The pipeline code is FULLY WIRED (all 7 steps + cost manifest + quality gate).**
-⚠️ **It runs end-to-end in FALLBACK/PLACEHOLDER mode because env vars are missing.**
-⚠️ **Setting the env vars above will activate REAL output — no code changes needed.**
-
-### Verification After Setting Env Vars
-
-```bash
-# From project root (no netlify dev needed):
-just golden-path-cloud          # Full pipeline test against live site
-just healthcheck-cloud           # Quick health ping
-node scripts/test-x-publish.mjs --prod --dry-run  # X/Twitter verification
-```
+| Env Var | Used In | Line | What Happens If Missing |
+|---------|---------|------|------------------------|
+| `REMOTION_FUNCTION_NAME` | `remotion-client.ts` | 65 | Placeholder video returned |
+| `REMOTION_SERVE_URL` | `remotion-client.ts` | 65 | Placeholder video returned |
+| `AWS_ACCESS_KEY_ID` | `remotion-client.ts` | 65 | Placeholder video returned |
+| `AWS_SECRET_ACCESS_KEY` | `remotion-client.ts` | 65 | Placeholder video returned |
+| `TWITTER_API_KEY` | `publish-x.ts` | 24 | Returns `{disabled: true}` |
+| `TWITTER_API_SECRET` | `publish-x.ts` | 25 | Returns `{disabled: true}` |
+| `TWITTER_ACCESS_TOKEN` | `publish-x.ts` | 26 | Returns `{disabled: true}` |
+| `TWITTER_ACCESS_SECRET` | `publish-x.ts` | 27 | Returns `{disabled: true}` |
+| `OPENAI_API_KEY` | `run-pipeline-background.ts` | various | Director/Writer agents fail |
+| `ELEVENLABS_API_KEY` | `run-pipeline-background.ts` | various | Voice agent fails |
+| `SUNO_API_KEY` | `run-pipeline-background.ts` | various | Composer agent fails |
+| `NETLIFY_BLOBS_CONTEXT` | `storage.ts` | 56 | **Auto-injected by Netlify** — if missing, storage falls back to local FS |
 
 ---
 
-## 🆘 TROUBLESHOOTING
+## WHAT WINDSURF MASTER ALREADY FIXED (no action needed)
 
-### Build fails
-- Check Netlify build logs for errors
-- Ensure all dependencies are in `package.json`
-- Run `npm ci && npm run build` locally first
+- ✅ `compile-video.ts` → calls `render-dispatcher.ts` → calls `remotion-client.ts` (wired)
+- ✅ `run-pipeline-background.ts` → imports cost-manifest + quality-gate + attribution (wired)
+- ✅ All 5 publishers have No Fake Success pattern (`disabled: true` when keys missing)
+- ✅ All publishers have payload validation
+- ✅ `netlify.toml` has correct build command, publish dir, functions dir
+- ✅ `storage.ts` has `NETLIFY_BLOBS_CONTEXT` detection + `/tmp` fallback for Lambda
+- ✅ `start-pipeline.ts` lock mechanism fixed (check-then-set, not onlyIfNew)
+- ✅ Build succeeds and deploys (commit `9d1eae2` → `a04a9e6` live)
+- ✅ `justfile` has `wiring-verify`, `no-fake-success-check`, `rc1-verify`, `master-status`
 
-### Functions return 500
-- Check function logs in Netlify dashboard
-- Verify environment variables are set correctly
-- Check for typos in API keys
-
-### OAuth tokens expired
-- Re-run OAuth flow to get new tokens
-- Update tokens in Netlify env vars
-- Trigger new deployment
+**The code is done. The platform config is the blocker.**
 
 ---
 
-**Created:** 2025-12-07
-**Updated:** 2026-02-06 (Windsurf Master — corrected blockers after code inspection)
-**For:** SirTrav A2A Studio v2.1.0
+**Updated:** 2026-02-10 (Windsurf Master → Netlify Agent handoff)
+**For:** SirTrav A2A Studio
