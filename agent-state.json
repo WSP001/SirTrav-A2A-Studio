@@ -1,0 +1,66 @@
+{
+  "version": 2,
+  "gates": {
+    "build": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:25:10.016Z",
+      "error": null,
+      "note": null
+    },
+    "netlify_plugin": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.393Z",
+      "error": null,
+      "note": null
+    },
+    "healthcheck": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.395Z",
+      "error": null,
+      "note": null
+    },
+    "no_fake_success": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.400Z",
+      "error": null,
+      "note": null
+    },
+    "wiring": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.402Z",
+      "error": null,
+      "note": null
+    },
+    "contracts": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.402Z",
+      "error": null,
+      "note": null
+    },
+    "golden_path": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.403Z",
+      "error": null,
+      "note": null
+    },
+    "design_tokens": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.404Z",
+      "error": null,
+      "note": null
+    },
+    "social_dry": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.404Z",
+      "error": null,
+      "note": null
+    },
+    "motion_test": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T01:24:57.405Z",
+      "error": null,
+      "note": null
+    }
+  },
+  "lastRun": "2026-02-12T01:25:10.018Z"
+}

@@ -35,8 +35,8 @@ interface XMentionsResponse {
 function getAuthHeader(url: string, method: string) {
     const oauth = new OAuth({
         consumer: {
-            key: process.env.X_API_KEY || process.env.TWITTER_API_KEY || '',
-            secret: process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '',
+            key: process.env.TWITTER_API_KEY || process.env.X_API_KEY || '',
+            secret: process.env.TWITTER_API_SECRET || process.env.X_API_SECRET || '',
         },
         signature_method: 'HMAC-SHA1',
         hash_function(base_string, key) {
@@ -48,8 +48,8 @@ function getAuthHeader(url: string, method: string) {
     });
 
     const token = {
-        key: process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '',
-        secret: process.env.X_ACCESS_TOKEN_SECRET || process.env.TWITTER_ACCESS_SECRET || '',
+        key: process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN || '',
+        secret: process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_TOKEN_SECRET || '',
     };
 
     return oauth.toHeader(oauth.authorize({ url, method }, token));
@@ -57,7 +57,7 @@ function getAuthHeader(url: string, method: string) {
 
 export const handler: Handler = async (event) => {
     // 1. Basic Auth Check
-    const apiKey = process.env.X_API_KEY || process.env.TWITTER_API_KEY;
+    const apiKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
     if (!apiKey) {
         return {
             statusCode: 200,
@@ -102,8 +102,8 @@ export const handler: Handler = async (event) => {
 
         const oauth = new OAuth({
             consumer: {
-                key: process.env.X_API_KEY || process.env.TWITTER_API_KEY || '',
-                secret: process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '',
+                key: process.env.TWITTER_API_KEY || process.env.X_API_KEY || '',
+                secret: process.env.TWITTER_API_SECRET || process.env.X_API_SECRET || '',
             },
             signature_method: 'HMAC-SHA1',
             hash_function(base_string, key) {
@@ -112,8 +112,8 @@ export const handler: Handler = async (event) => {
         });
 
         const token = {
-            key: process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '',
-            secret: process.env.X_ACCESS_TOKEN_SECRET || process.env.TWITTER_ACCESS_SECRET || '',
+            key: process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN || '',
+            secret: process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_TOKEN_SECRET || '',
         };
 
         const authHeaderObj = oauth.toHeader(oauth.authorize(requestData, token));

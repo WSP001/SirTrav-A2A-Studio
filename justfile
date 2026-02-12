@@ -906,6 +906,149 @@ master-status:
     @echo "  just healthcheck-cloud    - Ping live deployment"
     @echo ""
     @echo "📁 Key Docs:"
-    @echo "  plans/AGENT_ASSIGNMENTS.md    - All agent tasks + corrected blockers"
-    @echo "  NETLIFY_AGENT_PROMPT.md       - Human env var tasks"
-    @echo "  AGENTS.md                     - Multi-agent registry"
+    @echo \"  plans/AGENT_ASSIGNMENTS.md    - All agent tasks + corrected blockers\"
+    @echo \"  NETLIFY_AGENT_PROMPT.md       - Human env var tasks\"
+    @echo \"  AGENTS.md                     - Multi-agent registry\"
+
+# ═══════════════════════════════════════════════════════════════════
+# CYCLE GATE SYSTEM (MASTER.md Aligned)
+# ═══════════════════════════════════════════════════════════════════
+
+# Show current gate status across all 4 layers
+cycle-status:
+    @node scripts/cycle-check.mjs status
+
+# Run all gates (except build — use cycle-build for that)
+cycle-all:
+    @node scripts/cycle-check.mjs all
+
+# Quick gate sweep (no build, fast)
+cycle-quick:
+    @node scripts/cycle-check.mjs quick
+
+# Run build gate explicitly (slow — compiles everything)
+cycle-build:
+    @node scripts/cycle-check.mjs build
+
+# Run a specific gate by name
+cycle-gate name:
+    @node scripts/cycle-check.mjs {{name}}
+
+# Generate cycle report for progress.md
+cycle-report:
+    @echo "# Cycle Report — $(Get-Date -Format 'yyyy-MM-dd HH:mm')" > artifacts/claude/cycle-report.md
+    @echo "" >> artifacts/claude/cycle-report.md
+    @node scripts/cycle-check.mjs all >> artifacts/claude/cycle-report.md
+    @echo "" >> artifacts/claude/cycle-report.md
+    @echo "✅ Report saved to artifacts/claude/cycle-report.md"
+
+# ═══════════════════════════════════════════════════════════════════
+# AGENT ORIENTATION (first command each agent should run)
+# ═══════════════════════════════════════════════════════════════════
+
+# Claude Code orientation — shows backend gates + files
+orient-claude:
+    @echo "🧠 CLAUDE CODE ORIENTATION"
+    @echo "════════════════════════════════"
+    @echo ""
+    @echo "YOUR GATES (Layer 1-2):"
+    @echo "  L1: netlify_plugin    — Verify @netlify/vite-plugin installed"
+    @echo "  L1: healthcheck       — healthcheck.ts returns 200"
+    @echo "  L1: no_fake_success   — Publishers return disabled:true not success:true"
+    @echo "  L2: wiring            — Pipeline Steps 1-7 all wired"
+    @echo ""
+    @echo "KEY FILES:"
+    @echo "  netlify/functions/run-pipeline-background.ts"
+    @echo "  netlify/functions/publish-x.ts"
+    @echo "  netlify/functions/healthcheck.ts"
+    @echo "  vite.config.js"
+    @echo ""
+    @echo "RUN YOUR GATES:"
+    @echo "  just cycle-gate netlify_plugin"
+    @echo "  just cycle-gate healthcheck"
+    @echo "  just cycle-gate no_fake_success"
+    @echo "  just cycle-gate wiring"
+    @echo ""
+    @echo "BLOCKED UNTIL: none (you can start immediately)"
+
+# Codex orientation — shows frontend gates + files
+orient-codex:
+    @echo "🎨 CODEX ORIENTATION"
+    @echo "════════════════════════════════"
+    @echo ""
+    @echo "YOUR GATES (Layer 3):"
+    @echo "  L3: design_tokens — artifacts/antigravity/design-tokens.json exists + valid"
+    @echo ""
+    @echo "KEY FILES:"
+    @echo "  src/App.jsx"
+    @echo "  src/App.css"
+    @echo "  src/components/ErrorBoundary.jsx"
+    @echo "  src/main.jsx"
+    @echo ""
+    @echo "RUN YOUR GATES:"
+    @echo "  just cycle-gate design_tokens"
+    @echo ""
+    @echo "BLOCKED UNTIL: Layer 1 gates pass (build + healthcheck)"
+
+# Antigravity orientation — shows QA gates + test files
+orient-antigravity:
+    @echo "🦅 ANTIGRAVITY ORIENTATION"
+    @echo "════════════════════════════════"
+    @echo ""
+    @echo "YOUR GATES (Layer 2 + 4):"
+    @echo "  L2: contracts     — API schemas validated"
+    @echo "  L2: golden_path   — Smoke test end-to-end"
+    @echo "  L4: social_dry    — X/Twitter dry-run passes"
+    @echo "  L4: motion_test   — Motion graphic renders"
+    @echo ""
+    @echo "KEY FILES:"
+    @echo "  scripts/test-x-publish.mjs"
+    @echo "  scripts/verify-golden-path.mjs"
+    @echo "  scripts/test_motion_graphic.mjs"
+    @echo "  SOCIAL_MEDIA_QA.md"
+    @echo ""
+    @echo "RUN YOUR GATES:"
+    @echo "  just cycle-gate contracts"
+    @echo "  just cycle-gate golden_path"
+    @echo "  just cycle-gate social_dry"
+    @echo "  just cycle-gate motion_test"
+    @echo ""
+    @echo "BLOCKED UNTIL: Layer 1 gates pass"
+
+# Windsurf orientation — shows infra gates
+orient-windsurf:
+    @echo "🔌 WINDSURF ORIENTATION"
+    @echo "════════════════════════════════"
+    @echo ""
+    @echo "YOUR GATES (Layer 1):"
+    @echo "  L1: build — Vite build passes without errors"
+    @echo ""
+    @echo "KEY FILES:"
+    @echo "  vite.config.js"
+    @echo "  netlify.toml"
+    @echo "  package.json"
+    @echo ""
+    @echo "RUN YOUR GATE:"
+    @echo "  just cycle-build"
+
+# Human/Scott orientation — ENV var checklist
+orient-human:
+    @echo "👤 HUMAN (SCOTT) ORIENTATION"
+    @echo "════════════════════════════════"
+    @echo ""
+    @echo "YOUR TASKS:"
+    @echo "  1. ✅ Netlify Dashboard Build Settings (DONE)"
+    @echo "  2. 🔴 X/Twitter API Keys (4 vars in Netlify → TWITTER_ prefix)"
+    @echo "     TWITTER_API_KEY"
+    @echo "     TWITTER_API_SECRET"
+    @echo "     TWITTER_ACCESS_TOKEN"
+    @echo "     TWITTER_ACCESS_SECRET"
+    @echo "  3. ⏳ TikTok/Instagram/LinkedIn keys (when available)"
+    @echo ""
+    @echo "VERIFY AFTER KEY UPDATE:"
+    @echo "  just x-dry-run"
+    @echo "  just x-live-test"
+    @echo ""
+    @echo "FULL STATUS:"
+    @echo "  just cycle-status"
+
