@@ -873,3 +873,572 @@ body {
   background: rgba(16, 185, 129, 0.2);
   border: 1px solid rgba(16, 185, 129, 0.4);
 }
+
+/* ============================================
+   PREMIUM HERO SECTION v2.1.0
+   Signature Plaque + Agent Orbit + Live Stats
+   ============================================ */
+
+/* Animated Logo Icon */
+.logo-icon-animated {
+  position: relative;
+  animation: logo-breathe 4s ease-in-out infinite;
+}
+
+.logo-icon-animated::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, var(--brand-primary), var(--brand-secondary), var(--brand-accent), var(--brand-primary));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+  filter: blur(4px);
+}
+
+.logo-icon-animated:hover::after {
+  opacity: 1;
+}
+
+@keyframes logo-breathe {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Live Health Dot in Header */
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  margin-left: 4px;
+}
+
+.health-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  animation: health-pulse 2s ease-out infinite;
+}
+
+.health-green {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.health-green::after {
+  border: 1.5px solid #10b981;
+}
+
+.health-amber {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+.health-amber::after {
+  border: 1.5px solid #f59e0b;
+}
+
+.health-red {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.health-red::after {
+  border: 1.5px solid #ef4444;
+}
+
+@keyframes health-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Premium Hero */
+.hero-premium {
+  position: relative;
+  overflow: hidden;
+  padding-top: 3rem;
+  padding-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.hero-premium.hero-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Floating Orbs */
+.hero-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+}
+
+.hero-orb-1 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.6), transparent);
+  top: -50px;
+  left: 10%;
+  animation: orb-float-1 12s ease-in-out infinite;
+}
+
+.hero-orb-2 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.5), transparent);
+  top: 20px;
+  right: 15%;
+  animation: orb-float-2 10s ease-in-out infinite;
+}
+
+.hero-orb-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent);
+  bottom: -40px;
+  left: 40%;
+  animation: orb-float-3 14s ease-in-out infinite;
+}
+
+@keyframes orb-float-1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -20px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 15px) scale(0.95);
+  }
+}
+
+@keyframes orb-float-2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(-25px, 20px) scale(0.9);
+  }
+
+  66% {
+    transform: translate(15px, -25px) scale(1.1);
+  }
+}
+
+@keyframes orb-float-3 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(20px, -30px) scale(1.15);
+  }
+}
+
+/* Premium Title */
+.hero-title-premium {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4em;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5em;
+}
+
+.hero-d2a {
+  background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: hero-gradient-flow 6s ease infinite;
+  filter: drop-shadow(0 0 20px rgba(129, 140, 248, 0.4));
+}
+
+.hero-word {
+  color: #f8fafc;
+}
+
+.hero-word-accent {
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes hero-gradient-flow {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ═══ SirTrav SIGNATURE PLAQUE ═══ */
+.signature-plaque {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem auto;
+  max-width: 320px;
+}
+
+.signature-border {
+  position: relative;
+  padding: 2px;
+  border-radius: 16px;
+  background: linear-gradient(135deg,
+      rgba(212, 175, 55, 0.8),
+      rgba(255, 215, 0, 0.4),
+      rgba(212, 175, 55, 0.6),
+      rgba(192, 192, 192, 0.5),
+      rgba(212, 175, 55, 0.8));
+  background-size: 400% 400%;
+  animation: plaque-shimmer 8s ease infinite;
+  box-shadow:
+    0 4px 24px rgba(212, 175, 55, 0.15),
+    0 0 40px rgba(212, 175, 55, 0.05);
+}
+
+.signature-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg,
+      rgba(10, 10, 26, 0.95),
+      rgba(15, 15, 35, 0.98));
+  backdrop-filter: blur(20px);
+}
+
+.signature-icon {
+  color: #d4af37;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.4));
+}
+
+.signature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.signature-name {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #d4af37, #ffd700, #d4af37);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: plaque-shimmer 8s ease infinite;
+}
+
+.signature-tagline {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(212, 175, 55, 0.6);
+  font-weight: 500;
+}
+
+.signature-seal {
+  color: rgba(212, 175, 55, 0.5);
+  flex-shrink: 0;
+}
+
+@keyframes plaque-shimmer {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ═══ AGENT ORBIT ROW ═══ */
+.agent-orbit-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+  margin: 1rem auto;
+  max-width: 800px;
+}
+
+.agent-orbit-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  cursor: default;
+  transition: all 0.3s ease;
+  animation: orbit-pop-in 0.6s ease both;
+  min-width: 80px;
+}
+
+.agent-orbit-card:hover {
+  transform: translateY(-4px) scale(1.05);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.agent-orbit-card.agent-orbit-active {
+  animation: orbit-pulse 1.5s ease-in-out infinite;
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.agent-orbit-icon {
+  font-size: 1.4rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.agent-orbit-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@keyframes orbit-pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes orbit-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(168, 85, 247, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+  }
+}
+
+/* ═══ HERO STATS BAR ═══ */
+.hero-stats-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin: 1.5rem auto 0;
+  padding: 14px 28px;
+  max-width: 600px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  animation: stats-slide-up 0.8s ease 0.6s both;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hero-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-stat-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.hero-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
+}
+
+@keyframes stats-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══ PREMIUM FOOTER ═══ */
+.premium-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 2rem;
+}
+
+.footer-inner {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.footer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.footer-commons {
+  background: linear-gradient(135deg, #d4af37, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--brand-primary);
+}
+
+.footer-dot {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-title-premium {
+    font-size: 2rem;
+  }
+
+  .agent-orbit-row {
+    gap: 8px;
+  }
+
+  .agent-orbit-card {
+    padding: 8px 10px;
+    min-width: 64px;
+  }
+
+  .agent-orbit-icon {
+    font-size: 1.1rem;
+  }
+
+  .hero-stats-bar {
+    gap: 12px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .signature-plaque {
+    max-width: 280px;
+  }
+}

@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from "react";
-import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink, LayoutGrid } from "lucide-react";
+import React, { useState, useCallback, useEffect } from "react";
+import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink, LayoutGrid, Zap, Shield, Award } from "lucide-react";
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 import PipelineProgress from './components/PipelineProgress';
 
 // Version for deployment verification
-const APP_VERSION = "v2.0.0";
-const BUILD_DATE = "2025-12-21";
+const APP_VERSION = "v2.1.0";
+const BUILD_DATE = "2026-02-13";
 
 // 7-Agent Configuration
 const AGENTS = [
@@ -40,6 +40,17 @@ function App() {
   const [voiceStyle, setVoiceStyle] = useState('friendly'); // serious, friendly, hype
   const [videoLength, setVideoLength] = useState('short'); // short (15s), long (60s)
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+  const [systemHealth, setSystemHealth] = useState(null); // live health status
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  // Fetch live system health on mount
+  useEffect(() => {
+    setHeroVisible(true);
+    fetch('/.netlify/functions/healthcheck')
+      .then(r => r.json())
+      .then(data => setSystemHealth(data))
+      .catch(() => setSystemHealth({ status: 'offline' }));
+  }, []);
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -226,25 +237,31 @@ function App() {
           </div>
         </div>
       )}
-      {/* Header */}
+      {/* Enhanced Header with Live Status */}
       <header className="header">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="logo-icon">
-              <Code2 className="w-5 h-5" />
+            <div className="logo-icon logo-icon-animated">
+              <Zap className="w-5 h-5" />
             </div>
             <span className="text-lg font-semibold text-white">SirTrav A2A Studio</span>
             <span className="version-badge">{APP_VERSION}</span>
+            {/* Live System Health Indicator */}
+            {systemHealth && (
+              <div className={`health-dot ${systemHealth.status === 'ok' ? 'health-green' : systemHealth.status === 'degraded' ? 'health-amber' : 'health-red'}`}
+                title={`System: ${systemHealth.status || 'checking...'}`}
+              />
+            )}
           </div>
 
           <nav className="flex items-center gap-4">
-            <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Documentation</a>
-            <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault Status</a>
+            <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Docs</a>
+            <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault</a>
             <button
               onClick={() => setShowResultsPreview(true)}
               className="btn-secondary"
             >
-              Test Results Preview
+              Preview
             </button>
             <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link">
               <Github className="w-4 h-4" />
@@ -253,14 +270,82 @@ function App() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="hero-section">
-        <h1 className="hero-title">
-          <span className="text-brand-400">D2A</span> Video Automation
+      {/* ═══ PREMIUM HERO SECTION ═══ */}
+      <section className={`hero-section hero-premium ${heroVisible ? 'hero-visible' : ''}`}>
+        {/* Floating particle orbs */}
+        <div className="hero-orbs">
+          <div className="hero-orb hero-orb-1" />
+          <div className="hero-orb hero-orb-2" />
+          <div className="hero-orb hero-orb-3" />
+        </div>
+
+        <h1 className="hero-title hero-title-premium">
+          <span className="hero-d2a">D2A</span>
+          <span className="hero-word">Video</span>
+          <span className="hero-word hero-word-accent">Automation</span>
         </h1>
+
         <p className="hero-subtitle">
-          Transform raw assets into cinematic stories using a 7-agent sequential pipeline. Built for the Commons Good.
+          One click. Seven AI agents. Real cinematic video — narrated, scored, credited, and published.
         </p>
+
+        {/* ═══ SirTrav SIGNATURE PLAQUE ═══ */}
+        <div className="signature-plaque">
+          <div className="signature-border">
+            <div className="signature-inner">
+              <div className="signature-icon">
+                <Award className="w-6 h-6" />
+              </div>
+              <div className="signature-text">
+                <span className="signature-name">SirTrav</span>
+                <span className="signature-tagline">For the Commons Good</span>
+              </div>
+              <div className="signature-seal">
+                <Shield className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ AGENT ORBIT ROW ═══ */}
+        <div className="agent-orbit-row">
+          {AGENTS.map((agent, idx) => (
+            <div
+              key={agent.id}
+              className={`agent-orbit-card ${pipelineStatus === 'running' ? 'agent-orbit-active' : ''}`}
+              style={{ animationDelay: `${idx * 0.1}s` }}
+              title={agent.description}
+            >
+              <span className="agent-orbit-icon">{agent.icon}</span>
+              <span className="agent-orbit-label">{agent.name.replace(' Agent', '')}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Live Stats Bar */}
+        {systemHealth && (
+          <div className="hero-stats-bar">
+            <div className="hero-stat">
+              <span className="hero-stat-value">7</span>
+              <span className="hero-stat-label">AI Agents</span>
+            </div>
+            <div className="hero-stat-divider" />
+            <div className="hero-stat">
+              <span className="hero-stat-value">~$0.38</span>
+              <span className="hero-stat-label">Per Video</span>
+            </div>
+            <div className="hero-stat-divider" />
+            <div className="hero-stat">
+              <span className="hero-stat-value">{systemHealth.services?.find(s => s.name === 'storage')?.status === 'ok' ? '✓' : '—'}</span>
+              <span className="hero-stat-label">Storage</span>
+            </div>
+            <div className="hero-stat-divider" />
+            <div className="hero-stat">
+              <span className="hero-stat-value">20%</span>
+              <span className="hero-stat-label">Commons Good</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Main Content */}
@@ -766,9 +851,26 @@ function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="text-center py-6 text-xs text-gray-600">
-        Build: {BUILD_DATE} | {APP_VERSION} | For the Commons Good 🌍
+      {/* Premium Footer */}
+      <footer className="premium-footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <Zap className="w-4 h-4 text-brand-400" />
+            <span>SirTrav A2A Studio</span>
+          </div>
+          <div className="footer-meta">
+            <span>Build {BUILD_DATE}</span>
+            <span className="footer-dot">·</span>
+            <span>{APP_VERSION}</span>
+            <span className="footer-dot">·</span>
+            <span className="footer-commons">For the Commons Good 🌍</span>
+          </div>
+          <div className="footer-links">
+            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span className="footer-dot">·</span>
+            <a href="#">Docs</a>
+          </div>
+        </div>
       </footer>
 
       {/* Results Preview Modal */}
