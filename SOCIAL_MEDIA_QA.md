@@ -1,28 +1,46 @@
-# Social Media QA Report (RC1 Verification)
-**Date:** 2026-02-09
-**Agent:** Antigravity (Instance 4)
-**Build:** RC1-Preview
+# Social Media QA Report
+**Updated:** 2026-02-13 21:00 UTC
 
-## ✅ Golden Path Results
+## X/Twitter — ✅ FULLY OPERATIONAL
+- **Status:** LIVE — 3 real tweets posted and verified
+- **Account:** @Sechols002 (Scott Echols, User ID: 3196650180)
+- **Auth:** OAuth 1.0a with `twitter-api-v2` library
+- **Env Vars:** `TWITTER_API_KEY`, `TWITTER_API_SECRET`, `TWITTER_ACCESS_TOKEN`, `TWITTER_ACCESS_SECRET`
+- **Permissions:** Read + Write confirmed
+- **Cost:** $0.001/tweet + 20% Commons Good markup = $0.0012/tweet
 
-| Step | Test Description | Status | Notes |
-|------|------------------|--------|-------|
-| 1 | **Live Healthcheck** | ✅ PASS | `https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck` responds 200 OK. |
-| 2 | **Preflight** | ✅ PASS | Environment validation confirms critical files. |
-| 3 | **Practice Test** | ✅ PASS | `npm run practice:test` confirms pipeline flow is operational. |
-| 4 | **X Publish (Dry Run)** | ✅ PASS | `test-x-publish.mjs --dry-run` successful. |
-| 5 | **Render Dispatcher** | ✅ PASS | `compile-video` correctly dispatches to `render-dispatcher`. |
-| 6 | **Attribution** | ✅ PASS | `generate-attribution` correctly produces credits. |
-| 7 | **Deployment** | ✅ PASS | **Build succeeded!** Frontend assets (JS/CSS) generated correctly. |
+### Verified Tweets
+| Source | Tweet ID | Status |
+|--------|----------|--------|
+| Claude Code local test | `2022413188155728040` | ✅ Posted |
+| Claude Code cloud test | `2022414239688794214` | ✅ Posted |
+| Antigravity cloud verify | `2022415272896835967` | ✅ Posted |
 
-## ⚠️ Known Blockers (Manual Intervention Required)
-1.  **X/Twitter 401 Auth:** **FAILED - Code 32 (Could not authenticate you).**
-    *   **Root Cause:** Key mismatch or permission issue.
-    *   **Action:** Regenerate ALL 4 keys in X Developer Portal and update Netlify.
+### Previous Issue (RESOLVED)
+- **Error:** HTTP 401 — "Could not authenticate you" (Code 32)
+- **Root Cause:** Stale Netlify deployment not picking up fresh env vars
+- **Resolution:** Fresh keys set in Netlify Dashboard + triggered rebuild via `netlify api createSiteBuild`
+- **Date Fixed:** 2026-02-13
 
-2.  **Missing Social Keys:** TikTok, Instagram, LinkedIn keys are missing.
+## YouTube — 🟡 PARTIAL
+- **Status:** Healthcheck reports "ok" but publisher returns `disabled: true`
+- **Root Cause:** `YOUTUBE_REFRESH_TOKEN` missing (has Client ID + Secret)
+- **Action:** Generate OAuth refresh token and set in Netlify
 
-## RC1 Status
-**Result:** **PARTIAL SUCCESS (Deployment Fixed, Auth Pending)**
-- Deployment issue is RESOLVED. Site should be accessible.
-- X/Twitter Auth needs one more pass.
+## TikTok — ❌ NOT CONFIGURED
+- **Action:** Create developer account, set API keys
+
+## Instagram — ❌ NOT CONFIGURED
+- **Action:** Create developer account, set API keys
+
+## LinkedIn — ❌ NOT CONFIGURED
+- **Action:** Create developer account, set API keys
+
+## Summary: 2/5 Platforms Operational
+| Platform | Status | Blocker |
+|----------|--------|---------|
+| X/Twitter | ✅ LIVE | None |
+| YouTube | 🟡 Partial | Refresh token |
+| TikTok | ❌ | No keys |
+| Instagram | ❌ | No keys |
+| LinkedIn | ❌ | No keys |

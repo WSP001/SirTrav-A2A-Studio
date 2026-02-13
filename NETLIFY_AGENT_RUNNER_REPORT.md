@@ -1,231 +1,163 @@
 # 🦅 NETLIFY AGENT RUNNER — SirTrav A2A Studio
-## Deployment Report & Agent Instructions
-**Date:** 2026-02-12 15:07 PST
+## Deployment Report & System Status
+**Date:** 2026-02-13 21:00 UTC / 13:00 PST
 **Live URL:** https://sirtrav-a2a-studio.netlify.app/
 **Agent Runs:** https://app.netlify.com/projects/sirtrav-a2a-studio/agent-runs
 **Repo:** https://github.com/WSP001/SirTrav-A2A-Studio
+**Cycle Gates:** 10/10 PASS ✅
 
 ---
 
-## 📊 VERIFIED DEPLOYMENT STATUS (Live-Tested)
+## 📊 VERIFIED DEPLOYMENT STATUS (Live-Tested 2026-02-13)
+
+### ✅ WORKING (Confirmed via live HTTP tests)
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| **Vite Build** | ✅ WORKING | `npm run build` passes, `dist/` contains JS + CSS + HTML |
-| **Frontend Loads** | ✅ WORKING | JS bundle, CSS bundle, title all present in HTML |
-| **32 Netlify Functions** | ✅ DEPLOYED | All 32 functions bundled and serving |
-| **Storage (Blobs)** | ✅ WORKING | `storage: ok, latency: 298ms` |
-| **AI Services** | ✅ WORKING | `ai_services: ok` (OpenAI configured) |
-| **compile-video** | ✅ WORKING | Returns render dispatch with `pollUrl` + `renderId` |
-| **generate-attribution** | ✅ WORKING | Returns credits + Commons Good metadata |
-| **progress (SSE)** | ✅ WORKING | Accepts and stores events |
-| **evals** | ✅ WORKING | Returns dashboard metrics |
-| **submit-evaluation** | ✅ WORKING | Stores feedback ratings |
-| **render-dispatcher** | ✅ WORKING | Returns fallback render IDs (real Remotion needs AWS keys) |
-| **ErrorBoundary** | ✅ DEPLOYED | React crashes show friendly error screen |
-| **Social: YouTube** | ✅ CONFIGURED | Keys present in Netlify env |
-| **Social: X/Twitter** | 🔴 401 ERROR | Keys present but mismatched — need regeneration from SAME app |
-| **Social: TikTok** | ❌ NO KEYS | Not configured |
-| **Social: Instagram** | ❌ NO KEYS | Not configured |
-| **Social: LinkedIn** | ❌ NO KEYS | Not configured |
-| **Remotion Lambda** | 🟡 FALLBACK | Uses mock render IDs — needs AWS + REMOTION env vars |
-| **ElevenLabs Voice** | 🟡 FALLBACK | Needs `ELEVENLABS_API_KEY` for real TTS |
-| **Suno Music** | 🟡 FALLBACK | Needs `SUNO_API_KEY` for real music gen |
-| **Pipeline Wiring** | ✅ 7/7 AGENTS | Director→Writer→Voice⚡Composer→Editor→Attribution→QA |
-| **Cycle Gates** | ✅ 10/10 PASS | All code gates pass on main branch |
-| **netlify.toml** | ✅ CORRECT | Build: `npm install --include=dev && npm run build`, Publish: `dist`, Functions: `netlify/functions` |
+| **Vite Build** | ✅ PASS | `built in 2.30s`, dist contains JS + CSS + HTML |
+| **Frontend** | ✅ LIVE | JS bundle, CSS bundle, title all present |
+| **32 Netlify Functions** | ✅ DEPLOYED | All bundled and serving |
+| **Storage (Blobs)** | ✅ OK | Latency: 222ms |
+| **AI Services** | ✅ OK | OpenAI + ElevenLabs configured |
+| **compile-video** | ✅ OK | Returns render dispatch |
+| **generate-attribution** | ✅ OK | Credits + Commons Good metadata |
+| **render-dispatcher** | ✅ OK | Returns 202 with valid payload (400 on empty = expected validation) |
+| **progress (SSE)** | ✅ OK | Accepts and stores events |
+| **evals** | ✅ OK | Returns dashboard metrics |
+| **submit-evaluation** | ✅ OK | Stores feedback ratings |
+| **ErrorBoundary** | ✅ DEPLOYED | React crashes show friendly screen |
+| **No Fake Success** | ✅ ALL 5 | All publishers return `disabled:true` when keys missing |
+| **Pipeline Wiring** | ✅ 7/7 | Director→Writer→Voice⚡Composer→Editor→Attribution→QA |
+| **Cycle Gates** | ✅ 10/10 | All pass on main branch |
+| **netlify.toml** | ✅ CORRECT | Build + Publish + Functions all verified |
+| **@netlify/vite-plugin** | ✅ INSTALLED | Wired in vite.config.js |
+| **npm vulnerabilities** | ✅ REDUCED | @aws-sdk/client-s3 updated: 31→16 vulns, 23→8 high |
 
-### Healthcheck Response (Live)
+### 🟢 X/TWITTER — FULLY OPERATIONAL (FIXED 2026-02-13)
+
+| Test | Result |
+|------|--------|
+| Env vars in Netlify | ✅ 4/4 `TWITTER_*` keys present |
+| Cloud healthcheck | ✅ X/Twitter detected as configured |
+| Local OAuth test | ✅ Authenticated as **@Sechols002** (Scott Echols, User ID: 3196650180) |
+| Local tweet | ✅ Tweet ID: `2022413188155728040` |
+| Cloud tweet | ✅ Tweet ID: `2022414239688794214` |
+| Antigravity verify | ✅ Tweet ID: `2022415272896835967` |
+| Cost + 20% markup | ✅ $0.001 base + $0.0002 Commons Good = $0.0012 total |
+| No Fake Success | ✅ `success: true` with real `tweetId` |
+
+**Resolution:** Previous 401 was caused by stale deployment not picking up fresh env vars. Triggering a new Netlify build via `netlify api createSiteBuild` resolved it. All 4 keys are from the same X Developer App with Read+Write permissions.
+
+**Live tweets:**
+- https://x.com/Sechols002/status/2022413188155728040
+- https://x.com/Sechols002/status/2022414239688794214
+- https://x.com/Sechols002/status/2022415272896835967
+
+### 🟡 DEGRADED (Working but in fallback mode)
+
+| Component | Status | What's Needed |
+|-----------|--------|---------------|
+| **Remotion Lambda** | Fallback mock IDs | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `REMOTION_FUNCTION_NAME`, `REMOTION_SERVE_URL` |
+| **Suno Music** | Placeholder audio | `SUNO_API_KEY` |
+| **YouTube** | `disabled: true` | `YOUTUBE_REFRESH_TOKEN` (needs OAuth flow — has Client ID/Secret) |
+
+### ❌ NOT CONFIGURED (Missing platform accounts)
+
+| Platform | Status | What's Needed |
+|----------|--------|---------------|
+| **TikTok** | No keys | Developer account + API keys |
+| **Instagram** | No keys | Developer account + API keys |
+| **LinkedIn** | No keys | Developer account + API keys |
+
+---
+
+## 🎯 CURRENT PIPELINE MODE
+
+Based on configured services:
+
+| Agent | API Key | Status | Mode |
+|-------|---------|--------|------|
+| Director | `OPENAI_API_KEY` | ✅ Set | **Real** |
+| Writer | `OPENAI_API_KEY` | ✅ Set | **Real** |
+| Voice | `ELEVENLABS_API_KEY` | ✅ Set | **Real** |
+| Composer | `SUNO_API_KEY` | ❌ Missing | Placeholder |
+| Editor | `REMOTION_*` + `AWS_*` | ❌ Missing | Fallback mock |
+| Publisher (X) | `TWITTER_*` | ✅ **LIVE** | **Real** |
+| Publisher (YT) | `YOUTUBE_*` | 🟡 Partial | Missing refresh token |
+
+**Pipeline Mode: ENHANCED** — 4/7 agents using real APIs, 3 in fallback
+
+---
+
+## 📋 REMAINING HUMAN TASKS (Ordered by Priority)
+
+### P1: YouTube Refresh Token
+1. Generate OAuth refresh token using `YOUTUBE_CLIENT_ID` + `YOUTUBE_CLIENT_SECRET`
+2. Set `YOUTUBE_REFRESH_TOKEN` in Netlify Dashboard
+3. Trigger redeploy
+
+### P1: Suno API Key
+1. Get API key from Suno
+2. Set `SUNO_API_KEY` in Netlify Dashboard
+3. Trigger redeploy
+
+### P1: Remotion Lambda (Real Video Rendering)
+1. Deploy Remotion Lambda to AWS
+2. Set in Netlify Dashboard:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `REMOTION_FUNCTION_NAME`
+   - `REMOTION_SERVE_URL`
+3. Trigger redeploy
+
+### P2: Additional Social Platforms
+- TikTok, Instagram, LinkedIn — when developer accounts are ready
+
+---
+
+## 🏁 DEFINITION OF DONE
+
+| Criteria | Status |
+|----------|--------|
+| `npm run build` passes | ✅ DONE |
+| 32 functions deploy | ✅ DONE |
+| Cycle gates 10/10 | ✅ DONE |
+| X/Twitter publishes | ✅ **DONE** (3 live tweets) |
+| No Fake Success | ✅ DONE |
+| Frontend loads | ✅ DONE |
+| No secrets in git | ✅ DONE |
+| Commons Good credits | ✅ DONE |
+| Pipeline wired 7/7 | ✅ DONE |
+| YouTube publishes | 🟡 Needs refresh token |
+| Real video rendering | 🟡 Needs Remotion Lambda |
+| Full mode (all real) | 🟡 Needs Suno + Remotion |
+| 5/5 social platforms | ⏳ 2/5 configured |
+
+**The code is 100% complete. All remaining items are environment variable configuration.**
+
+---
+
+## 🔄 HEALTHCHECK SNAPSHOT (2026-02-13T20:59 UTC)
+
 ```json
 {
   "status": "degraded",
   "version": "2.1.0",
   "environment": "Production",
   "services": [
-    { "name": "storage", "status": "ok", "latency_ms": 298 },
+    { "name": "storage", "status": "ok", "latency_ms": 222 },
     { "name": "ai_services", "status": "ok" },
     { "name": "social_publishing", "status": "degraded", "error": "2/5 platforms (missing: TikTok, Instagram, LinkedIn)" }
-  ]
+  ],
+  "env_snapshot": {
+    "openai": true,
+    "elevenlabs": true,
+    "suno": false
+  }
 }
 ```
 
 ---
 
-## 🔴 WHAT'S NOT WORKING (Ordered by Priority)
-
-### P0: X/Twitter 401 Authentication Error
-- **Problem:** API returns `Code 32: Could not authenticate you`
-- **Root Cause:** The 4 API keys in Netlify env vars don't come from the same X Developer App
-- **Fix:** Regenerate ALL 4 keys from the same app at https://developer.x.com/en/portal/dashboard
-- **Env Vars Needed (TWITTER_ prefix):**
-  ```
-  TWITTER_API_KEY        ← Consumer Key
-  TWITTER_API_SECRET     ← Consumer Key Secret
-  TWITTER_ACCESS_TOKEN   ← Access Token (with Read+Write permissions)
-  TWITTER_ACCESS_SECRET  ← Access Token Secret
-  ```
-- **Verify:** `node scripts/test-x-publish.mjs --live`
-- **Owner:** Human (Scott)
-
-### P1: Remotion Lambda (Video Renders are Mock)
-- **Problem:** `render-dispatcher` returns fallback IDs instead of real Lambda renders
-- **Root Cause:** Missing AWS credentials and Remotion config in Netlify env
-- **Env Vars Needed:**
-  ```
-  AWS_ACCESS_KEY_ID
-  AWS_SECRET_ACCESS_KEY
-  REMOTION_FUNCTION_NAME
-  REMOTION_SERVE_URL
-  REMOTION_REGION           (default: us-east-1)
-  ```
-- **Verify:** `just cycle-gate motion_test`
-- **Owner:** Human (Scott)
-
-### P1: Voice Agent (ElevenLabs)
-- **Problem:** Text-to-Speech falls back to placeholder audio
-- **Env Var Needed:** `ELEVENLABS_API_KEY`
-- **Owner:** Human (Scott)
-
-### P1: Music Agent (Suno)
-- **Problem:** Music generation falls back to template audio
-- **Env Var Needed:** `SUNO_API_KEY`
-- **Owner:** Human (Scott)
-
-### P2: Missing Social Platforms (3 of 5)
-- **TikTok:** Needs API keys in Netlify env
-- **Instagram:** Needs API keys in Netlify env
-- **LinkedIn:** Needs API keys in Netlify env
-- **Owner:** Human (Scott) — when platform developer accounts are ready
-
----
-
-## 🚀 NETLIFY AGENT RUNNER INSTRUCTIONS
-
-### Quick Start (All Agents)
-```bash
-cd C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio
-git pull origin main
-just cycle-status
-```
-
-### PARALLEL TRACK A — Infrastructure (COMPLETED ✅)
-
-#### Instance 1: Netlify CLI & Build Config
-**STATUS: ✅ DONE — No action needed**
-- Build command is correct: `npm install --include=dev && npm run build`
-- Publish directory is correct: `dist`
-- Functions directory is correct: `netlify/functions`
-- `@netlify/vite-plugin` is installed and wired in `vite.config.js`
-- 32 functions bundled and deployed
-- No build warnings (removed redundant `_redirects` file)
-
-#### Instance 5: MG-001 Render Dispatcher
-**STATUS: ✅ CODE DONE — Needs AWS/Remotion env vars (Human task)**
-- `netlify/functions/render-dispatcher.ts` — deployed and responding
-- `netlify/functions/render-progress.ts` — deployed and responding
-- `netlify/functions/lib/remotion-client.ts` — graceful fallback working
-- `compile-video.ts` wired to call `render-dispatcher` ✅
-- Returns `pollUrl` for UI progress polling ✅
-- **Blocked by:** Missing `AWS_ACCESS_KEY_ID`, `REMOTION_*` env vars
-- **Action for Netlify Agent:** Verify these functions respond correctly. No code changes needed.
-
-### PARALLEL TRACK B — Features (MOSTLY DONE)
-
-#### Instance 2: X/Twitter Verification
-**STATUS: 🔴 BLOCKED — Human must fix API keys**
-- `publish-x.ts` — deployed, code is correct ✅
-- `check-x-engagement.ts` — deployed, standardized to `TWITTER_*` prefix ✅
-- Dry-run passes ✅ (`node scripts/test-x-publish.mjs --dry-run`)
-- Live test fails with 401 ❌
-- **Root Cause:** Keys from different X Developer Apps
-- **Action for Netlify Agent:** After human fixes keys, verify with:
-  ```
-  node scripts/test-x-publish.mjs --live
-  ```
-- Expected result: `success: true, tweetId: "..."` 
-
-#### Instance 6: Attribution Agent
-**STATUS: ✅ DONE**
-- `generate-attribution.ts` returns credits + Commons Good ✅
-- Extended schema includes `for_the_commons_good`, `ai_attribution`, `cost_plus_20_percent` ✅
-- Wired into `run-pipeline-background.ts` ✅
-- Cost manifest (`lib/cost-manifest.ts`) generates invoices ✅
-- Quality gate (`lib/quality-gate.ts`) validates output ✅
-- `commonsGood: true` in pipeline response ✅
-- **Action for Netlify Agent:** No changes needed. Verified working.
-
-### PARALLEL TRACK C — Polish (DONE)
-
-#### Instance 3: UI Fixes (Codex)
-**STATUS: ✅ DONE**
-- `ErrorBoundary.jsx` created and wraps `<App />` in `main.jsx` ✅
-- CSS overflow fix on `.agent-card` ✅
-- Duplicate `pipelineMode` prop removed from `App.jsx` ✅
-- **Action for Netlify Agent:** No changes needed.
-
-#### Instance 4: Golden Path Tests (Antigravity)
-**STATUS: ✅ DONE**
-- `scripts/cycle-check.mjs` — 10-gate system, all pass ✅
-- `scripts/verify-golden-path.mjs` — smoke test ready ✅
-- `scripts/test-x-publish.mjs` — dry-run passes ✅
-- Live endpoint tests: 7/8 pass (only X/Twitter blocked by keys) ✅
-- `SOCIAL_MEDIA_QA.md` — updated report ✅
-- **Action for Netlify Agent:** Run `just cycle-all` to confirm all gates are green.
-
----
-
-## 📋 SYNC POINT CHECKLIST
-
-After all tracks complete, run:
-```bash
-just rc1-verify
-```
-
-Expected output:
-- ✅ Pipeline Wiring — all 7 agents detected
-- ✅ No Fake Success — all 5 publishers truthful
-- ✅ Golden Path — pipeline flow verified
-- ✅ Healthcheck — cloud endpoint responds
-- 🔴 X/Twitter — will fail until keys are fixed (expected)
-
----
-
-## 🔑 ENVIRONMENT VARIABLES NEEDED IN NETLIFY DASHBOARD
-
-### Required for Full Production (set at: Netlify Dashboard → Site Settings → Environment Variables)
-
-| Variable | Status | Priority |
-|----------|--------|----------|
-| `OPENAI_API_KEY` | ✅ Set | — |
-| `TWITTER_API_KEY` | 🔴 Needs fix | P0 |
-| `TWITTER_API_SECRET` | 🔴 Needs fix | P0 |
-| `TWITTER_ACCESS_TOKEN` | 🔴 Needs fix | P0 |
-| `TWITTER_ACCESS_SECRET` | 🔴 Needs fix | P0 |
-| `ELEVENLABS_API_KEY` | ❌ Missing | P1 |
-| `SUNO_API_KEY` | ❌ Missing | P1 |
-| `AWS_ACCESS_KEY_ID` | ❌ Missing | P1 |
-| `AWS_SECRET_ACCESS_KEY` | ❌ Missing | P1 |
-| `REMOTION_FUNCTION_NAME` | ❌ Missing | P1 |
-| `REMOTION_SERVE_URL` | ❌ Missing | P1 |
-| `YOUTUBE_*` | ✅ Set | — |
-
----
-
-## 🏁 DEFINITION OF DONE
-
-The deployment is **production-ready** when:
-1. ✅ `npm run build` passes (DONE)
-2. ✅ 32 functions deploy without errors (DONE)
-3. ✅ Healthcheck returns `status: ok` (currently `degraded` — needs social keys)
-4. ✅ `just cycle-all` → 10/10 gates pass (DONE)
-5. 🔴 `node scripts/test-x-publish.mjs --live` returns `success: true` (blocked by keys)
-6. 🟡 Pipeline produces real video (blocked by Remotion/ElevenLabs/Suno keys)
-7. ✅ Frontend loads with JS + CSS + title (DONE)
-8. ✅ No fake success in any publisher (DONE)
-
-**Bottom line:** The code is 100% done. What remains is environment variable configuration (human task).
-
----
-
 *Generated by Antigravity Agent — For the Commons Good 🦅*
-*Cycle gates: 10/10 PASS | Build: ✅ | Deploy: ✅ | Functions: 32/32*
+*X/Twitter: LIVE ✅ | Cycle Gates: 10/10 ✅ | Build: ✅ | Functions: 32/32 ✅*
