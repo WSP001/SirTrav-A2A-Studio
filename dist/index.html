@@ -5,10 +5,39 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SirTrav A2A Studio</title>
-    <script type="module" crossorigin src="/assets/index-D1SOggjG.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DZ2DTGID.css">
+    <script type="module" crossorigin src="/assets/index-BZwycQQo.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-N--QU9DW.js">
+    <link rel="modulepreload" crossorigin href="/assets/remotion-Da-jIXbh.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-BfI14oGR.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;color:#555;">
+        <p>Loading SirTrav A2A Studio&hellip;</p>
+      </div>
+    </div>
+    <script>
+      // Production error capture — shows runtime crash instead of blank screen
+      window.onerror = function(msg, src, line, col, err) {
+        var el = document.getElementById('root');
+        if (el && !el.dataset.mounted) {
+          el.innerHTML = '<div style="padding:2rem;font-family:system-ui,sans-serif;">'
+            + '<h2 style="color:#c00;">SirTrav A2A Studio — Runtime Error</h2>'
+            + '<pre style="background:#f5f5f5;padding:1rem;overflow:auto;border-radius:8px;">'
+            + msg + '\\n' + src + ':' + line + ':' + col
+            + '</pre>'
+            + '<p>Check DevTools Console (F12) for details.</p></div>';
+        }
+        return false;
+      };
+    </script>
+    <script>
+      // Mark root as mounted once React takes over
+      var observer = new MutationObserver(function() {
+        document.getElementById('root').dataset.mounted = 'true';
+        observer.disconnect();
+      });
+      observer.observe(document.getElementById('root'), { childList: true });
+    </script>
   </body>
 </html>

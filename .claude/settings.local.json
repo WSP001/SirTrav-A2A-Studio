@@ -15,13 +15,12 @@
       "Bash(npx vite:*)",
       "Bash(netlify env:list:*)",
       "Bash(node scripts/test-linkedin-publish.mjs:*)",
-      "Bash(netlify status:*)",
-      "Bash(node scripts/test-x-publish.mjs:*)",
-      "Bash(node scripts/verify-golden-path.mjs:*)",
-      "Bash(node:*)",
-      "Bash(just:*)",
-      "Bash(git pull:*)",
-      "Bash(npx tsc:*)"
+      "Bash(node scripts/cycle-check.mjs:*)",
+      "Bash(set:*)",
+      "Bash(ls \"C:\\\\WSP001\\\\SirTrav-A2A-Studio\\\\.claude\\\\worktrees\\\\trusting-hamilton\\\\.agent\\\\skills\"\" 2>&1 && echo \"---\" && ls \"C:WSP001SirTrav-A2A-Studio.claudeworktreestrusting-hamilton.agent\"\")",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
