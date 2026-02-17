@@ -334,7 +334,8 @@ function printStatus(state) {
 /** BRIEF: ~150 tokens — 1 line per gate, no decoration */
 function printBrief(state) {
     const passed = GATES.filter(g => state.gates[g.id]?.status === 'pass').length;
-    console.log(`${passed}/${GATES.length} PASS | ${new Date(state.lastRun).toLocaleString()}`);
+    const lastRunDisplay = state.lastRun ? new Date(state.lastRun).toLocaleString() : 'never';
+    console.log(`${passed}/${GATES.length} PASS | ${lastRunDisplay}`);
     for (const g of GATES) {
         const s = state.gates[g.id] || { status: '?' };
         const icon = s.status === 'pass' ? 'OK' : s.status === 'fail' ? 'FAIL' : '---';
@@ -359,7 +360,10 @@ function printNext(state, agentName) {
     }
     // All gates pass
     if (agent) {
-        console.log(`ALL PASS for ${agentName}. Free to do logic work. Budget: ${estimateBudget(state)} tokens saved.`);
+        const rawBudget = estimateBudget(state);
+        const clamped = Math.max(0, rawBudget);
+        const formatted = clamped >= 1000 ? `${(clamped / 1000).toFixed(1)}k` : `${clamped}`;
+        console.log(`ALL PASS for ${agentName}. Free to do logic work. Budget: ${formatted} tokens saved.`);
     } else {
         console.log(`ALL 10/10 PASS. System healthy. Agents free for logic work.`);
     }
@@ -445,14 +449,19 @@ function trackBudget(command) {
         const dir = join(ROOT, 'artifacts', 'claude');
         if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-        let budget = { sessions: 0, totalSaved: 0, commands: {} };
+        let budget = { invocations: 0, totalSaved: 0, commands: {}, lastSessionDate: null };
         if (existsSync(BUDGET_FILE)) {
             budget = JSON.parse(readFileSync(BUDGET_FILE, 'utf8'));
         }
-        budget.sessions++;
+        // Migrate legacy field name
+        if (budget.sessions && !budget.invocations) {
+            budget.invocations = budget.sessions;
+            delete budget.sessions;
+        }
+        budget.invocations = (budget.invocations || 0) + 1;
         budget.commands[command] = (budget.commands[command] || 0) + 1;
         budget.totalSaved += (5000 - (TOKEN_COSTS[command] || 400)); // vs. full file reads
-        budget.lastSession = new Date().toISOString();
+        budget.lastSessionDate = new Date().toISOString().slice(0, 10);
         writeFileSync(BUDGET_FILE, JSON.stringify(budget, null, 2));
     } catch { /* non-critical */ }
 }
@@ -499,6 +508,37 @@ switch (arg) {
             console.log('Usage: cycle-check.mjs layer <1-4>');
         } else {
             printLayer(state, layerNum, true);
+        }
+        break;
+    }
+
+    case 'weekly-report': {
+        const fs = await import('fs');
+        const ok = p => fs.existsSync(p);
+        const report = {
+            generatedAt: new Date().toISOString(),
+            checks: {
+                weeklyRaw: ok('artifacts/data/current-week-raw.json'),
+                weeklySchema: ok('artifacts/contracts/weekly-harvest.schema.json'),
+                socialSchema: ok('artifacts/contracts/social-post.schema.json'),
+                harvestScript: ok('scripts/harvest-week.mjs'),
+                analyzeScript: ok('scripts/weekly-analyze.mjs'),
+                hudComponent: ok('src/components/SystemStatusEmblem.tsx'),
+                validateScript: ok('scripts/validate-weekly-pulse.mjs'),
+            },
+            gates: {
+                total: Object.values(state.gates).filter(g => g.status === 'pass').length,
+                of: Object.keys(state.gates).length,
+            },
+        };
+        fs.mkdirSync('artifacts/reports', { recursive: true });
+        fs.writeFileSync('artifacts/reports/weekly-pulse-report.json', JSON.stringify(report, null, 2));
+        console.log('Wrote artifacts/reports/weekly-pulse-report.json');
+        const missing = Object.entries(report.checks).filter(([, v]) => !v).map(([k]) => k);
+        if (missing.length) {
+            console.log(`Missing: ${missing.join(', ')}`);
+        } else {
+            console.log('All files present!');
         }
         break;
     }

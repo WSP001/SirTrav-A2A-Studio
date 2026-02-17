@@ -1,28 +1,24 @@
 # 🧭 Agent Assignments (Source of Truth)
 
-**Current Focus:** Motion Graphics (MG) Sprint
-**Method:** One-at-a-time Execution Loop
+**Current Sprint:** The Pulse & The Plaque
+**Method:** Parallel Execution — each agent owns distinct deliverables
+**Date:** 2026-02-15
 
 ---
 
-## 🚦 Active Ticket (NOW)
+## 🚦 Active Tickets (NOW)
 
-**Ticket:** M0: Social Platform Integration
-**Owner:** Antigravity + User
-**Reviewer:** Claude
-**Status:** **IN_PROGRESS**
+| Agent | Ticket | Status | Deliverable |
+|-------|--------|--------|-------------|
+| Claude Code | CC-011 + CC-012 | READY | `scripts/harvest-week.mjs` + `scripts/weekly-analyze.mjs` |
+| Codex | CX-012 | READY | `src/components/SystemStatusEmblem.tsx` |
+| Antigravity | AG-011 | READY | `artifacts/contracts/*.schema.json` + `scripts/validate-weekly-pulse.mjs` |
+| Windsurf | WM-006 | DONE | justfile commands wired, task specs created |
 
-### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Standby (MG-008 Done, Feedback UI Complete).
-*   **Antigravity:** ✅ AG-001 DONE (Contract Validation Suite), MG-003 WAITING on Codex.
-*   **X Agent:** Blocked on key fix, then MG-X-002 (Engagement Loop).
-
-### 🔴 BLOCKING ISSUE:
-X API keys are from **different** X Developer Apps = 401 authentication error.
-**Fix:** Go to X Developer Portal → Get ALL 4 keys from SAME app → Update Netlify.
-
-### 🔧 Workflow Available:
-Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
+### RESOLVED (was blocking, now fixed):
+- ~~X API keys from different apps~~ → Fixed. X publish LIVE (tweetId: 2023121795121897961)
+- ~~Bun not installed~~ → Bun 1.3.9 on PATH. Project uses Node.
+- ~~Schema path mismatch~~ → Aligned to `artifacts/contracts/` everywhere
 
 ---
 
@@ -193,6 +189,10 @@ Then begin with this statement:
 | CC-NFS-1 | Claude Code | No Fake Success on all 5 publishers (disabled:true, not placeholder) | 2026-02-06 |
 | CC-VAL-1 | Claude Code | Payload validation: validateXPayload, validateLinkedInPayload, validateYouTubePayload | 2026-02-06 |
 | CC-ENV-1 | Claude Code | .env.example updated with TWITTER_* + LINKEDIN_* templates | 2026-02-06 |
+| CC-LEAN-1 | Claude Code | Progressive Context-Lean System v3 (cycle-check.mjs) | 2026-02-14 |
+| CC-TEST-1 | Claude Code | Agentic "Around the Block" test harness (6/6 PASS × 3 modes) | 2026-02-14 |
+| CC-ARCH-1 | Claude Code | Archive system (4 files to Google Drive + ARCHIVE RULE) | 2026-02-14 |
+| WM-PUSH-1 | Windsurf Master | Pushed claude/trusting-hamilton to origin (d60e36ac) | 2026-02-14 |
 | CC-HC-1 | Claude Code | healthcheck.ts: better error messages for missing social keys | 2026-02-06 |
 
 ---
@@ -227,9 +227,75 @@ This is expected — the test passes if the pipeline starts, SSE streams, and no
 
 ---
 
-## 🎯 AGENT TASKS (NEXT PHASE)
+## 🎯 CURRENT SPRINT: "THE PULSE & THE PLAQUE" (2026-02-14)
 
-### 🤖 Codex — Frontend / Blank-Screen Guard
+> **Full mission brief:** `plans/PULSE_AND_PLAQUE_MISSION.md`
+> **Prerequisites:** 10/10 Gates PASS, X/Twitter LIVE, Lean Protocol v3 active
+
+### 🎨 Codex — CX-012: System Status Emblem (The Plaque)
+
+**Handoff:** `plans/HANDOFF_CODEX_CX012.md`
+**Goal:** Build a heraldic HUD showing live system health.
+**Deliverables:**
+- `src/components/SystemStatusEmblem.tsx` — 4-quadrant status emblem
+- `plans/SIR_TRAVIS_EMBLEM_SPEC.md` — Design spec (create if missing)
+- Wire into `src/App.jsx`
+
+**Verify:** `just cycle-gate design_tokens && just build`
+
+---
+
+### 🧠 Claude Code — CC-011 + CC-012: Weekly Pulse Engine (The Pulse)
+
+**Handoff:** `plans/HANDOFF_CLAUDE_CODE_CC011_CC012.md`
+**Goal:** Build the photo harvest + AI mood analysis pipeline.
+**Deliverables:**
+- CC-011: `scripts/harvest-week.mjs` → `artifacts/data/current-week-raw.json`
+- CC-012: `scripts/weekly-analyze.mjs` → `artifacts/data/weekly-pulse-analysis.json`
+
+**Verify:** `node scripts/harvest-week.mjs && node scripts/weekly-analyze.mjs --dry-run`
+
+---
+
+### 🦅 Antigravity — AG-011: Schema Enforcement
+
+**Handoff:** `plans/HANDOFF_ANTIGRAVITY_AG011.md`
+**Goal:** Create JSON schemas + validation for Weekly Pulse outputs.
+**Deliverables:**
+- `artifacts/contracts/weekly-harvest.schema.json`
+- `artifacts/contracts/weekly-pulse-analysis.schema.json`
+- `scripts/validate-weekly-pulse.mjs`
+
+**Verify:** `just agentic-test && just validate-contracts`
+
+---
+
+### 🛰️ Windsurf Master — WM-006: Wire Pulse Commands
+
+**Handoff:** `plans/HANDOFF_WINDSURF_WM006.md`
+**Goal:** Add Weekly Pulse justfile commands.
+**Deliverables:**
+- Add `weekly-harvest`, `weekly-analyze`, `weekly-pulse` commands to justfile
+- Add `validate-weekly-pulse` command
+- Update help recipe
+
+**Verify:** `just cycle-gate build && just --list`
+
+---
+
+### 👤 Scott (Human) — ENV-003: Keys + Merge Approval
+
+**Tasks (manual):**
+1. Merge `claude/trusting-hamilton` → main (approval required)
+2. Set Remotion Lambda env vars in Netlify Dashboard (P1)
+3. Set Google Photos API key if available (P2)
+4. Browser verify at localhost:8888 after agents complete
+
+---
+
+## 🎯 PREVIOUS PHASE TASKS (Completed or Carried Forward)
+
+### 🤖 Codex — Frontend / Blank-Screen Guard (CARRY FORWARD)
 
 **Goals:** Ensure the app renders reliably in browser. Surface runtime errors to the user and logs.
 
@@ -242,29 +308,25 @@ This is expected — the test passes if the pipeline starts, SSE streams, and no
 
 ---
 
-### 🧠 Claude Code — Backend / Contracts
+### 🧠 Claude Code — Backend / Contracts (CARRY FORWARD)
 
 **Goals:** Lock storage + publisher contracts so tests match reality.
 
 **Tasks:**
-1. **Storage mode** — Ensure production uses Blobs when `NETLIFY_BLOBS_CONTEXT` is present. Log `storage_mode=blobs|tmp` at function start (no secrets).
-2. **Pipeline completion** — Verify background worker completes all 7 agents within timeout. Update tests if needed.
-3. **Social publishers** — Normalize responses from all publishers to:
-   ```json
-   { "platform": "twitter", "status": "ok|error|skipped", "url": "...", "error": "..." }
-   ```
-   Make tests treat platforms **not** in `SOCIAL_ENABLED` as `skipped`, not `broken`.
+1. **Storage mode** — Ensure production uses Blobs when `NETLIFY_BLOBS_CONTEXT` is present.
+2. **Pipeline completion** — Verify background worker completes all 7 agents within timeout.
+3. **Social publishers** — Normalize responses to `{ platform, status, url, error }`.
 
 ---
 
-### 🦅 Antigravity — Tests / Quality Gates
+### 🦅 Antigravity — Tests / Quality Gates (CARRY FORWARD)
 
 **Goals:** Make CI failures meaningful, not noisy.
 
 **Tasks:**
-1. Update `scripts/verify-golden-path.mjs` — respect `SOCIAL_ENABLED` env. Platforms not listed → `SKIPPED`.
-2. Adjust timeouts — treat "pipeline started + SSE events + status running" as strong success signal. Only fail on no SSE activity or hard 5xx.
-3. Keep "No Fake Success" — if any core step (healthcheck, start, SSE, results) fails, CI must fail with clear reason.
+1. Update `scripts/verify-golden-path.mjs` — respect `SOCIAL_ENABLED` env.
+2. Adjust timeouts — pipeline started + SSE events = strong success signal.
+3. Keep "No Fake Success" — core step failures must break CI with clear reason.
 
 ---
 

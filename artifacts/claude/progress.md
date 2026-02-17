@@ -1,10 +1,6 @@
 # Agent Cycle Progress
 
+Progress entries are appended by `just cycle-all` and `just mvp-verify`.
+Each entry logs: agent, gates passed, next gate, and blockers.
 
-### Cycle 10 — 2026-02-12T00:01
-**Agent:** Roberto002  
-**Progress:** 3/10 gates  
-**Next:** no_fake_success  
-**Blockers:**
-- no_fake_success: OK: netlify/functions/publish-x.ts [owner: claude-code]
-
+<!-- Entries below this line are auto-generated -->

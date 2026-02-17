@@ -15,7 +15,7 @@ just cycle-orient human           # 200 tokens — full ENV VAR checklist
 
 ### Your Archive Folder
 
-`C:\Users\Roberto002\My Drive\SirTRAV\` contains all refined lines,
+Your Google Drive archive folder contains all refined lines,
 old justfile versions, and agent session history.
 See `REFINEMENT_ARCHIVE_INDEX.txt` for a full inventory.
 
@@ -25,7 +25,7 @@ See `REFINEMENT_ARCHIVE_INDEX.txt` for a full inventory.
 
 ### ~~1. Fix X/Twitter Keys (P0)~~ DONE!
 
-X/Twitter is LIVE. 3 verified tweets posted. Account: @Sechols002.
+X/Twitter is LIVE. 3 verified tweets posted.
 Cost: $0.001/tweet + 20% Commons Good = $0.0012/tweet.
 
 ### 2. Set Remotion Lambda ENV Vars (P1)
@@ -41,9 +41,9 @@ AWS_REGION=us-east-1
 
 ### 3. Codex Trust (P2)
 
-Edit `C:\Users\Roberto002\.codex\config.toml`:
+Edit `<USERPROFILE>\.codex\config.toml`:
 ```toml
-[projects.'\\?\C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio']
+[projects.'\\?\<USERPROFILE>\Documents\GitHub\SirTrav-A2A-Studio']
 trust_level = "trusted"
 ```
 
@@ -60,7 +60,7 @@ After env vars are set:
 ## After ENV Vars Set
 
 ```bash
-just cycle-reset && just cycle-full    # Re-run all gates
-just x-dry                              # Test X publish
-just healthcheck                        # Verify live health
+just cycle-all                         # Re-run all gates
+just cycle-status                      # Check gate summary
+just healthcheck                       # Verify live health
 ```

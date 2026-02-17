@@ -19,7 +19,7 @@ If `cycle-next` says ALL PASS, skip to logic work immediately.
 ## ARCHIVE RULE (NEVER VIOLATE)
 
 Do NOT delete or overwrite archived files in:
-- `C:\Users\Roberto002\My Drive\SirTRAV\`
+- The operator's Google Drive archive folder
 - `artifacts/claude/token-budget.json`
 - `agent-state.json` history entries
 
@@ -48,8 +48,8 @@ just cycle-gate wiring
 ### After Fixing, Verify
 
 ```bash
-just cycle-reset && just cycle-full
-just cycle-report
+just cycle-all                    # Re-verify all 10 gates
+just cycle-status                 # Show gate summary
 ```
 
 ---
@@ -68,7 +68,7 @@ package.json                     # Only for dependency additions
 ```
 src/components/*                 # Codex owns UI
 justfile                         # Windsurf owns infrastructure
-plans/*                          # Coordination docs (update via just cycle-report)
+plans/*                          # Coordination docs
 scripts/*                        # Antigravity owns test scripts
 ```
 
@@ -87,5 +87,5 @@ scripts/*                        # Antigravity owns test scripts
 
 ```bash
 just cycle-gate <your-gate>    # Verify your fix
-just cycle-report               # Log to artifacts/claude/progress.md
+just cycle-brief                # Quick gate summary
 ```

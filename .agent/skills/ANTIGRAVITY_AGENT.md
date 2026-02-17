@@ -148,7 +148,7 @@ If `cycle-next` says ALL PASS, skip to logic work immediately.
 
 ### ARCHIVE RULE (NEVER VIOLATE)
 
-Do NOT delete or overwrite archived files in `C:\Users\Roberto002\My Drive\SirTRAV\`.
+Do NOT delete or overwrite archived files in the operator's Google Drive archive folder.
 Only Scott decides what to keep or discard.
 
 ### Your Gates
@@ -172,8 +172,8 @@ just cycle-gate motion_test
 ### After Any Fix
 
 ```bash
-just cycle-reset && just cycle-full    # Re-verify all 10 gates
-just cycle-report                       # Log to progress.md
+just cycle-all                          # Re-verify all 10 gates
+just cycle-status                       # Show gate summary
 ```
 
 ---

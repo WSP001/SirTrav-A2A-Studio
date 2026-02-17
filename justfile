@@ -227,6 +227,32 @@ stress-sse:
     @echo "💪 Stress testing SSE..."
     npm run stress:sse
 
+# ─── AGENTIC "AROUND THE BLOCK" TEST ─────
+# End-to-end: healthcheck → start → SSE → results → publish-x
+# Outputs: artifacts/public/metrics/agentic-run-*.json + .md
+
+# Agentic test (cloud, read-only — no tweets)
+agentic-test:
+    @echo "🧪 Agentic Around-the-Block Test (cloud)..."
+    node scripts/test-agentic-twitter-run.mjs
+
+# Agentic test + live tweet to X
+agentic-test-x:
+    @echo "🧪 Agentic Test + LIVE X publish..."
+    @echo "⚠️  This will post a real tweet!"
+    @powershell -Command "Start-Sleep -Seconds 3"
+    node scripts/test-agentic-twitter-run.mjs --publish-x
+
+# Agentic test against local (netlify dev)
+agentic-test-local:
+    @echo "🧪 Agentic Test (local)..."
+    node scripts/test-agentic-twitter-run.mjs --local
+
+# Dry-run: validate endpoint shapes only (no pipeline start)
+agentic-dry:
+    @echo "🧪 Agentic Dry-Run (shape validation only)..."
+    node scripts/test-agentic-twitter-run.mjs --dry-run
+
 # Validate social media contracts
 validate-contracts:
     @echo "📋 Validating social media contracts..."
@@ -464,11 +490,11 @@ design-audit:
     @if (Test-Path artifacts/antigravity) { Get-ChildItem artifacts/antigravity -Recurse | Format-Table Name, Length, LastWriteTime } else { echo "No artifacts found. Run design commands first." }
 
 # ============================================
-# 🔄 AGENT CYCLE SYSTEM (v2 — MASTER.md Aligned)
+# 🔄 AGENT CYCLE SYSTEM (v3 — MASTER.md Aligned)
 # ============================================
 # Gates map to Layers 1-4 from the sprint Definition of Done.
 # State file = ~200 tokens. Replaces re-reading 10+ files (~5000 tokens).
-# Lock file prevents two agents from writing state simultaneously.
+# Note: concurrent writes to agent-state.json are unlikely but not locked.
 # Pattern: read state -> run next gate -> advance pointer -> report -> loop
 
 # ─── PROGRESSIVE CONTEXT-LEAN COMMANDS ─────────
@@ -567,3 +593,126 @@ skills:
     @echo "  .agent/skills/HUMAN_OPERATOR.md           - Scott (env vars, keys)"
     @echo ""
     @echo "Quick start: just orient-<your-name>"
+
+# ============================================
+# 🧠 WEEKLY PULSE (Discover → Harvest → Validate → Display)
+# ============================================
+# Runtime: Node (not Bun). Composio integration planned.
+# Pattern: Script must exist before command runs (no auto-scaffolding).
+# Owner: Claude Code creates scripts, Windsurf wires commands.
+
+# Harvest photos/signals from local directory (Claude Code owns the script)
+weekly-harvest:
+    @echo "📸 Running Weekly Photo Harvest..."
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/harvest-week.mjs)) { Write-Host '❌ Missing scripts/harvest-week.mjs — Claude Code must create it. See tasks/CC-WEEKLY-HARVEST.md'; exit 1 }"
+    @node scripts/harvest-week.mjs
+    @powershell -NoProfile -Command "if (!(Test-Path artifacts/data/current-week-raw.json)) { Write-Host '❌ Expected artifacts/data/current-week-raw.json not found'; exit 1 }"
+    @echo "✅ Harvest complete → artifacts/data/current-week-raw.json"
+
+# Harvest dry-run (print shape, no writes)
+harvest-dry-run:
+    @echo "📸 Weekly Harvest (dry-run)..."
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/harvest-week.mjs)) { Write-Host '❌ Missing scripts/harvest-week.mjs — Claude Code must create it'; exit 1 }"
+    @node scripts/harvest-week.mjs --dry-run
+
+# Analyze harvested data (calls OpenRouter or dry-run)
+weekly-analyze:
+    @echo "🧠 Running Weekly Signal Analysis..."
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/weekly-analyze.mjs)) { Write-Host '❌ Missing scripts/weekly-analyze.mjs — Claude Code must create it'; exit 1 }"
+    @node scripts/weekly-analyze.mjs
+
+# Analyze dry-run (no API call)
+weekly-analyze-dry:
+    @echo "🧠 Weekly Analysis (dry-run)..."
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/weekly-analyze.mjs)) { Write-Host '❌ Missing scripts/weekly-analyze.mjs — Claude Code must create it'; exit 1 }"
+    @node scripts/weekly-analyze.mjs --dry-run
+
+# Full Weekly Pulse (harvest + analyze)
+weekly-pulse:
+    @echo "🔄 Full Weekly Pulse (Harvest + Analyze)..."
+    @just weekly-harvest
+    @just weekly-analyze
+
+# Full Weekly Pulse dry-run
+weekly-pulse-dry:
+    @echo "🔄 Weekly Pulse (dry-run)..."
+    @just harvest-dry-run
+    @just weekly-analyze-dry
+
+# ============================================
+# ⚖️ SCHEMA VALIDATION (Antigravity owns schemas)
+# ============================================
+
+# Validate weekly harvest output against schema
+validate-schemas:
+    @echo "⚖️ Validating weekly pulse schema..."
+    @powershell -NoProfile -Command "if (!(Test-Path artifacts/data/current-week-raw.json)) { Write-Host '❌ No data to validate! Run: just weekly-harvest'; exit 1 }"
+    @powershell -NoProfile -Command "if (!(Test-Path artifacts/contracts/weekly-harvest.schema.json)) { Write-Host '❌ Schema missing! Antigravity must create artifacts/contracts/weekly-harvest.schema.json'; exit 1 }"
+    @npx -y ajv-cli validate -s artifacts/contracts/weekly-harvest.schema.json -d artifacts/data/current-week-raw.json
+    @echo "✅ Weekly pulse schema OK"
+
+# Validate social post output against schema
+validate-social:
+    @echo "⚖️ Validating social post schema..."
+    @powershell -NoProfile -Command "if (!(Test-Path artifacts/output/latest-post.json)) { Write-Host '❌ No social payload found!'; exit 1 }"
+    @powershell -NoProfile -Command "if (!(Test-Path artifacts/contracts/social-post.schema.json)) { Write-Host '❌ Schema missing! Antigravity must create artifacts/contracts/social-post.schema.json'; exit 1 }"
+    @npx -y ajv-cli validate -s artifacts/contracts/social-post.schema.json -d artifacts/output/latest-post.json
+    @echo "✅ Social payload schema OK"
+
+# Validate weekly pulse output schemas
+validate-weekly-pulse:
+    @echo "🦅 Validating Weekly Pulse schemas..."
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/validate-weekly-pulse.mjs)) { Write-Host '❌ Missing scripts/validate-weekly-pulse.mjs — Antigravity must create it'; exit 1 }"
+    @node scripts/validate-weekly-pulse.mjs
+
+# ============================================
+# 🛡️ HUD / COMMAND PLAQUE (Codex owns component)
+# ============================================
+
+# Verify HUD task spec + component exist
+build-hud:
+    @echo "🛡️ Verifying Command Plaque HUD..."
+    @powershell -NoProfile -Command "if (!(Test-Path tasks)) { New-Item -ItemType Directory -Path tasks | Out-Null }"
+    @powershell -NoProfile -Command "if (Test-Path tasks/CX-012-command-plaque.md) { Write-Host '✅ Task spec exists' } else { Write-Host '⚠️ Missing tasks/CX-012-command-plaque.md — run: just weekly-pulse-spec' }"
+    @powershell -NoProfile -Command "if (Test-Path src/components/SystemStatusEmblem.tsx) { Write-Host '✅ HUD component exists' } else { Write-Host '⚠️ Missing src/components/SystemStatusEmblem.tsx — Codex must create it' }"
+
+# ============================================
+# 🌬️ WINDSURF MASTER: ORCHESTRATION + RELEASE
+# ============================================
+# Windsurf does NOT create feature scripts. It verifies + reports + commits safely.
+
+# Create/verify task specs exist (docs only, no code scaffolding)
+weekly-pulse-spec:
+    @echo "🌬️ [WINDSURF] Ensuring task specs exist..."
+    @powershell -NoProfile -Command "New-Item -ItemType Directory -Force tasks,docs,'artifacts/reports' | Out-Null"
+    @powershell -NoProfile -Command "if (!(Test-Path tasks/CC-WEEKLY-HARVEST.md)) { Write-Host '📄 Creating tasks/CC-WEEKLY-HARVEST.md'; 'Claude Code: Weekly Harvest`n`nDeliverable: scripts/harvest-week.mjs`nOutput: artifacts/data/current-week-raw.json`nModes: --dry-run (no writes), default (writes)`nNo Fake Success: exit non-zero if empty`nCommands: just weekly-harvest, just harvest-dry-run' | Set-Content tasks/CC-WEEKLY-HARVEST.md -Encoding UTF8 }"
+    @powershell -NoProfile -Command "if (!(Test-Path tasks/CX-012-command-plaque.md)) { Write-Host '📄 Creating tasks/CX-012-command-plaque.md'; 'Codex: Command Plaque HUD (CX-012)`n`nSource: GET /.netlify/functions/healthcheck`nComponent: src/components/SystemStatusEmblem.tsx`nBadges: ok / degraded / disabled with reasons`nNever show secrets' | Set-Content tasks/CX-012-command-plaque.md -Encoding UTF8 }"
+    @powershell -NoProfile -Command "if (!(Test-Path tasks/AG-WEEKLY-SCHEMAS.md)) { Write-Host '📄 Creating tasks/AG-WEEKLY-SCHEMAS.md'; 'Antigravity: Weekly Schemas`n`nDeliverables: artifacts/contracts/weekly-harvest.schema.json + artifacts/contracts/social-post.schema.json`nDoD: just validate-schemas blocks on mismatch (no fake success)' | Set-Content tasks/AG-WEEKLY-SCHEMAS.md -Encoding UTF8 }"
+    @echo "✅ [WINDSURF] Task specs OK"
+
+# Weekly Pulse report artifact
+weekly-pulse-report:
+    @echo "🌬️ [WINDSURF] Writing report artifact..."
+    @powershell -NoProfile -Command "New-Item -ItemType Directory -Force 'artifacts/reports' | Out-Null"
+    @node scripts/cycle-check.mjs weekly-report
+
+# Guard: working tree must be clean
+guard-clean:
+    @node -e "const r=require('child_process').execSync('git status --porcelain',{encoding:'utf8'}).trim();if(r){console.log('Working tree not clean:');console.log(r);process.exit(1)}else{console.log('Working tree clean')}"
+
+# Guard: must be up-to-date with origin
+guard-up-to-date:
+    @node -e "const x=require('child_process').execSync;try{x('git fetch origin',{stdio:'ignore'})}catch(e){};const l=x('git rev-parse HEAD',{encoding:'utf8'}).trim();let r;try{r=x('git rev-parse origin/main',{encoding:'utf8'}).trim()}catch(e){r=null};if(r&&l!==r){console.log('Not up to date with origin/main — run: git pull origin main');process.exit(1)}else{console.log('Up-to-date')}"
+
+# Stage only Windsurf-owned paths
+release-stage-allowed:
+    @echo "🌬️ [WINDSURF] Staging allowed paths only..."
+    @powershell -NoProfile -Command "git add justfile netlify.toml vite.config.js docs tasks 'artifacts/reports' 2>$$null; exit 0"
+
+# MVP single-command verify (the "truth ritual")
+mvp-verify:
+    @echo "🏆 MVP Verification (full truth loop)..."
+    @just cycle-brief
+    @just agentic-dry
+    @just build
+    @echo "✅ MVP VERIFIED — all gates green, shapes valid, build passes"

@@ -1,26 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Update Voice Agent to use Adam \\(serious male voice\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(npm run build:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix\\(P0\\): Create generate-video orchestrator and thread runId\n\n- Create generate-video.ts: Full 7-agent pipeline orchestrator\n  that generates runId and calls agents sequentially\n- Thread runId through Voice and Composer agents with warnings\n  when not provided \\(backward compatible\\)\n- Fix React video preview to show pipeline mode badge and\n  placeholder warning for demo mode\n- Add isPlaceholder flag to distinguish real vs demo videos\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(npx netlify dev)",
-      "Bash(curl:*)",
-      "Bash(npm install:*)",
       "Bash(git fetch:*)",
-      "Bash(gh pr list:*)",
-      "Bash(npx vite:*)",
-      "Bash(netlify env:list:*)",
-      "Bash(node scripts/test-linkedin-publish.mjs:*)",
-      "Bash(node scripts/cycle-check.mjs:*)",
-      "Bash(set:*)",
-      "Bash(ls \"C:\\\\WSP001\\\\SirTrav-A2A-Studio\\\\.claude\\\\worktrees\\\\trusting-hamilton\\\\.agent\\\\skills\"\" 2>&1 && echo \"---\" && ls \"C:WSP001SirTrav-A2A-Studio.claudeworktreestrusting-hamilton.agent\"\")",
       "Bash(git stash:*)",
       "Bash(git merge:*)",
-      "Bash(git reset:*)"
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx vite:*)",
+      "Bash(npx netlify dev)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(just:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }

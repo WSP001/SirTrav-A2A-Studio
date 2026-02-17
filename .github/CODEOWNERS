@@ -1,17 +1,46 @@
-# Security review for publish policies & CI changes
-netlify/functions/publish.ts @WSP001/security-team
-pipelines/scripts/lufs_check.mjs @WSP001/security-team
-.github/workflows/ @WSP001/security-team
-scripts/preflight.sh @WSP001/security-team
+# SirTrav A2A Studio — Agent Ownership Boundaries
+# ================================================
+# Each agent may ONLY edit files in their section.
+# Enforced by convention + GitHub PR reviews.
 
-# Media/Audio lead for quality gates & manifest changes
-pipelines/a2a_manifest.yml @WSP001/media-leads
-pipelines/scripts/ @WSP001/media-leads
+# ─── WINDSURF MASTER (Orchestrator / Release Scribe) ───
+justfile                          @WSP001/devex-team
+netlify.toml                      @WSP001/devex-team
+vite.config.js                    @WSP001/devex-team
+docs/                             @WSP001/devex-team
+tasks/                            @WSP001/devex-team
+.env.example                      @WSP001/devex-team
 
-# DevEx for core infrastructure
-netlify.toml @WSP001/devex-team
-package.json @WSP001/devex-team
+# ─── CLAUDE CODE (Backend Architect) ───
+netlify/functions/                @WSP001/security-team
+scripts/harvest-week.mjs          @WSP001/security-team
+scripts/weekly-analyze.mjs        @WSP001/security-team
+scripts/cycle-check.mjs           @WSP001/security-team
 
-# Public artifacts can be self-approved
-public/ @WSP001
-src/ @WSP001
+# ─── CODEX (Frontend Architect) ───
+src/components/                   @WSP001
+src/App.jsx                       @WSP001
+src/remotion/compositions/        @WSP001
+
+# ─── ANTIGRAVITY (QA & Truth Keeper) ───
+schemas/                          @WSP001/security-team
+scripts/validate-*.mjs            @WSP001/security-team
+scripts/test-*.mjs                @WSP001/security-team
+scripts/verify-*.mjs              @WSP001/security-team
+.github/workflows/                @WSP001/security-team
+
+# ─── SHARED (read by all, edit by designated owner) ───
+CLAUDE.md                         @WSP001/devex-team
+plans/                            @WSP001/devex-team
+.agent/skills/                    @WSP001/security-team
+
+# ─── SECURITY (publish policies & CI changes) ───
+netlify/functions/publish*.ts     @WSP001/security-team
+pipelines/scripts/lufs_check.mjs  @WSP001/security-team
+
+# ─── MEDIA (quality gates) ───
+pipelines/a2a_manifest.yml        @WSP001/media-leads
+pipelines/scripts/                @WSP001/media-leads
+
+# ─── PUBLIC (self-approved) ───
+public/                           @WSP001

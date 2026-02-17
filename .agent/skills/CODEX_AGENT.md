@@ -20,7 +20,7 @@ If `cycle-next` says ALL PASS, skip to logic work immediately.
 
 ## ARCHIVE RULE (NEVER VIOLATE)
 
-Do NOT delete or overwrite archived files in `C:\Users\Roberto002\My Drive\SirTRAV\`.
+Do NOT delete or overwrite archived files in the operator's Google Drive archive folder.
 Only Scott decides what to keep or discard.
 
 ---
@@ -87,13 +87,13 @@ CLAUDE.md                        # Project rules
 
 If you see "config.toml disabled until trusted project":
 
-Edit `C:\Users\Roberto002\.codex\config.toml`:
+Edit `<USERPROFILE>\.codex\config.toml`:
 ```toml
-[projects.'\\?\C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio']
+[projects.'\\?\<USERPROFILE>\Documents\GitHub\SirTrav-A2A-Studio']
 trust_level = "trusted"
 ```
 
-Then: logout and sign in again (single session, no tabs).
+Then: log out and sign in again (single session, no tabs).
 
 ---
 
@@ -102,5 +102,5 @@ Then: logout and sign in again (single session, no tabs).
 ```bash
 just cycle-gate design_tokens   # Verify your gate
 just build                       # Make sure build still passes
-just cycle-report                # Log to progress.md
+just cycle-brief                 # Quick gate summary
 ```

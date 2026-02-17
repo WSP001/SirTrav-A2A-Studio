@@ -18,7 +18,7 @@ If `cycle-next` says ALL PASS, skip to logic work immediately.
 
 ### ARCHIVE RULE (NEVER VIOLATE)
 
-Do NOT delete or overwrite archived files in `C:\Users\Roberto002\My Drive\SirTRAV\`.
+Do NOT delete or overwrite archived files in the operator's Google Drive archive folder.
 Do NOT delete justfile recipes without archiving them first.
 Only Scott decides what to keep or discard.
 
@@ -63,14 +63,14 @@ scripts/*                        # Antigravity owns tests
 
 | Command | Purpose |
 |---------|---------|
-| `just wiring-verify` | Check all 7 pipeline imports |
-| `just no-fake-success-check` | Verify publisher disabled pattern |
-| `just rc1-verify` | 5-step RC1 gate |
-| `just master-status` | Windsurf agent quick status |
-| `just deploy` | Production deploy |
-| `just deploy-preview` | Preview deploy |
-| `just cycle-*` | All cycle system commands |
-| `just orient-*` | All agent orientation commands |
+| `just cycle-next-for windsurf` | One-line: what to do now |
+| `just cycle-orient windsurf` | Full briefing for this agent |
+| `just cycle-gate build` | Run the L1 build gate |
+| `just cycle-all` | Run all 10 gates |
+| `just cycle-brief` | Quick gate summary |
+| `just mvp-verify` | Full truth ritual (10 gates + agentic + build) |
+| `just weekly-pulse-spec` | Create/verify task specs |
+| `just weekly-pulse-report` | Write report artifact |
 
 ---
 
@@ -87,5 +87,5 @@ scripts/*                        # Antigravity owns tests
 
 ```bash
 just cycle-gate build           # Verify build gate
-just cycle-report                # Log to progress.md
+just cycle-brief                 # Quick gate summary
 ```
