@@ -153,7 +153,7 @@ src/remotion/branding.ts         # READ ONLY — import tokens, don't modify
 ## Key Rules
 
 1. **Token-first styling.** Colors/spacing/fonts from `branding.ts`, never hardcode.
-2. **Schema-first forms.** UI inputs must match API contracts in `docs/schemas/`.
+2. **Schema-first forms.** Weekly/social flows must match contracts in `artifacts/contracts/`; API response types stay aligned with `docs/schemas/`.
 3. **No Fake Success in UI.** Disable buttons when platform shows `disabled: true`.
 4. **Register compositions.** New templates MUST be added to `Root.tsx`.
 
