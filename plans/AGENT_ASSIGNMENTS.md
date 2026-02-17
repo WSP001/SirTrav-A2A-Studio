@@ -1,8 +1,8 @@
 # 🧭 Agent Assignments (Source of Truth)
 
-**Current Sprint:** The Pulse & The Plaque
+**Current Sprint:** The Pulse & The Plaque — FINAL PUSH
 **Method:** Parallel Execution — each agent owns distinct deliverables
-**Date:** 2026-02-15
+**Date:** 2026-02-17
 
 ---
 
@@ -11,14 +11,201 @@
 | Agent | Ticket | Status | Deliverable |
 |-------|--------|--------|-------------|
 | Claude Code | CC-011 + CC-012 | READY | `scripts/harvest-week.mjs` + `scripts/weekly-analyze.mjs` |
-| Codex | CX-012 | READY | `src/components/SystemStatusEmblem.tsx` |
+| Claude Code | CC-013 | READY | `netlify/functions/issue-intake.ts` (Click2Kick backend) |
+| Codex Seat #1 | CX-012 | READY | `src/components/SystemStatusEmblem.tsx` (Command Plaque) |
+| Codex Seat #2 | CX-013 | READY | Emblem digitization + Click2Kick button wiring |
 | Antigravity | AG-011 | READY | `artifacts/contracts/*.schema.json` + `scripts/validate-weekly-pulse.mjs` |
+| Antigravity | AG-012 | READY | End-to-end integration test for Click2Kick flow |
 | Windsurf | WM-006 | DONE | justfile commands wired, task specs created |
+| Windsurf | WM-007 | READY | Wire `issue-intake` + `admin-hud` justfile commands |
 
 ### RESOLVED (was blocking, now fixed):
-- ~~X API keys from different apps~~ → Fixed. X publish LIVE (tweetId: 2023121795121897961)
+- ~~X API keys from different apps~~ → Fixed. X publish LIVE
 - ~~Bun not installed~~ → Bun 1.3.9 on PATH. Project uses Node.
 - ~~Schema path mismatch~~ → Aligned to `artifacts/contracts/` everywhere
+- ~~`docs/schemas/*` stale path in cycle-check.mjs~~ → Fixed 2026-02-17 (now `artifacts/contracts/*`)
+- ~~PR #10 review issues~~ → 23 fixes committed + pushed (08f65d2e, bf37fcd2)
+
+---
+
+## 🎯 FINAL SPRINT DISPATCH — Per-Agent TODO Lists
+
+> **Goal:** Prove ALL components are functional. Get to 100%.
+> **Pattern:** User2Agent interface with preprogrammed Click2Kick buttons.
+> **Verification:** `just mvp-verify` = 10/10 + `just agentic-test` = 6/6 + `just build` PASS
+
+---
+
+### 🧠 Claude Code Agent — Backend Builder
+
+**Tickets:** CC-011, CC-012, CC-013
+
+| # | Task | File(s) | Spec |
+|---|------|---------|------|
+| 1 | Build Weekly Harvest script | `scripts/harvest-week.mjs` | `tasks/CC-WEEKLY-HARVEST.md` |
+| 2 | Build Weekly Analyze script | `scripts/weekly-analyze.mjs` | `tasks/CC-WEEKLY-HARVEST.md` |
+| 3 | Build Issue Intake function (Click2Kick backend) | `netlify/functions/issue-intake.ts` | `tasks/CC-013-issue-intake.md` |
+| 4 | Create issue-intake schema | `artifacts/contracts/issue-intake.schema.json` | `tasks/CC-013-issue-intake.md` |
+| 5 | Verify submit-evaluation.ts works | `netlify/functions/submit-evaluation.ts` | Existing — confirm feedback loop |
+
+**Execution:**
+```bash
+just cycle-next-for claude-code    # Orient
+# Build CC-011 + CC-012 (harvest + analyze)
+# Build CC-013 (issue-intake.ts)
+just cycle-gate contracts           # Verify contracts gate
+just build                          # Build must pass
+```
+
+**Success:** `curl -X POST localhost:8888/.netlify/functions/issue-intake` returns valid response
+
+---
+
+### 🎨 Codex Seat #1 — Frontend Builder (CX-012)
+
+**Ticket:** CX-012 — Command Plaque (System Status Emblem)
+
+| # | Task | File(s) | Spec |
+|---|------|---------|------|
+| 1 | Create emblem design spec | `plans/SIR_TRAVIS_EMBLEM_SPEC.md` | `plans/HANDOFF_CODEX_CX012.md` |
+| 2 | Build SystemStatusEmblem component | `src/components/SystemStatusEmblem.tsx` | `tasks/CX-012-command-plaque.md` |
+| 3 | Style emblem (optional CSS) | `src/components/SystemStatusEmblem.css` | Brand tokens from `branding.ts` |
+| 4 | Wire into App.jsx header | `src/App.jsx` | Add `<SystemStatusEmblem />` |
+| 5 | Add loading skeleton + error state | Component internals | No fake success rule |
+
+**Execution:**
+```bash
+just cycle-next-for codex          # Orient — BLOCKED until L1-L2 pass
+# Read: tasks/CX-012-command-plaque.md
+# Build: src/components/SystemStatusEmblem.tsx
+# Wire: src/App.jsx
+just cycle-gate design_tokens      # Your gate
+just build                          # Build must pass
+```
+
+**Success:** Emblem renders at localhost, healthcheck data flows into quadrant colors
+
+---
+
+### 🎨 Codex Seat #2 — DevOps + Emblem Digitization (CX-013)
+
+**Ticket:** CX-013 — Click2Kick Button Wiring + Emblem Colors
+
+| # | Task | File(s) | Spec |
+|---|------|---------|------|
+| 1 | Digitize SirTrav color palette into emblem | Component CSS/styled | Use EMBLEM_COLORS from spec |
+| 2 | Wire Click2Kick onClick handlers | `SystemStatusEmblem.tsx` | Each quadrant calls `issue-intake` |
+| 3 | Build quadrant detail panels | `src/components/QuadrantDetail.tsx` | Modal/drawer for each domain |
+| 4 | Add Admin Auth toggle (Inverse Mode) | Monogram click handler | localStorage for auth state |
+| 5 | Responsive breakpoints | CSS media queries | 200px / 120px / 64px |
+
+**Depends On:** CX-012 (emblem must exist first), CC-013 (issue-intake backend)
+
+**Execution:**
+```bash
+just cycle-next-for codex          # Verify CX-012 is complete
+# Enhance: SystemStatusEmblem.tsx with Click2Kick handlers
+# Create: src/components/QuadrantDetail.tsx
+# Test: Click each quadrant → verify POST to issue-intake
+just build                          # Build must pass
+```
+
+**Success:** Clicking Lion/Shield/Cross/Phoenix opens diagnostic detail. Monogram toggles admin mode.
+
+---
+
+### 🦅 Antigravity Agent — Test & QA
+
+**Tickets:** AG-011, AG-012
+
+| # | Task | File(s) | Spec |
+|---|------|---------|------|
+| 1 | Create weekly-harvest schema | `artifacts/contracts/weekly-harvest.schema.json` | `tasks/AG-WEEKLY-SCHEMAS.md` |
+| 2 | Create weekly-pulse-analysis schema | `artifacts/contracts/weekly-pulse-analysis.schema.json` | `tasks/AG-WEEKLY-SCHEMAS.md` |
+| 3 | Build validate-weekly-pulse script | `scripts/validate-weekly-pulse.mjs` | `tasks/AG-WEEKLY-SCHEMAS.md` |
+| 4 | Create issue-intake integration test | `scripts/test-issue-intake.mjs` | Validate Click2Kick flow E2E |
+| 5 | Create social cross-post validator | `scripts/validate-social-format.mjs` | 1 script → platform-specific formatting |
+| 6 | Run full regression | All test scripts | `just mvp-verify && just agentic-test` |
+
+**Execution:**
+```bash
+just cycle-next-for antigravity    # Orient
+# Build: schemas + validators (AG-011)
+# Build: issue-intake test (AG-012)
+just cycle-gate contracts           # Contracts gate
+just agentic-test                   # 6/6 PASS
+just mvp-verify                     # 10/10 PASS
+```
+
+**Success:** All schemas validate. `test-issue-intake.mjs` confirms Click2Kick round-trip.
+
+---
+
+### 🛰️ Windsurf Master Agent — Infrastructure
+
+**Tickets:** WM-006 (DONE), WM-007
+
+| # | Task | File(s) | Spec |
+|---|------|---------|------|
+| 1 | ~~Wire weekly pulse commands~~ | ~~justfile~~ | ~~WM-006~~ ✅ DONE |
+| 2 | Add `issue-intake-test` recipe | `justfile` | `just issue-intake-test` |
+| 3 | Add `admin-hud` recipe | `justfile` | `just admin-hud` (status gauge) |
+| 4 | Add `social-format-check` recipe | `justfile` | `just social-format-check` |
+| 5 | Update `just --list` help text | `justfile` | Include new commands |
+
+**Execution:**
+```bash
+just cycle-next-for windsurf       # Orient
+# Edit: justfile (add 3 new recipes)
+just cycle-gate build              # Build gate
+just --list                         # Verify all commands visible
+```
+
+**Success:** `just issue-intake-test`, `just admin-hud`, `just social-format-check` all resolve.
+
+---
+
+### 👤 Scott (Human Operator) — ENV + Merge + Verify
+
+**Ticket:** ENV-003 (updated)
+
+| # | Task | Where | Priority |
+|---|------|-------|----------|
+| 1 | Merge PR #10 (`claude/trusting-hamilton` → main) | GitHub | P0 |
+| 2 | Set Remotion Lambda env vars | Netlify Dashboard | P1 |
+| 3 | Fix X/Twitter keys (same Developer App) | Netlify Dashboard | P1 |
+| 4 | Set Google Photos API key | Netlify Dashboard | P2 |
+| 5 | Browser verify at localhost:8888 | Local | After agents complete |
+| 6 | Click each emblem quadrant | Browser | Verify Click2Kick works |
+| 7 | Review AAR | `artifacts/reports/CX-012-AAR.md` | After CX-012 complete |
+
+**Remotion Lambda env vars needed:**
+```
+REMOTION_FUNCTION_NAME=<your-lambda-function>
+REMOTION_SERVE_URL=<your-serve-url>
+AWS_ACCESS_KEY_ID=<your-key>
+AWS_SECRET_ACCESS_KEY=<your-secret>
+```
+
+---
+
+### 🐦 X Agent (Ops) — Social Cross-Posting
+
+**Tickets:** MG-X-002, MG-X-003
+
+| # | Task | File(s) | Status |
+|---|------|---------|--------|
+| 1 | Build engagement-to-memory loop | `netlify/functions/check-x-engagement.ts` | IN_PROGRESS |
+| 2 | Create engagement spec | `docs/ENGAGEMENT_TO_MEMORY.md` | Backlog |
+| 3 | Social cross-post formatting | Coordinate with Antigravity | Backlog |
+| 4 | Share Card QA checklist | `docs/SHARE_CARD_QA.md` | Backlog |
+
+**Pattern:** One script creates content → reformats per platform's preferred format:
+- X/Twitter: 280 chars, hashtags, media card
+- YouTube: Description, tags, thumbnail
+- LinkedIn: Professional tone, article link
+- Instagram: Caption, carousel, hashtags
+- TikTok: Short caption, trending tags
 
 ---
 
@@ -194,6 +381,12 @@ Then begin with this statement:
 | CC-ARCH-1 | Claude Code | Archive system (4 files to Google Drive + ARCHIVE RULE) | 2026-02-14 |
 | WM-PUSH-1 | Windsurf Master | Pushed claude/trusting-hamilton to origin (d60e36ac) | 2026-02-14 |
 | CC-HC-1 | Claude Code | healthcheck.ts: better error messages for missing social keys | 2026-02-06 |
+| CC-PR10-1 | Claude Code | PR #10 review: 23 Sourcery + Copilot fixes (08f65d2e) | 2026-02-17 |
+| CC-PR10-2 | Claude Code | CX-012 Command Plaque mission spec + handoff (bf37fcd2) | 2026-02-17 |
+| CC-PATH-1 | Claude Code | Fixed stale `docs/schemas/*` → `artifacts/contracts/*` in cycle-check.mjs | 2026-02-17 |
+| CC-AAR-1 | Claude Code | Created CX-012 AAR template at `artifacts/reports/CX-012-AAR.md` | 2026-02-17 |
+| CC-INTAKE-1 | Claude Code | Created CC-013 issue-intake task spec at `tasks/CC-013-issue-intake.md` | 2026-02-17 |
+| WM-006 | Windsurf Master | Weekly Pulse justfile commands wired + task specs created | 2026-02-15 |
 
 ---
 

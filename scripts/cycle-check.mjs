@@ -97,7 +97,7 @@ const AGENTS = {
     'antigravity': {
         role: 'Test & QA Agent',
         gates: ['contracts', 'golden_path', 'social_dry', 'motion_test'],
-        files: 'scripts/*, docs/schemas/*',
+        files: 'scripts/*, artifacts/contracts/*, artifacts/data/*',
         avoid: 'netlify/functions/*, src/components/*',
     },
     'windsurf': {
