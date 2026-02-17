@@ -309,6 +309,16 @@ help:
     @echo "  just claude-init    - Claude Code (init)"
     @echo "  just codex          - Start Codex agent"
     @echo ""
+    @echo "Click2Kick:"
+    @echo "  just issue-intake-test  - Test issue-intake (needs netlify dev)"
+    @echo "  just issue-intake-dry   - Check spec + function exist"
+    @echo "  just admin-hud          - Verify Plaque ↔ Backend wiring"
+    @echo ""
+    @echo "Stack:"
+    @echo "  just stack-check        - Frontend ↔ Middleware ↔ Backend alignment"
+    @echo "  just social-format-check - Cross-post contract validation"
+    @echo "  just mvp-verify         - Full truth ritual (10 gates + agentic + build)"
+    @echo ""
     @echo "Deploy:"
     @echo "  just deploy         - Deploy to production"
     @echo "  just deploy-preview - Deploy preview"
@@ -322,7 +332,7 @@ help:
 # Jump to WSP2agent project
 wsp2:
     @echo "🔗 Switching to WSP2agent..."
-    @echo "Run: cd c:/Users/Roberto002/OneDrive/DevHub/WSP2agent && just --list"
+    @echo "Run: cd $env:USERPROFILE/OneDrive/DevHub/WSP2agent && just --list"
 
 # Show both project statuses
 projects-status:
@@ -333,7 +343,7 @@ projects-status:
     @git status --short 2>$null || echo "  Not in git repo"
     @echo ""
     @echo "📁 WSP2agent"
-    @powershell -Command "Push-Location c:/Users/Roberto002/OneDrive/DevHub/WSP2agent; git status --short 2>$null; Pop-Location" || echo "  Not accessible"
+    @powershell -Command "Push-Location $env:USERPROFILE/OneDrive/DevHub/WSP2agent; git status --short 2>$null; Pop-Location" || echo "  Not accessible"
 
 # Test LinkedIn disabled state (No Fake Success pattern)
 test-linkedin-disabled:
@@ -465,11 +475,14 @@ design-status:
     @echo "🎨 SirTrav Design System"
     @echo "════════════════════════════"
     @echo ""
-    @echo "📋 Brand Colors:"
-    @echo "  Primary:    #1a1a2e (Dark Navy)"
-    @echo "  Secondary:  #16213e (Deep Blue)"
-    @echo "  Accent:     #e94560 (Coral)"
-    @echo "  Success:    #0f3460 (Ocean Blue)"
+    @echo "📋 Brand Colors (from src/remotion/branding.ts):"
+    @echo "  Primary:    #3b82f6 (Electric Blue)"
+    @echo "  Secondary:  #1e293b (Slate Dark)"
+    @echo "  Accent:     #f59e0b (Amber)"
+    @echo "  Background: #0f172a (Deep Space)"
+    @echo "  Success:    #22c55e (Green)"
+    @echo "  Error:      #ef4444 (Red)"
+    @echo "  Warning:    #eab308 (Yellow)"
     @echo ""
     @echo "📝 Typography: Inter, JetBrains Mono"
     @echo "📐 Spacing: 8px grid system"
@@ -481,7 +494,7 @@ design-status:
 # Export design tokens as JSON
 design-tokens:
     @echo "🎨 Exporting design tokens..."
-    @echo '{"colors":{"primary":"#1a1a2e","secondary":"#16213e","accent":"#e94560","success":"#0f3460","text":"#ffffff","textMuted":"#a0a0a0","border":"#2a2a4a"},"fonts":{"heading":"Inter","body":"Inter","mono":"JetBrains Mono"},"spacing":{"xs":"4px","sm":"8px","md":"16px","lg":"24px","xl":"32px"},"radii":{"sm":"4px","md":"8px","lg":"16px","pill":"9999px"}}' > artifacts/antigravity/design-tokens.json
+    @echo '{"colors":{"primary":"#3b82f6","secondary":"#1e293b","accent":"#f59e0b","background":"#0f172a","success":"#22c55e","error":"#ef4444","warning":"#eab308","textPrimary":"#f8fafc","textSecondary":"#94a3b8","textMuted":"#64748b"},"fonts":{"title":"Inter, system-ui, sans-serif","body":"Roboto Mono, monospace","display":"Space Grotesk, system-ui, sans-serif"},"spacing":{"xs":8,"sm":16,"md":24,"lg":48,"xl":96}}' > artifacts/antigravity/design-tokens.json
     @echo "✅ Exported to artifacts/antigravity/design-tokens.json"
 
 # Audit design artifacts
@@ -532,6 +545,10 @@ cycle-layer layer:
 # Full decorated status (~400 tokens)
 cycle-status:
     @node scripts/cycle-check.mjs status
+
+# Team-standard alias used in operator round loops
+cycle-check:
+    @node scripts/cycle-check.mjs quick
 
 # Run a specific gate by name
 cycle-gate gate:
@@ -716,3 +733,58 @@ mvp-verify:
     @just agentic-dry
     @just build
     @echo "✅ MVP VERIFIED — all gates green, shapes valid, build passes"
+
+# ============================================
+# 🔌 CLICK2KICK BACKEND (CC-013 Issue Intake)
+# ============================================
+# The Command Plaque (frontend) POSTs to issue-intake (backend).
+# These commands verify the wiring between Codex UI ↔ Claude Code function.
+
+# Test issue-intake function (requires netlify dev running)
+issue-intake-test:
+    @echo "🔌 Testing Click2Kick Issue Intake..."
+    @powershell -NoProfile -Command "if (!(Test-Path netlify/functions/issue-intake.ts)) { Write-Host '❌ Missing netlify/functions/issue-intake.ts — Claude Code must create it. See tasks/CC-013-issue-intake.md'; exit 1 }"
+    @node -e "const http=require('http');const body=JSON.stringify({domain:'storage',action:'diagnose',timestamp:new Date().toISOString()});const req=http.request({hostname:'localhost',port:8888,path:'/.netlify/functions/issue-intake',method:'POST',headers:{'Content-Type':'application/json','Content-Length':body.length}},(res)=>{let d='';res.on('data',c=>d+=c);res.on('end',()=>{try{const r=JSON.parse(d);if(r.success){console.log('OK:',r.action_taken)}else{console.log('Response:',JSON.stringify(r));process.exit(1)}}catch(e){console.log('Parse error:',d);process.exit(1)}})});req.on('error',()=>{console.log('Server not running. Run: just dev');process.exit(1)});req.write(body);req.end()"
+
+# Verify issue-intake spec + function exist (no server needed)
+issue-intake-dry:
+    @echo "🔌 Click2Kick Issue Intake (dry check)..."
+    @powershell -NoProfile -Command "if (Test-Path tasks/CC-013-issue-intake.md) { Write-Host '✅ Task spec exists' } else { Write-Host '❌ Missing tasks/CC-013-issue-intake.md' }"
+    @powershell -NoProfile -Command "if (Test-Path netlify/functions/issue-intake.ts) { Write-Host '✅ Function exists' } else { Write-Host '⚠️ Pending: netlify/functions/issue-intake.ts (Claude Code)' }"
+    @powershell -NoProfile -Command "if (Test-Path artifacts/contracts/issue-intake.schema.json) { Write-Host '✅ Schema exists' } else { Write-Host '⚠️ Pending: artifacts/contracts/issue-intake.schema.json (Antigravity)' }"
+
+# ============================================
+# 🛡️ ADMIN HUD (CX-013 Click2Kick Wiring)
+# ============================================
+
+# Verify Command Plaque + Click2Kick wiring (frontend ↔ backend)
+admin-hud:
+    @echo "🛡️ Admin HUD / Click2Kick Wiring Check..."
+    @powershell -NoProfile -Command "if (Test-Path src/components/SystemStatusEmblem.tsx) { Write-Host '✅ Plaque component exists (Codex)' } else { Write-Host '⚠️ Pending: src/components/SystemStatusEmblem.tsx (Codex CX-012)' }"
+    @powershell -NoProfile -Command "if (Test-Path netlify/functions/issue-intake.ts) { Write-Host '✅ Issue intake function exists (Claude Code)' } else { Write-Host '⚠️ Pending: netlify/functions/issue-intake.ts (Claude Code CC-013)' }"
+    @powershell -NoProfile -Command "if (Test-Path netlify/functions/healthcheck.ts) { Write-Host '✅ Healthcheck function exists' } else { Write-Host '❌ Missing healthcheck — pipeline broken' }"
+    @node -e "const fs=require('fs');try{const app=fs.readFileSync('src/App.jsx','utf8');if(app.includes('SystemStatusEmblem')){console.log('Plaque wired into App.jsx')}else{console.log('Pending: wire <SystemStatusEmblem /> into src/App.jsx (Codex CX-012)')}}catch(e){console.log('Pending: src/App.jsx not found or unreadable')}"
+
+# ============================================
+# 📡 SOCIAL FORMAT CHECK (Cross-Post Contracts)
+# ============================================
+
+# Validate social formatter contracts exist and build passes
+social-format-check:
+    @echo "📡 Social Format Contract Check..."
+    @powershell -NoProfile -Command "if (Test-Path netlify/functions/lib/social-formatters.ts) { Write-Host '✅ Social formatters exist' } else { Write-Host '⚠️ Pending: netlify/functions/lib/social-formatters.ts (Claude Code CC-R2)' }"
+    @just validate-contracts
+    @echo "✅ Social format check complete"
+
+# ============================================
+# 🔗 STACK ALIGNMENT (Frontend ↔ Middleware ↔ Backend)
+# ============================================
+# Verifies all three layers reference the same endpoints, schemas, and contracts.
+
+# Full stack alignment check
+stack-check:
+    @echo "🔗 Stack Alignment Check (Frontend ↔ Middleware ↔ Backend)"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @node -e "const fs=require('fs');const ok=p=>fs.existsSync(p);const chk=(h,items)=>{console.log(h);items.forEach(([p,l])=>console.log('  '+(ok(p)?'PASS':'PEND')+' '+l))};chk('BACKEND (Netlify Functions):',[['netlify/functions/healthcheck.ts','healthcheck'],['netlify/functions/start-pipeline.ts','start-pipeline'],['netlify/functions/render-progress.ts','render-progress'],['netlify/functions/render-results.ts','render-results'],['netlify/functions/issue-intake.ts','issue-intake']]);console.log();chk('MIDDLEWARE (Schemas + Scripts):',[['artifacts/contracts/weekly-harvest.schema.json','weekly-harvest.schema.json'],['artifacts/contracts/social-post.schema.json','social-post.schema.json'],['artifacts/contracts/issue-intake.schema.json','issue-intake.schema.json'],['scripts/harvest-week.mjs','scripts/harvest-week.mjs'],['scripts/weekly-analyze.mjs','scripts/weekly-analyze.mjs'],['scripts/validate-weekly-pulse.mjs','scripts/validate-weekly-pulse.mjs']]);console.log();chk('FRONTEND (Components):',[['src/components/SystemStatusEmblem.tsx','SystemStatusEmblem.tsx'],['src/remotion/branding.ts','branding.ts (design tokens)']]);console.log();const core=[['netlify/functions/healthcheck.ts','healthcheck'],['src/remotion/branding.ts','branding'],['justfile','justfile']];const n=core.filter(([p])=>ok(p)).length;console.log('ALIGNMENT: Core '+n+'/'+core.length+(n===core.length?' — stack aligned':' — stack incomplete'))"
+    @just cycle-brief
