@@ -129,7 +129,6 @@ src/components/*.tsx             # React components
 src/components/*.css             # Component styles
 src/App.jsx                      # Main app shell
 src/App.css                      # App styles
-src/remotion/branding.ts         # Design tokens
 src/remotion/compositions/**     # Video compositions
 ```
 

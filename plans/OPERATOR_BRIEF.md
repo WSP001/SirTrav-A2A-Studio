@@ -138,7 +138,7 @@ ROLE: Backend Architect / Orchestrator
 PROTOCOL: Lean v3 → run: just cycle-orient claude-code
 
 MISSION: Build the "Weekly Pulse" data pipeline and enable
-"Ripple Effect" cross-posting. Use Node (Bun not installed).
+"Ripple Effect" cross-posting. Use Node (Bun 1.3.9 also available).
 
 SCOPE YOU OWN:
 - netlify/functions/* (all backend functions)
@@ -149,7 +149,7 @@ SCOPE YOU OWN:
 SCOPE YOU DO NOT OWN:
 - justfile (Windsurf owns — commands already wired for you)
 - src/components/* (Codex owns)
-- schemas/* (Antigravity owns)
+- artifacts/contracts/* (Antigravity owns)
 
 ─── TASK CC-PULSE-001: Weekly Harvest Script ───
 
@@ -157,7 +157,7 @@ Read spec: tasks/CC-WEEKLY-HARVEST.md
 Create: scripts/harvest-week.mjs
 
 Requirements:
-- Node ESM (NOT Bun — Bun is not installed)
+- Node ESM (Bun 1.3.9 also on PATH if preferred)
 - --dry-run mode (print shape, no writes)
 - --source <path> (custom directory)
 - Default reads from data/weekly-photos/

@@ -96,8 +96,8 @@ const EMBLEM_COLORS = {
   gold: '#D4AF37',
   azure: '#007FFF',
   silver: '#C0C0C0',
-  ember: THEME?.accent || '#E94560',
-  dark: THEME?.primary || '#1a1a2e',
+  ember: THEME.colors.accent,       // #f59e0b (Amber)
+  dark: THEME.colors.background,    // #0f172a (Deep Space)
   unhealthy: '#6B7280',
 };
 ```
