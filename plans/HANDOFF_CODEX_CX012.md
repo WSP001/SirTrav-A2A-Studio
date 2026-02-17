@@ -177,5 +177,5 @@ src/remotion/branding.ts     ← READ ONLY (import tokens, don't modify)
 
 ## ARCHIVE RULE
 
-Do NOT delete or overwrite archived files in `C:\Users\Roberto002\My Drive\SirTRAV\`.
+Do NOT delete or overwrite archived files in the operator's Google Drive archive folder.
 Only Scott decides what to keep or discard.
