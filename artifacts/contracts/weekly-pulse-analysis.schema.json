@@ -1,0 +1,308 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://sirtrav.com/schemas/weekly-pulse-analysis.schema.json",
+    "title": "SirTrav Weekly Pulse Analysis Contract",
+    "description": "Validates the output of scripts/weekly-analyze.mjs — the AI analysis that reads harvest JSON and produces mood graphs, content strategy insights, and engagement predictions. This feeds into the Weekly Pulse Report.",
+    "type": "object",
+    "required": [
+        "analysisId",
+        "harvestRef",
+        "weekOf",
+        "moodGraph",
+        "insights",
+        "meta"
+    ],
+    "properties": {
+        "analysisId": {
+            "type": "string",
+            "pattern": "^pulse-[0-9]{4}-W[0-9]{2}(-[a-z0-9]+)?$",
+            "description": "Unique analysis ID, format: pulse-YYYY-WNN"
+        },
+        "harvestRef": {
+            "type": "string",
+            "description": "Reference to the harvest ID this analysis is based on"
+        },
+        "weekOf": {
+            "type": "string",
+            "format": "date",
+            "description": "ISO 8601 date of the Monday starting the analyzed week"
+        },
+        "runId": {
+            "type": "string",
+            "description": "Enterprise tracing ID (threaded through all agent calls)"
+        },
+        "moodGraph": {
+            "type": "object",
+            "required": [
+                "distribution",
+                "dominantMood",
+                "moodShift"
+            ],
+            "properties": {
+                "distribution": {
+                    "type": "object",
+                    "description": "Percentage distribution of moods across the week's content",
+                    "additionalProperties": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                "dominantMood": {
+                    "type": "string",
+                    "description": "The most prevalent mood across the week's content"
+                },
+                "moodShift": {
+                    "type": "string",
+                    "enum": [
+                        "rising",
+                        "steady",
+                        "declining",
+                        "mixed"
+                    ],
+                    "description": "Trend direction compared to the previous week"
+                },
+                "previousWeekDominant": {
+                    "type": "string",
+                    "description": "Last week's dominant mood for trend comparison"
+                }
+            }
+        },
+        "insights": {
+            "type": "object",
+            "required": [
+                "summary",
+                "recommendations"
+            ],
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500,
+                    "description": "AI-generated 1-2 sentence summary of the week's content"
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "suggestion"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "content-gap",
+                                    "best-performer",
+                                    "posting-time",
+                                    "engagement-boost",
+                                    "theme-suggestion"
+                                ],
+                                "description": "Category of recommendation"
+                            },
+                            "suggestion": {
+                                "type": "string",
+                                "description": "Actionable recommendation text"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                            }
+                        }
+                    },
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "description": "AI-generated content strategy recommendations"
+                },
+                "topPerformers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "itemId": {
+                                "type": "string"
+                            },
+                            "reason": {
+                                "type": "string"
+                            },
+                            "predictedEngagement": {
+                                "type": "string",
+                                "enum": [
+                                    "high",
+                                    "medium",
+                                    "low"
+                                ]
+                            }
+                        }
+                    },
+                    "maxItems": 3,
+                    "description": "Top 3 items predicted to perform best on social"
+                }
+            }
+        },
+        "contentCalendar": {
+            "type": "object",
+            "description": "Suggested posting schedule for the coming week",
+            "properties": {
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "suggestedDay",
+                            "platform",
+                            "contentType"
+                        ],
+                        "properties": {
+                            "suggestedDay": {
+                                "type": "string",
+                                "enum": [
+                                    "monday",
+                                    "tuesday",
+                                    "wednesday",
+                                    "thursday",
+                                    "friday",
+                                    "saturday",
+                                    "sunday"
+                                ]
+                            },
+                            "platform": {
+                                "type": "string",
+                                "enum": [
+                                    "x",
+                                    "youtube",
+                                    "instagram",
+                                    "tiktok",
+                                    "linkedin"
+                                ]
+                            },
+                            "contentType": {
+                                "type": "string",
+                                "enum": [
+                                    "photo",
+                                    "video",
+                                    "story",
+                                    "reel",
+                                    "thread"
+                                ]
+                            },
+                            "suggestedItemId": {
+                                "type": "string",
+                                "description": "Reference to a harvest item to use"
+                            },
+                            "caption": {
+                                "type": "string",
+                                "description": "AI-generated caption suggestion"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "meta": {
+            "type": "object",
+            "required": [
+                "analyzedAt",
+                "model",
+                "itemsAnalyzed"
+            ],
+            "properties": {
+                "analyzedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "model": {
+                    "type": "string",
+                    "description": "AI model used for analysis (e.g., openrouter/gpt-4)"
+                },
+                "itemsAnalyzed": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "tokensUsed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Total tokens consumed by the analysis"
+                },
+                "durationMs": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "costManifest": {
+            "type": "object",
+            "description": "Cost tracking for AI analysis (Commons Good 20% markup)",
+            "properties": {
+                "baseCost": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "markup": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "total": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            }
+        }
+    },
+    "additionalProperties": false,
+    "examples": [
+        {
+            "analysisId": "pulse-2026-W07",
+            "harvestRef": "harvest-2026-W07",
+            "weekOf": "2026-02-09",
+            "runId": "run-pulse-001",
+            "moodGraph": {
+                "distribution": {
+                    "joyful": 0.45,
+                    "adventurous": 0.25,
+                    "contemplative": 0.15,
+                    "serene": 0.15
+                },
+                "dominantMood": "joyful",
+                "moodShift": "rising",
+                "previousWeekDominant": "contemplative"
+            },
+            "insights": {
+                "summary": "An upbeat week dominated by family moments at the beach. Content shifted from reflective urban photography to outdoor joy — great momentum for engagement.",
+                "recommendations": [
+                    {
+                        "type": "best-performer",
+                        "suggestion": "The sunset family photo has high predicted engagement — lead with it on X and Instagram.",
+                        "confidence": 0.89
+                    },
+                    {
+                        "type": "posting-time",
+                        "suggestion": "Post family content between 6-8 PM PST for maximum reach.",
+                        "confidence": 0.72
+                    }
+                ],
+                "topPerformers": [
+                    {
+                        "itemId": "item-001",
+                        "reason": "Golden hour family shot with emotional warmth",
+                        "predictedEngagement": "high"
+                    }
+                ]
+            },
+            "meta": {
+                "analyzedAt": "2026-02-16T09:00:00Z",
+                "model": "openrouter/gpt-4",
+                "itemsAnalyzed": 2,
+                "tokensUsed": 1500,
+                "durationMs": 3200
+            },
+            "costManifest": {
+                "baseCost": 0.045,
+                "markup": 0.009,
+                "total": 0.054
+            }
+        }
+    ]
+}

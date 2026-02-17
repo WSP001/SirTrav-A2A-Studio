@@ -1,0 +1,277 @@
+{
+  "meta": {
+    "harvestedAt": "2026-02-17T19:53:21.648Z",
+    "period": {
+      "since": "2026-02-10",
+      "until": "2026-02-17"
+    },
+    "version": "1.0.0"
+  },
+  "commits": [
+    {
+      "hash": "606473c6",
+      "author": "Roberto@WSP",
+      "date": "2026-02-17 04:01:05 -0800",
+      "subject": "feat(claude-code): engagement loop, invoice generator, agentic harness + NFS fixes",
+      "agent": "claude-code"
+    },
+    {
+      "hash": "b4411542",
+      "author": "Roberto@WSP",
+      "date": "2026-02-14 12:38:40 -0800",
+      "subject": "feat(windsurf-master): Phase 3 — repo sync, full assessment, agent matrix update",
+      "agent": "windsurf"
+    },
+    {
+      "hash": "86b764af",
+      "author": "Roberto@WSP",
+      "date": "2026-02-13 15:25:17 -0800",
+      "subject": "feat: Premium hero section with SirTrav signature plaque + agent orbit",
+      "agent": "team"
+    },
+    {
+      "hash": "17b021f9",
+      "author": "Roberto@WSP",
+      "date": "2026-02-13 13:01:09 -0800",
+      "subject": "feat: X/Twitter LIVE — 3 verified tweets + updated reports",
+      "agent": "team"
+    },
+    {
+      "hash": "1c1d5d4b",
+      "author": "Roberto@WSP",
+      "date": "2026-02-12 16:14:59 -0800",
+      "subject": "fix: update @aws-sdk/client-s3 to latest — resolves 15 npm vulnerabilities",
+      "agent": "team"
+    },
+    {
+      "hash": "1ab5a9f9",
+      "author": "Roberto@WSP",
+      "date": "2026-02-12 15:09:53 -0800",
+      "subject": "docs: Netlify Agent Runner report — verified deployment status + team instructions",
+      "agent": "unknown"
+    },
+    {
+      "hash": "098f384c",
+      "author": "Roberto@WSP",
+      "date": "2026-02-11 17:25:44 -0800",
+      "subject": "feat: cycle gate system + @netlify/vite-plugin + TWITTER_ key standardization",
+      "agent": "team"
+    },
+    {
+      "hash": "42a6d3f3",
+      "author": "Roberto@WSP",
+      "date": "2026-02-11 16:16:50 -0800",
+      "subject": "docs: Create COMMONS_AGENT_JUSTFILE_FLOW.md — command-by-command agent matrix",
+      "agent": "unknown"
+    },
+    {
+      "hash": "e879d1e9",
+      "author": "Roberto@WSP",
+      "date": "2026-02-10 20:41:13 -0800",
+      "subject": "docs: Rewrite NETLIFY_AGENT_PROMPT.md as structured handoff from Windsurf Master",
+      "agent": "unknown"
+    },
+    {
+      "hash": "a04a9e6a",
+      "author": "Roberto@WSP",
+      "date": "2026-02-10 20:38:42 -0800",
+      "subject": "feat(claude-code): No Fake Success + payload validation on all 5 publishers + healthcheck improvements",
+      "agent": "claude-code"
+    }
+  ],
+  "tasks": [
+    {
+      "file": "0001-fix-x-twitter-keys.md",
+      "status": "DONE",
+      "assignedTo": "Scott (Manual) + Claude Code (Verify)",
+      "priority": "P0"
+    },
+    {
+      "file": "0002-setup-linkedin-keys.md",
+      "status": "READY",
+      "assignedTo": "Scott (Manual) + Claude Code (Verify)",
+      "priority": "P0"
+    },
+    {
+      "file": "0003-no-fake-success-audit.md",
+      "status": "DONE",
+      "assignedTo": "Claude Code",
+      "priority": "P0"
+    },
+    {
+      "file": "0004-engagement-loop-backend.md",
+      "status": "DONE",
+      "assignedTo": "Claude Code (Backend)",
+      "priority": "P1"
+    },
+    {
+      "file": "0005-invoice-generation-script.md",
+      "status": "DONE",
+      "assignedTo": "Claude Code (Backend)",
+      "priority": "P2"
+    },
+    {
+      "file": "0006-agent-card-overflow-fix.md",
+      "status": "READY",
+      "assignedTo": "Codex (Frontend)",
+      "priority": "P1"
+    },
+    {
+      "file": "0007-u2a-social-toggle-switches.md",
+      "status": "READY",
+      "assignedTo": "Codex (Frontend)",
+      "priority": "P1"
+    },
+    {
+      "file": "0008-golden-path-social-tests.md",
+      "status": "✅",
+      "assignedTo": "Antigravity (Testing)",
+      "priority": "P1"
+    },
+    {
+      "file": "0009-invoice-dashboard-ui.md",
+      "status": "BLOCKED",
+      "assignedTo": "Codex (Frontend)",
+      "priority": "P2"
+    },
+    {
+      "file": "0010-ci-no-fake-success-gate.md",
+      "status": "✅",
+      "assignedTo": "Antigravity (Testing)",
+      "priority": "P2"
+    },
+    {
+      "file": "0011-layer2-contracts.md",
+      "status": "DONE",
+      "assignedTo": "Claude Code (Backend)",
+      "priority": "P1"
+    }
+  ],
+  "testResults": [
+    {
+      "file": "agentic-run-agentic-test-1771184772325.json",
+      "error": "parse_failed"
+    },
+    {
+      "file": "agentic-run-agentic-test-1771184788330.json",
+      "error": "parse_failed"
+    }
+  ],
+  "cycleGates": {
+    "build": {
+      "status": "pass",
+      "lastChecked": "2026-02-12T22:48:08.407Z",
+      "error": null,
+      "note": null
+    },
+    "netlify_plugin": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.227Z",
+      "error": null,
+      "note": null
+    },
+    "healthcheck": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.229Z",
+      "error": null,
+      "note": null
+    },
+    "no_fake_success": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.233Z",
+      "error": null,
+      "note": null
+    },
+    "wiring": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.235Z",
+      "error": null,
+      "note": null
+    },
+    "contracts": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.236Z",
+      "error": null,
+      "note": null
+    },
+    "golden_path": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.238Z",
+      "error": null,
+      "note": null
+    },
+    "design_tokens": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.239Z",
+      "error": null,
+      "note": null
+    },
+    "social_dry": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.240Z",
+      "error": null,
+      "note": null
+    },
+    "motion_test": {
+      "status": "pass",
+      "lastChecked": "2026-02-17T19:48:44.242Z",
+      "error": null,
+      "note": null
+    }
+  },
+  "publishers": [
+    {
+      "name": "publish-x",
+      "exists": true,
+      "hasDisabledPattern": true,
+      "hasNoFakeSuccess": true,
+      "hasValidation": true
+    },
+    {
+      "name": "publish-youtube",
+      "exists": true,
+      "hasDisabledPattern": true,
+      "hasNoFakeSuccess": true,
+      "hasValidation": true
+    },
+    {
+      "name": "publish-linkedin",
+      "exists": true,
+      "hasDisabledPattern": true,
+      "hasNoFakeSuccess": true,
+      "hasValidation": true
+    },
+    {
+      "name": "publish-instagram",
+      "exists": true,
+      "hasDisabledPattern": true,
+      "hasNoFakeSuccess": true,
+      "hasValidation": false
+    },
+    {
+      "name": "publish-tiktok",
+      "exists": true,
+      "hasDisabledPattern": true,
+      "hasNoFakeSuccess": true,
+      "hasValidation": false
+    }
+  ],
+  "summary": {
+    "totalCommits": 10,
+    "commitsByAgent": {
+      "claude-code": 2,
+      "windsurf": 1,
+      "team": 4,
+      "unknown": 3
+    },
+    "totalTasks": 11,
+    "tasksByStatus": {
+      "DONE": 5,
+      "READY": 3,
+      "✅": 2,
+      "BLOCKED": 1
+    },
+    "testSuites": 2,
+    "publishersWithNFS": 5
+  }
+}

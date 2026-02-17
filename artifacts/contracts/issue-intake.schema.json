@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-intake.schema.json",
+  "title": "Issue Intake (Click2Kick) Contract",
+  "description": "Request/Response contract for POST /.netlify/functions/issue-intake",
+
+  "definitions": {
+    "request": {
+      "type": "object",
+      "required": ["domain", "action", "timestamp"],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "enum": ["storage", "network", "build", "pipeline"],
+          "description": "System domain to diagnose"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["diagnose", "kick", "toggle-admin"],
+          "description": "Action to take on the domain"
+        },
+        "runId": {
+          "type": "string",
+          "description": "Enterprise trace ID (auto-generated if absent)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of the request"
+        }
+      }
+    },
+    "successResponse": {
+      "type": "object",
+      "required": ["success", "domain", "diagnostics", "action_taken", "runId"],
+      "properties": {
+        "success": { "type": "boolean", "const": true },
+        "domain": { "type": "string" },
+        "diagnostics": {
+          "type": "object",
+          "required": ["status", "detail", "lastChecked"],
+          "properties": {
+            "status": { "type": "string", "enum": ["healthy", "degraded", "offline"] },
+            "detail": { "type": "string" },
+            "lastChecked": { "type": "string", "format": "date-time" },
+            "metrics": { "type": "object", "additionalProperties": { "type": "number" } }
+          }
+        },
+        "action_taken": { "type": "string" },
+        "runId": { "type": "string" }
+      }
+    },
+    "errorResponse": {
+      "type": "object",
+      "required": ["success", "error"],
+      "properties": {
+        "success": { "type": "boolean", "const": false },
+        "error": { "type": "string" },
+        "disabled": { "type": "boolean" },
+        "runId": { "type": "string" }
+      }
+    }
+  }
+}

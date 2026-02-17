@@ -566,7 +566,49 @@ validate-schemas:
     @echo "📋 Validating schemas..."
     @if (Test-Path artifacts/data/job-costing.schema.json) { echo "  ✓ job-costing.schema.json exists" } else { echo "  ✗ job-costing.schema.json MISSING" }
     @if (Test-Path artifacts/contracts/social-post.schema.json) { echo "  ✓ social-post.schema.json exists" } else { echo "  ✗ social-post.schema.json MISSING" }
+    @if (Test-Path artifacts/contracts/weekly-harvest.schema.json) { echo "  ✓ weekly-harvest.schema.json exists" } else { echo "  ✗ weekly-harvest.schema.json MISSING" }
+    @if (Test-Path artifacts/contracts/weekly-pulse-analysis.schema.json) { echo "  ✓ weekly-pulse-analysis.schema.json exists" } else { echo "  ✗ weekly-pulse-analysis.schema.json MISSING" }
     @echo "✅ Schema check complete"
+
+# Validate Weekly Pulse contracts (AG-011)
+validate-weekly-pulse:
+    @echo "🔍 Validating Weekly Pulse contracts (AG-011)..."
+    @node scripts/validate-weekly-pulse.mjs --dry-run
+
+# Test issue-intake Click2Kick flow (AG-012)
+test-issue-intake:
+    @echo "🧪 Testing issue-intake integration (AG-012)..."
+    @node scripts/test-issue-intake.mjs
+
+# Test issue-intake LIVE (requires netlify dev)
+test-issue-intake-live:
+    @echo "🔴 Testing issue-intake LIVE (AG-012)..."
+    @node scripts/test-issue-intake.mjs --live
+
+# Run full Antigravity test suite (AG-011 + AG-012)
+ag-full-suite:
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+    @echo "   ANTIGRAVITY FULL TEST SUITE (AG-011 + AG-012)"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "━━━ STEP 1: Schema Existence ━━━"
+    @just validate-schemas
+    @echo ""
+    @echo "━━━ STEP 2: Weekly Pulse Contracts ━━━"
+    @just validate-weekly-pulse
+    @echo ""
+    @echo "━━━ STEP 3: Issue Intake Integration ━━━"
+    @just test-issue-intake
+    @echo ""
+    @echo "━━━ STEP 4: Social Contracts ━━━"
+    @just validate-social
+    @echo ""
+    @echo "━━━ STEP 5: Cycle Gate ━━━"
+    @just cycle-gate contracts
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo "✅ ANTIGRAVITY FULL SUITE COMPLETE"
+    @echo "═══════════════════════════════════════════════════════════"
 
 # Test contract enforcement in publishers
 test-contracts:

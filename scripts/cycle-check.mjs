@@ -138,14 +138,20 @@ function checkWiring() {
 function checkContracts() {
     const contractFiles = [
         'artifacts/contracts/social-post.schema.json',
+        'artifacts/contracts/weekly-harvest.schema.json',
+        'artifacts/contracts/weekly-pulse-analysis.schema.json',
         'artifacts/data/job-costing.schema.json',
     ];
     const missing = contractFiles.filter(f => !existsSync(join(ROOT, f)));
     if (missing.length > 0) {
         // Not critical if schemas don't exist yet — check if validators exist instead
         const validatorPath = join(ROOT, 'scripts/validate-social-contracts.mjs');
-        if (existsSync(validatorPath)) {
-            return { pass: true, note: 'Validator script exists, schema files optional' };
+        const pulseValidator = join(ROOT, 'scripts/validate-weekly-pulse.mjs');
+        if (existsSync(validatorPath) && existsSync(pulseValidator)) {
+            return { pass: true, note: 'Validator scripts exist, some schema files pending' };
+        }
+        if (existsSync(validatorPath) || existsSync(pulseValidator)) {
+            return { pass: true, note: `Validator found, missing: ${missing.join(', ')}` };
         }
         return { pass: false, error: `Missing: ${missing.join(', ')}` };
     }
