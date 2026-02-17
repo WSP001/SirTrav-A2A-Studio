@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sirtrav.com/schemas/job-costing.schema.json",
+  "title": "SirTrav Job Costing Schema",
+  "description": "Defines the Cost Plus model used across the D2A pipeline. Aligns with ManifestGenerator in netlify/functions/lib/cost-manifest.ts and the Commons Good 20% markup pattern.",
+  "type": "object",
+  "required": ["jobId", "rateCard", "costPlusMarkup"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "The runId that threads through all agent calls"
+    },
+    "projectId": {
+      "type": "string",
+      "description": "Parent project identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rateCard": {
+      "type": "object",
+      "description": "Per-agent cost rates for API calls. Mirrors AgentCost entries from ManifestGenerator.",
+      "required": ["agents"],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "const": "USD"
+        },
+        "agents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentRate"
+          },
+          "minItems": 1,
+          "description": "Rate card for each agent in the pipeline"
+        }
+      }
+    },
+    "projectPhases": {
+      "type": "array",
+      "description": "Pipeline execution phases with per-phase cost rollup",
+      "items": {
+        "type": "object",
+        "required": ["phase", "status"],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "intake",
+              "narration",
+              "voice",
+              "music",
+              "motion",
+              "compilation",
+              "publishing"
+            ],
+            "description": "Pipeline stage name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "completed", "failed", "skipped"]
+          },
+          "agentCosts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/agentCostEntry"
+            },
+            "description": "Individual agent cost entries for this phase"
+          },
+          "phaseSubtotal": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Sum of base costs for this phase"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "timeTracking": {
+      "type": "object",
+      "description": "Wall-clock duration tracking for the full job",
+      "properties": {
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total wall-clock time in milliseconds"
+        },
+        "phases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Per-phase duration in milliseconds (keyed by phase name)"
+        }
+      }
+    },
+    "costPlusMarkup": {
+      "type": "object",
+      "description": "The Commons Good Cost Plus model: base cost + 20% markup",
+      "required": ["markupRate", "subtotal", "markupTotal", "totalDue"],
+      "properties": {
+        "markupRate": {
+          "type": "number",
+          "const": 0.20,
+          "description": "Fixed 20% markup for Commons Good contribution"
+        },
+        "subtotal": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of all base API costs"
+        },
+        "markupTotal": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total markup amount (subtotal * 0.20)"
+        },
+        "totalDue": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Final amount: subtotal + markupTotal"
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether the manifest has been verified by the FinOps auditor"
+        },
+        "commonsGoodContribution": {
+          "type": "boolean",
+          "const": true,
+          "description": "Always true -- this project operates on Commons Good principles"
+        }
+      }
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Flat list of all cost entries (same as ManifestGenerator.items)",
+      "items": {
+        "$ref": "#/$defs/agentCostEntry"
+      }
+    }
+  },
+  "$defs": {
+    "agentRate": {
+      "type": "object",
+      "required": ["agent", "service", "unitCost"],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "Agent name (e.g., Visionary, Narrator, Publisher)"
+        },
+        "service": {
+          "type": "string",
+          "description": "Underlying API service (e.g., openrouter, elevenlabs, remotion-lambda)"
+        },
+        "unitCost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cost per unit of work in USD"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measure (e.g., per-call, per-1k-chars, per-second)"
+        }
+      }
+    },
+    "agentCostEntry": {
+      "type": "object",
+      "required": ["agent", "task", "baseCost", "markup", "total"],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "Agent that performed the work"
+        },
+        "task": {
+          "type": "string",
+          "description": "Description of work performed"
+        },
+        "baseCost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Raw API cost in USD"
+        },
+        "markup": {
+          "type": "number",
+          "minimum": 0,
+          "description": "20% Commons Good markup"
+        },
+        "total": {
+          "type": "number",
+          "minimum": 0,
+          "description": "baseCost + markup"
+        }
+      },
+      "description": "Mirrors the AgentCost interface from cost-manifest.ts"
+    }
+  },
+  "examples": [
+    {
+      "jobId": "run-abc-123",
+      "projectId": "proj-001",
+      "timestamp": "2026-01-31T20:00:00Z",
+      "rateCard": {
+        "currency": "USD",
+        "agents": [
+          { "agent": "Visionary", "service": "openrouter", "unitCost": 0.04, "unit": "per-call" },
+          { "agent": "Narrator", "service": "openrouter", "unitCost": 0.02, "unit": "per-call" },
+          { "agent": "Voice", "service": "elevenlabs", "unitCost": 0.01, "unit": "per-1k-chars" },
+          { "agent": "Publisher-X", "service": "twitter-api", "unitCost": 0.001, "unit": "per-call" }
+        ]
+      },
+      "costPlusMarkup": {
+        "markupRate": 0.20,
+        "subtotal": 0.071,
+        "markupTotal": 0.0142,
+        "totalDue": 0.0852,
+        "verified": true,
+        "commonsGoodContribution": true
+      }
+    }
+  ]
+}

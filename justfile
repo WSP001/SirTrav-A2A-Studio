@@ -801,6 +801,51 @@ x-healthcheck:
     @echo ""
     @echo "Next: just x-dry-run"
 
+# ==========================================
+# 🧪 AGENTIC TEST HARNESS
+# ==========================================
+# Outputs: artifacts/public/metrics/agentic-run-*.json + .md
+
+# Agentic test (cloud, read-only — no tweets)
+agentic-test:
+    @echo "🧪 Agentic End-to-End Test (cloud, no publish)..."
+    node scripts/test-agentic-twitter-run.mjs
+
+# Agentic test + LIVE X tweet
+agentic-test-x:
+    @echo "🧪 Agentic End-to-End Test (cloud + LIVE tweet)..."
+    node scripts/test-agentic-twitter-run.mjs --publish-x
+
+# Agentic test against local netlify dev
+agentic-test-local:
+    @echo "🧪 Agentic End-to-End Test (local)..."
+    node scripts/test-agentic-twitter-run.mjs --local
+
+# Agentic dry-run (shape validation only, no network)
+agentic-dry:
+    @echo "🧪 Agentic Dry-Run (shapes only)..."
+    node scripts/test-agentic-twitter-run.mjs --dry-run
+
+# X Engagement Loop test (cloud)
+x-engagement-test:
+    @echo "📡 X Engagement Loop Test (cloud)..."
+    node scripts/test-x-engagement.mjs
+
+# X Engagement Loop test (local)
+x-engagement-local:
+    @echo "📡 X Engagement Loop Test (local)..."
+    node scripts/test-x-engagement.mjs --local
+
+# X Engagement dry-run (contract shape only)
+x-engagement-dry:
+    @echo "📡 X Engagement Dry-Run (shapes only)..."
+    node scripts/test-x-engagement.mjs --dry-run
+
+# Invoice generation demo
+invoice-demo:
+    @echo "💰 Generating demo invoice (Cost Plus 20%)..."
+    node scripts/generate-invoice.mjs --demo
+
 # Step 2: Dry-run validation (Antigravity runs this, auto-detects local/cloud)
 x-dry-run:
     @echo "🧪 Running X/Twitter dry-run test (auto-detect)..."

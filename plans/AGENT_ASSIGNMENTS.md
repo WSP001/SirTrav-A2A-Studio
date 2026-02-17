@@ -17,9 +17,9 @@
 *   **Antigravity:** ✅ AG-001 DONE (Contract Validation Suite), MG-003 WAITING on Codex.
 *   **X Agent:** Blocked on key fix, then MG-X-002 (Engagement Loop).
 
-### 🔴 BLOCKING ISSUE:
-X API keys are from **different** X Developer Apps = 401 authentication error.
-**Fix:** Go to X Developer Portal → Get ALL 4 keys from SAME app → Update Netlify.
+### ✅ RESOLVED (2026-02-17):
+X API keys fixed — all 4 from same Developer App. Verified as @Sechols002. 3 live tweets posted.
+Engagement Loop (MG-X-002) now DONE — modernized to twitter-api-v2 + evalsStore memory.
 
 ### 🔧 Workflow Available:
 Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
@@ -40,7 +40,7 @@ Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
 
 #### 🧙 MG-004 to MG-006 (Registry & Contracts) ✅
 *   **Status:** **Done** (Verified 2026-01-22)
-*   **Outcome:** Remotion Registry, Site Bundle, API Schemas (`docs/schemas/api-responses.json`).
+*   **Outcome:** Remotion Registry, Site Bundle, API Schemas (`artifacts/contracts/social-post.schema.json`, legacy: `docs/schemas/api-responses.json`).
 
 ---
 
@@ -206,6 +206,9 @@ Then begin with this statement:
 | CC-AGENTIC | Claude Code | Agentic end-to-end test harness (test-agentic-twitter-run.mjs) — 6/6 PASS + real tweet posted | 2026-02-14 |
 | WM-008 | Windsurf Master | Fixed WSP001 local main divergence (backup/local-main-aaf2d05f saved, reset to origin/main) | 2026-02-14 |
 | WM-009 | Windsurf Master | Phase 3 diagnostics: 12/12 wiring ✅, 8/8 NFS ✅, both repos synced to origin/main | 2026-02-14 |
+| CC-0004 | Claude Code | Engagement Loop Backend: twitter-api-v2, evalsStore memory, sentiment analysis, runId threading | 2026-02-17 |
+| CC-0005 | Claude Code | Invoice Generation Script: Cost Plus 20%, 5-service line items, --demo mode | 2026-02-17 |
+| CC-HC-2 | Claude Code | Healthcheck MVP semantics: X+YouTube=ok, others=disabled (not degraded) | 2026-02-17 |
 
 ---
 

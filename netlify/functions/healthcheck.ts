@@ -82,20 +82,32 @@ function checkSocial(): ServiceStatus {
   const hasTikTok = checkEnvVars(['TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET']);
   const hasInstagram = checkEnvVars(['INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ID']);
   const hasLinkedIn = checkEnvVars(['LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_ACCESS_TOKEN']);
-  // 🎯 MG-P0-C: Added X/Twitter to social platforms check
   const hasTwitter = checkEnvVars(['TWITTER_API_KEY', 'TWITTER_ACCESS_TOKEN']);
-  const platforms = [
-    { name: 'YouTube', ok: hasYouTube },
-    { name: 'TikTok', ok: hasTikTok },
-    { name: 'Instagram', ok: hasInstagram },
-    { name: 'LinkedIn', ok: hasLinkedIn },
-    { name: 'X/Twitter', ok: hasTwitter },
+
+  // MVP platforms = X/Twitter + YouTube. Others are optional (disabled, not degraded).
+  const mvpPlatforms = [
+    { name: 'X/Twitter', ok: hasTwitter, mvp: true },
+    { name: 'YouTube', ok: hasYouTube, mvp: true },
   ];
-  const configured = platforms.filter(p => p.ok).length;
-  const missing = platforms.filter(p => !p.ok).map(p => p.name);
-  if (configured === 5) return { name: 'social_publishing', status: 'ok' };
-  if (configured > 0) return { name: 'social_publishing', status: 'degraded', error: `${configured}/5 platforms (missing: ${missing.join(', ')})` };
-  return { name: 'social_publishing', status: 'disabled', error: `No social publishing keys configured (missing: ${missing.join(', ')})` };
+  const optionalPlatforms = [
+    { name: 'TikTok', ok: hasTikTok, mvp: false },
+    { name: 'Instagram', ok: hasInstagram, mvp: false },
+    { name: 'LinkedIn', ok: hasLinkedIn, mvp: false },
+  ];
+  const all = [...mvpPlatforms, ...optionalPlatforms];
+  const configured = all.filter(p => p.ok).length;
+  const mvpConfigured = mvpPlatforms.filter(p => p.ok).length;
+  const disabledOptional = optionalPlatforms.filter(p => !p.ok).map(p => p.name);
+  const missingMvp = mvpPlatforms.filter(p => !p.ok).map(p => p.name);
+
+  // If all MVP platforms are configured, report ok (optional platforms are just disabled)
+  if (mvpConfigured === mvpPlatforms.length) {
+    if (configured === all.length) return { name: 'social_publishing', status: 'ok' };
+    return { name: 'social_publishing', status: 'ok', error: `${configured}/${all.length} platforms (disabled: ${disabledOptional.join(', ')})` };
+  }
+  // MVP platforms missing = degraded
+  if (mvpConfigured > 0) return { name: 'social_publishing', status: 'degraded', error: `MVP incomplete (missing: ${missingMvp.join(', ')})` };
+  return { name: 'social_publishing', status: 'disabled', error: `No social publishing keys configured` };
 }
 
 export default async () => {

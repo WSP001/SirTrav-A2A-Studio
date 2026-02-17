@@ -336,6 +336,11 @@ Signed: Roberto PM
 
 ```
 SirTrav-A2A-Studio/
+├── artifacts/
+│   ├── contracts/
+│   │   └── social-post.schema.json  ← Canonical schema location
+│   └── data/
+│       └── job-costing.schema.json  ← Costing schema
 ├── netlify/
 │   └── functions/
 │       ├── publish-x.ts         ← Claude Code updates (OAuth)
@@ -350,8 +355,8 @@ SirTrav-A2A-Studio/
 │   ├── ENGAGEMENT_TO_MEMORY.md  ← X Agent creates
 │   ├── NETLIFY_PRO_EXPERT_GUIDE.md
 │   ├── CODING_ASSIGNMENTS.md
-│   └── schemas/
-│       └── api-responses.json   ← Claude Code created
+│   └── schemas/                 ← Legacy location (prefer artifacts/contracts/)
+│       └── api-responses.json   ← Claude Code created (legacy)
 ├── scripts/
 │   └── test-x-publish.mjs       ← Antigravity verifies
 └── package.json                 ← Claude Code adds twitter-api-v2

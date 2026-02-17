@@ -35,7 +35,7 @@ This document distributes specific, attributable "Jobs" to our Agents to ensure 
 
 ### INSTRUCTIONS:
 1.  **Contract Verification (`MG-006` Support):**
-    *   **Schema Definition:** Create `docs/schemas/api-responses.json` containing the expected JSON structure for:
+    *   **Schema Definition:** Create contract schemas in `artifacts/contracts/` (legacy: `docs/schemas/api-responses.json`) containing the expected JSON structure for:
         *   `GET /render-progress`
         *   `POST /submit-evaluation`
     *   **Purpose:** Allow Antigravity to write Contract Tests against this schema.
