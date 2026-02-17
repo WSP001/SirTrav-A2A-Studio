@@ -911,6 +911,26 @@ invoice-demo:
     @echo "💰 Generating demo invoice (Cost Plus 20%)..."
     node scripts/generate-invoice.mjs --demo
 
+# North Star X/Twitter Verification (Packet Switch protocol)
+verify-x-real:
+    @echo "🦅 Running North Star Verification..."
+    node scripts/verify-x-real.mjs
+
+# North Star dry-run (key existence check only)
+verify-x-dry:
+    @echo "🦅 North Star Dry-Run (key check only)..."
+    node scripts/verify-x-real.mjs --dry-run
+
+# Weekly Harvest (collect last 7 days of activity)
+harvest-week:
+    @echo "📊 Harvesting weekly activity..."
+    node scripts/harvest-week.mjs
+
+# Weekly Pulse Analysis (analyze harvest data)
+weekly-analyze:
+    @echo "📈 Running weekly pulse analysis..."
+    node scripts/weekly-analyze.mjs
+
 # Step 2: Dry-run validation (Antigravity runs this, auto-detects local/cloud)
 x-dry-run:
     @echo "🧪 Running X/Twitter dry-run test (auto-detect)..."

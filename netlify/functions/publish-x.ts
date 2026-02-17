@@ -146,6 +146,21 @@ const handler: Handler = async (event) => {
         }
 
         const tweetId = result.data.id;
+
+        // INVARIANT: success:true MUST have a real tweetId — no fake success ever
+        if (!tweetId || typeof tweetId !== 'string' || tweetId.length < 5) {
+            console.error(`❌ [X-AGENT] INVARIANT VIOLATION: API returned but tweetId is invalid: "${tweetId}"`);
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: 'Invariant violation: API response missing valid tweetId',
+                    platform: 'x',
+                })
+            };
+        }
+
         console.log(`✅ [X-AGENT] Success! Tweet ID: ${tweetId}`);
 
         // 6. Job Costing Manifest
