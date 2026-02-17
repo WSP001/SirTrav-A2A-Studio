@@ -319,6 +319,13 @@ help:
     @echo "  just social-format-check - Cross-post contract validation"
     @echo "  just mvp-verify         - Full truth ritual (10 gates + agentic + build)"
     @echo ""
+    @echo "Truth Serum:"
+    @echo "  just restore-north-star - Extract honest publish-x from 098f384"
+    @echo "  just verify-x-real      - Scan publish-x.ts for mock patterns"
+    @echo "  just verify-truth       - Full truth serum verification"
+    @echo "  just run-truth-serum    - Cleanse + interrogate (needs AG-013)"
+    @echo "  just check-zone <file>  - Verify component has required patterns"
+    @echo ""
     @echo "Deploy:"
     @echo "  just deploy         - Deploy to production"
     @echo "  just deploy-preview - Deploy preview"
@@ -788,3 +795,43 @@ stack-check:
     @echo ""
     @node -e "const fs=require('fs');const ok=p=>fs.existsSync(p);const chk=(h,items)=>{console.log(h);items.forEach(([p,l])=>console.log('  '+(ok(p)?'PASS':'PEND')+' '+l))};chk('BACKEND (Netlify Functions):',[['netlify/functions/healthcheck.ts','healthcheck'],['netlify/functions/start-pipeline.ts','start-pipeline'],['netlify/functions/render-progress.ts','render-progress'],['netlify/functions/render-results.ts','render-results'],['netlify/functions/issue-intake.ts','issue-intake']]);console.log();chk('MIDDLEWARE (Schemas + Scripts):',[['artifacts/contracts/weekly-harvest.schema.json','weekly-harvest.schema.json'],['artifacts/contracts/social-post.schema.json','social-post.schema.json'],['artifacts/contracts/issue-intake.schema.json','issue-intake.schema.json'],['scripts/harvest-week.mjs','scripts/harvest-week.mjs'],['scripts/weekly-analyze.mjs','scripts/weekly-analyze.mjs'],['scripts/validate-weekly-pulse.mjs','scripts/validate-weekly-pulse.mjs']]);console.log();chk('FRONTEND (Components):',[['src/components/SystemStatusEmblem.tsx','SystemStatusEmblem.tsx'],['src/remotion/branding.ts','branding.ts (design tokens)']]);console.log();const core=[['netlify/functions/healthcheck.ts','healthcheck'],['src/remotion/branding.ts','branding'],['justfile','justfile']];const n=core.filter(([p])=>ok(p)).length;console.log('ALIGNMENT: Core '+n+'/'+core.length+(n===core.length?' — stack aligned':' — stack incomplete'))"
     @just cycle-brief
+
+# ============================================
+# 🦅 OPERATION TRUTH SERUM (No Fake Success — HARD MODE)
+# ============================================
+# North Star: Parent Commit 098f384
+# Protocol: If it mocks, it dies.
+# Tasks: CC-014 (Claude Code), AG-013 (Antigravity), CX-014 (Codex)
+
+# 1. The Restoration — extract honest publish-x.ts from North Star commit
+restore-north-star:
+    @echo "⭐ Fetching Logic from Parent Commit 098f384..."
+    @git show 098f384:netlify/functions/publish-x.ts > netlify/functions/publish-x.honest.ts
+    @echo "✅ Logic Retrieved → netlify/functions/publish-x.honest.ts"
+    @echo "📋 Next: Tell Claude Code to integrate. See tasks/CC-014-ancestral-restore.md"
+
+# 2. The Cleanse + Truth Serum — Antigravity's interrogation script
+run-truth-serum:
+    @echo "🧪 Injecting Truth Serum..."
+    @powershell -NoProfile -Command "if (Test-Path .cache) { Remove-Item .cache -Recurse -Force; Write-Host 'Cleansed: .cache' }"
+    @powershell -NoProfile -Command "if (Test-Path '.netlify/functions') { Remove-Item '.netlify/functions' -Recurse -Force; Write-Host 'Cleansed: .netlify/functions' }"
+    @powershell -NoProfile -Command "if (!(Test-Path scripts/truth-serum.mjs)) { Write-Host '❌ Missing scripts/truth-serum.mjs — Antigravity must create it. See tasks/AG-013-truth-serum.md'; exit 1 }"
+    @node scripts/truth-serum.mjs
+
+# 3. Static analysis — verify no mock patterns in publish-x.ts
+verify-x-real:
+    @echo "🔍 Scanning publish-x.ts for mock patterns..."
+    @node -e "const fs=require('fs');const f=fs.readFileSync('netlify/functions/publish-x.ts','utf8');const bans=[['mock-id','Fake tweet ID'],['Mock Success','Fake success message'],['MOCK_MODE','Mock bypass flag']];let dirty=0;bans.forEach(([p,why])=>{if(f.includes(p)){console.log('DIRTY: ['+p+'] '+why);dirty++}});const m=f.match(/statusCode:\s*200[\s\S]{0,200}disabled:\s*true/g);if(m){console.log('DIRTY: HTTP 200 + disabled:true (soft lie)');dirty++}if(dirty===0){console.log('CLEAN: No mock patterns found in publish-x.ts')}else{console.log(dirty+' mock pattern(s) found. CC-014 must fix');process.exit(1)}"
+
+# 4. The Showdown — full truth verification sequence
+verify-truth:
+    @echo "🦅 OPERATION TRUTH SERUM — Full Verification"
+    @echo "═══════════════════════════════════════════════"
+    @just verify-x-real
+    @just build
+    @echo "✅ Truth Serum complete — code is honest"
+
+# 5. Check zone — verify a component file contains required patterns
+check-zone file:
+    @echo "🔍 Checking zone: {{file}}"
+    @node -e "const fs=require('fs');if(!fs.existsSync('{{file}}')){console.log('MISSING: {{file}}');process.exit(1)}const f=fs.readFileSync('{{file}}','utf8');console.log('EXISTS: {{file}} ('+f.split('\\n').length+' lines)');if('{{file}}'.includes('SystemStatusEmblem')){const checks=[['THEME','branding.ts import'],['healthcheck','API fetch'],['toggle','Reality toggle (CX-014)']];checks.forEach(([p,what])=>{if(f.includes(p)){console.log('  PASS: '+what)}else{console.log('  PEND: '+what)}})}"
