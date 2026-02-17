@@ -585,10 +585,30 @@ test-issue-intake-live:
     @echo "🔴 Testing issue-intake LIVE (AG-012)..."
     @node scripts/test-issue-intake.mjs --live
 
-# Run full Antigravity test suite (AG-011 + AG-012)
+# Truth Serum Verification Trap — strict mode (AG-013)
+truth-serum:
+    @echo "🧪 Truth Serum Verification Trap (AG-013)..."
+    @node scripts/truth-serum.mjs
+
+# Truth Serum — lenient mode (disabled = pass)
+truth-serum-lenient:
+    @echo "🧪 Truth Serum (lenient mode)..."
+    @node scripts/truth-serum.mjs --allow-disabled
+
+# Truth Serum — clean caches first, then strict test
+truth-serum-clean:
+    @echo "🧪 Truth Serum (clean + strict)..."
+    @node scripts/truth-serum.mjs --clean
+
+# Truth Serum — all publishers
+truth-serum-all:
+    @echo "🧪 Truth Serum (all 5 publishers)..."
+    @node scripts/truth-serum.mjs --all-publishers --allow-disabled
+
+# Run full Antigravity test suite (AG-011 + AG-012 + AG-013)
 ag-full-suite:
     @echo "🦅 ═══════════════════════════════════════════════════════════"
-    @echo "   ANTIGRAVITY FULL TEST SUITE (AG-011 + AG-012)"
+    @echo "   ANTIGRAVITY FULL TEST SUITE (AG-011 + AG-012 + AG-013)"
     @echo "═══════════════════════════════════════════════════════════"
     @echo ""
     @echo "━━━ STEP 1: Schema Existence ━━━"
@@ -603,7 +623,10 @@ ag-full-suite:
     @echo "━━━ STEP 4: Social Contracts ━━━"
     @just test-contracts
     @echo ""
-    @echo "━━━ STEP 5: Cycle Gate ━━━"
+    @echo "━━━ STEP 5: Truth Serum (AG-013) ━━━"
+    @just truth-serum-lenient
+    @echo ""
+    @echo "━━━ STEP 6: Cycle Gate ━━━"
     @just cycle-gate contracts
     @echo ""
     @echo "═══════════════════════════════════════════════════════════"
