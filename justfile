@@ -601,7 +601,7 @@ ag-full-suite:
     @just test-issue-intake
     @echo ""
     @echo "━━━ STEP 4: Social Contracts ━━━"
-    @just validate-social
+    @just test-contracts
     @echo ""
     @echo "━━━ STEP 5: Cycle Gate ━━━"
     @just cycle-gate contracts
