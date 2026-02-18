@@ -7,19 +7,29 @@
 
 ## 🚦 Active Ticket (NOW)
 
-**Ticket:** M0: Social Platform Integration
-**Owner:** Antigravity + User
-**Reviewer:** Claude
-**Status:** **IN_PROGRESS**
+**Ticket:** CC-SOCIAL-NORM — Normalize publisher response contracts
+**Owner:** Claude (Backend)
+**Reviewer:** Antigravity
+**Status:** **IN_PROGRESS** (2026-02-18)
 
 ### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Standby (MG-008 Done, Feedback UI Complete).
-*   **Antigravity:** ✅ AG-001 DONE (Contract Validation Suite), MG-003 WAITING on Codex.
-*   **X Agent:** Blocked on key fix, then MG-X-002 (Engagement Loop).
+*   **Codex:** Standby — next task: Error Boundary + Diagnostics Panel
+*   **Antigravity:** Standby — update verify-golden-path.mjs for SOCIAL_ENABLED
+*   **Claude:** CC-SOCIAL-NORM (this session)
 
-### ✅ RESOLVED (2026-02-17):
-X API keys fixed — all 4 from same Developer App. Verified as @Sechols002. 3 live tweets posted.
-Engagement Loop (MG-X-002) now DONE — modernized to twitter-api-v2 + evalsStore memory.
+### 🏆 MILESTONE ACHIEVED (2026-02-18):
+**X/Twitter LIVE — Real Tweets Posted from Cloud**
+| Test | Result |
+|------|--------|
+| Env vars in Netlify | 4/4 TWITTER_* keys present |
+| Cloud healthcheck | 2/5 social platforms (YouTube + X/Twitter = MVP ✅) |
+| Local OAuth test | Authenticated as @Sechols002 |
+| Local tweet | ID: 2022413188155728040 |
+| Cloud tweet | ID: 2022414239688794214 |
+| Cost Plus 20% | $0.001 base + $0.0002 markup = $0.0012 total |
+| No Fake Success | `success: true` with real tweetId |
+
+Live tweets: https://x.com/Sechols002/status/2022413188155728040
 
 ### 🔧 Workflow Available:
 Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
