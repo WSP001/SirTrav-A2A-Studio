@@ -931,6 +931,20 @@ weekly-analyze:
     @echo "📈 Running weekly pulse analysis..."
     node scripts/weekly-analyze.mjs
 
+# ============================================
+# 🏛️ COUNCIL FLASH v1.5.0 (Deterministic)
+# ============================================
+
+# Council Flash — chains all existing gates in order (stops on first failure)
+council-flash:
+    @echo "🏛️ Council Flash v1.5.0 — running gated sequence..."
+    @just preflight
+    @just security-audit
+    @just wiring-verify
+    @just no-fake-success-check
+    @just cycle-all
+    @echo "✅ Council Flash complete — all gates passed"
+
 # Step 2: Dry-run validation (Antigravity runs this, auto-detects local/cloud)
 x-dry-run:
     @echo "🧪 Running X/Twitter dry-run test (auto-detect)..."
