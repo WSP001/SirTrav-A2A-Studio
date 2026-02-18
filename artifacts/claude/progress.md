@@ -1,3 +1,9 @@
+# Agent Cycle Progress
+
+Progress entries are appended by `just cycle-all` and `just mvp-verify`.
+Each entry logs: agent, gates passed, next gate, and blockers.
+
+<!-- Entries below this line are auto-generated -->
 # Sprint Progress: Layers 1-2 Commons Good Golden Path
 
 > **Last Updated:** 2026-02-03T02:50:00Z

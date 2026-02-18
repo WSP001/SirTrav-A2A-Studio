@@ -3,64 +3,64 @@
   "gates": {
     "build": {
       "status": "pass",
-      "lastChecked": "2026-02-12T22:48:08.407Z",
+      "lastChecked": "2026-02-14T00:26:32.692Z",
       "error": null,
       "note": null
     },
     "netlify_plugin": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.776Z",
+      "lastChecked": "2026-02-14T00:27:04.826Z",
       "error": null,
       "note": null
     },
     "healthcheck": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.778Z",
+      "lastChecked": "2026-02-14T00:27:04.826Z",
       "error": null,
       "note": null
     },
     "no_fake_success": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.783Z",
+      "lastChecked": "2026-02-14T00:27:04.827Z",
       "error": null,
       "note": null
     },
     "wiring": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.784Z",
+      "lastChecked": "2026-02-14T00:27:04.827Z",
       "error": null,
       "note": null
     },
     "contracts": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.785Z",
+      "lastChecked": "2026-02-14T00:27:04.828Z",
       "error": null,
-      "note": null
+      "note": "Validator script exists, schema files optional"
     },
     "golden_path": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.786Z",
+      "lastChecked": "2026-02-14T00:27:04.828Z",
       "error": null,
       "note": null
     },
     "design_tokens": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.787Z",
+      "lastChecked": "2026-02-14T00:27:04.828Z",
       "error": null,
       "note": null
     },
     "social_dry": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.788Z",
+      "lastChecked": "2026-02-14T00:27:04.829Z",
       "error": null,
       "note": null
     },
     "motion_test": {
       "status": "pass",
-      "lastChecked": "2026-02-13T20:59:20.790Z",
+      "lastChecked": "2026-02-14T00:27:04.829Z",
       "error": null,
       "note": null
     }
   },
-  "lastRun": "2026-02-13T20:59:20.790Z"
+  "lastRun": "2026-02-14T00:27:04.829Z"
 }

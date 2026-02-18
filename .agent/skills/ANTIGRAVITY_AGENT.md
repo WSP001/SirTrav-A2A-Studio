@@ -136,6 +136,48 @@ Codex — See tasks/XXXX-implement-design.md
 
 ---
 
+## 🔄 CYCLE SYSTEM — LEAN PROTOCOL v3
+
+```bash
+just cycle-next-for antigravity   # 50 tokens — ONE line: what to do now
+just cycle-orient antigravity     # 200 tokens — full briefing (if needed)
+```
+
+Do NOT read full context files. Trust the Cycle Gate.
+If `cycle-next` says ALL PASS, skip to logic work immediately.
+
+### ARCHIVE RULE (NEVER VIOLATE)
+
+Do NOT delete or overwrite archived files in the operator's Google Drive archive folder.
+Only Scott decides what to keep or discard.
+
+### Your Gates
+
+| Gate | Layer | What It Checks |
+|------|-------|----------------|
+| `contracts` | L2 | `scripts/validate-social-contracts.mjs` + `lib/storage.ts` exist |
+| `golden_path` | L2 | `verify-golden-path.mjs` tests healthcheck + pipeline + progress |
+| `social_dry` | L4 | Publishers have validation functions |
+| `motion_test` | L4 | Motion test calls `generate-motion-graphic` |
+
+### Run Your Gates
+
+```bash
+just cycle-gate contracts
+just cycle-gate golden_path
+just cycle-gate social_dry
+just cycle-gate motion_test
+```
+
+### After Any Fix
+
+```bash
+just cycle-all                          # Re-verify all 10 gates
+just cycle-status                       # Show gate summary
+```
+
+---
+
 ## 🧪 TESTING ROLE (Test Operations)
 
 ### Identity

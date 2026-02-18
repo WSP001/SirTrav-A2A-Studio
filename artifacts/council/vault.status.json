@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "path": "artifacts/memory_vault.sqlite",
+  "tables": [
+    "council_events",
+    "job_packets",
+    "sqlite_sequence",
+    "vault_assets"
+  ],
+  "version": "1.5.0",
+  "timestamp": "2026-02-18T03:58:51.698Z"
+}

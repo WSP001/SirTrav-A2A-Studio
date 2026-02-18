@@ -4,6 +4,9 @@ import netlifyPlugin from "@netlify/vite-plugin";
 import { resolve } from "path";
 
 // https://vitejs.dev/config/
+// @netlify/vite-plugin: Emulates Functions, Blobs, and environment
+// in local dev. This repo still runs via `netlify dev` for full emulation.
+// See: https://docs.netlify.com/build/frameworks/framework-setup-guides/vite/
 export default defineConfig({
   plugins: [react(), netlifyPlugin()],
 
