@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "job-packet.schema.json",
+  "title": "SirTrav Job Packet — SeaTrace Packet Switch Protocol",
+  "description": "Separates Public Logic from Private Cost. Public layer stays in repo, Private layer goes to artifacts/costing/ (gitignored).",
+
+  "definitions": {
+    "publicLayer": {
+      "type": "object",
+      "description": "Public: stays in git, visible to all agents and the Commons",
+      "required": ["jobType", "logicVersion", "timestamp"],
+      "properties": {
+        "jobType": {
+          "type": "string",
+          "description": "What type of job ran",
+          "examples": ["Weekly Pulse", "X Verification", "Invoice Generation", "Pipeline Run"]
+        },
+        "logicVersion": {
+          "type": "string",
+          "description": "Git SHA or version tag of the logic that ran"
+        },
+        "agent": {
+          "type": "string",
+          "description": "Which agent executed the job",
+          "enum": ["claude-code", "codex", "antigravity", "windsurf", "x-agent", "human"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "failed", "disabled", "skipped"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "runId": {
+          "type": "string",
+          "description": "Enterprise trace ID"
+        },
+        "publicResult": {
+          "type": "object",
+          "description": "Non-sensitive result data (tweetIds, file paths, counts)",
+          "additionalProperties": true
+        }
+      }
+    },
+    "privateLayer": {
+      "type": "object",
+      "description": "Private: goes to artifacts/costing/ (gitignored). Contains cost, tokens, user data.",
+      "required": ["costBreakdown"],
+      "properties": {
+        "costBreakdown": {
+          "type": "object",
+          "required": ["baseCost", "markup", "totalDue"],
+          "properties": {
+            "baseCost": { "type": "number", "description": "Raw API cost in USD" },
+            "markup": { "type": "number", "description": "20% Commons Good markup" },
+            "totalDue": { "type": "number", "description": "baseCost + markup" },
+            "apiCalls": { "type": "integer", "description": "Number of API calls made" },
+            "tokenUsage": {
+              "type": "object",
+              "properties": {
+                "input": { "type": "integer" },
+                "output": { "type": "integer" },
+                "total": { "type": "integer" }
+              }
+            }
+          }
+        },
+        "variance": {
+          "type": "object",
+          "description": "Budget vs Actual comparison",
+          "properties": {
+            "budgeted": { "type": "number" },
+            "actual": { "type": "number" },
+            "delta": { "type": "number" },
+            "withinBudget": { "type": "boolean" }
+          }
+        },
+        "userFeedback": {
+          "type": "object",
+          "properties": {
+            "rating": { "type": "string", "enum": ["good", "bad", "none"] },
+            "comment": { "type": "string" }
+          }
+        }
+      }
+    },
+    "jobPacket": {
+      "type": "object",
+      "description": "Complete job packet — split at write time into public + private",
+      "required": ["packet", "public", "private"],
+      "properties": {
+        "packet": {
+          "type": "string",
+          "description": "Unique packet identifier"
+        },
+        "public": { "$ref": "#/definitions/publicLayer" },
+        "private": { "$ref": "#/definitions/privateLayer" }
+      }
+    }
+  }
+}

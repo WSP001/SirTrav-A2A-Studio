@@ -249,3 +249,92 @@ Each layer must PASS before the next layer's agents are UNBLOCKED.
 
 **The code is fully wired. The platform config (env vars) is the only blocker.**
 **Run `just rc1-verify` to confirm. Then hand off to Netlify Agent with `NETLIFY_AGENT_PROMPT.md`.**
+
+---
+
+## PENDING PR: `claude/trusting-hamilton` → `main`
+
+**Status:** Pushed, awaiting review. **PR:** https://github.com/WSP001/SirTrav-A2A-Studio/pull/new/claude/trusting-hamilton
+
+This branch **replaces** many existing commands with a cycle-gate system. If merged, the justfile shrinks from 912 → ~430 lines.
+
+### New Commands Added (on branch only)
+
+| Command | Owner | What It Does |
+|---------|-------|-------------|
+| `just cycle-next` | Windsurf Master | Cheapest orientation (~50 tokens): what to do NOW |
+| `just cycle-next-for <agent>` | Windsurf Master | Agent-specific next action |
+| `just cycle-brief` | Windsurf Master | 1-line per gate status (~150 tokens) |
+| `just cycle-orient <agent>` | Windsurf Master | Full briefing for agent (~200 tokens) |
+| `just cycle-budget` | Windsurf Master | Token budget tracking |
+| `just cycle-layer <layer>` | Windsurf Master | Run all gates for a layer |
+| `just cycle-status` | Windsurf Master | Full cycle state |
+| `just cycle-gate <gate>` | Windsurf Master | Run a single gate by name |
+| `just cycle-quick` | Windsurf Master | Quick pass through all gates |
+| `just cycle-all` | Windsurf Master | Full sweep of all gates |
+| `just orient-claude` | Claude Code | Claude-specific orientation |
+| `just orient-codex` | Codex | Codex-specific orientation |
+| `just orient-antigravity` | Antigravity | Antigravity-specific orientation |
+| `just orient-windsurf` | Windsurf Master | Windsurf-specific orientation |
+| `just orient-human` | Human (Scott) | Human operator orientation |
+| `just skills` | ALL | Show agent skill docs |
+
+### Commands REMOVED by this branch
+
+> ⚠️ **WARNING:** 570 lines deleted. These commands exist on `main` but NOT on `trusting-hamilton`:
+
+- `wiring-verify`, `no-fake-success-check`, `rc1-verify`, `master-status`
+- `task-start`, `task-done`, `task-skip`, `task-fail`, `task-log`
+- `agent-status`, `check-layers-1-2`, `layers-1-2-gate`, `quick-status`
+- `x-healthcheck`, `x-dry-run`, `x-live-test`, `x-full-test`, `x-report`
+- `antigravity-reset`, `antigravity-design`, `full-system-check`
+- `healthcheck-cloud`, `golden-path-cloud`, `golden-path-local`
+- `read-anchor`, `check-zone`, `progress`, `init-progress`
+- `claude-code-init`, `codex-frontend-init`, `codex-devops-init`
+- `pre-commit-check`, `deploy-preview-safe`
+
+**Decision required:** Scott must review the PR before merge. Archived lines saved to `C:\Users\Roberto002\My Drive\SirTRAV\JUSTFILE_BEFORE_V3_REFINEMENT.txt`.
+
+### Agentic Test Commands (on branch / worktree only)
+
+| Command | Owner | What It Does |
+|---------|-------|-------------|
+| `just agentic-test` | Antigravity | Cloud e2e test, no tweets (~11s) |
+| `just agentic-test-x` | Antigravity | Cloud e2e test + LIVE X tweet (~12s) |
+| `just agentic-test-local` | Antigravity | Local test against netlify dev |
+| `just agentic-dry` | Antigravity | Shape validation only (<1s) |
+
+### Agent Skill Docs (on branch only, `.agent/skills/`)
+
+| File | Agent |
+|------|-------|
+| `WINDSURF_MASTER_AGENT.md` | Windsurf Master — build, justfile, deploy, env config |
+| `CLAUDE_CODE_AGENT.md` | Claude Code — backend, functions, contracts |
+| `CODEX_AGENT.md` | Codex — frontend UI, design |
+| `HUMAN_OPERATOR.md` | Human (Scott) — env vars, OAuth, deploy approval |
+| `ANTIGRAVITY_AGENT.md` | Antigravity — tests, QA, design |
+
+---
+
+## OPERATOR RUNBOOK — Human-Only Duties (Scott)
+
+These tasks CANNOT be delegated to any agent:
+
+```text
+1. git pull origin main                           → Sync workspace
+2. just cycle-status / just rc1-verify            → Learn what's blocked
+3. netlify env:list | findstr TWITTER_            → Check X keys aligned
+4. netlify env:set TWITTER_API_KEY "..."          → Fix if mismatched (all 4 from SAME app)
+5. just dev + node scripts/test-x-publish.mjs     → Verify locally
+6. just no-fake-success-check                     → Assign to agent if failing
+7. type netlify.toml                              → Confirm build/publish/functions
+8. just rc1-verify + npm run build                → Full gate check
+9. netlify env:set AWS_ACCESS_KEY_ID "..." (etc)  → Remotion Lambda keys
+10. netlify deploy --prod                          → Deploy + smoke test
+```
+
+**Credential Freeze Rule:** Pick ONE X Developer App. Treat current keys as final. Do NOT regenerate unless proven compromised. Remove legacy `X_*` env vars.
+
+---
+
+**Updated:** 2026-02-14 (Windsurf Master Phase 3 — repo sync + full assessment)

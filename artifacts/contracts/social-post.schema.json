@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sirtrav.com/schemas/social-post.schema.json",
+  "title": "SirTrav Social Post Contract",
+  "description": "Validates input to all publish-*.ts Netlify Functions. Each platform has required/optional fields defined via conditional schemas.",
+  "type": "object",
+  "required": ["platform", "projectId", "content"],
+  "properties": {
+    "platform": {
+      "type": "string",
+      "enum": ["x", "youtube", "instagram", "tiktok", "linkedin"],
+      "description": "Target social platform"
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project identifier for tracing"
+    },
+    "runId": {
+      "type": "string",
+      "description": "Enterprise tracing ID (threaded through all agent calls)"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000,
+      "description": "Primary text content (maps to: text for X, caption for IG/TikTok, description for YouTube/LinkedIn)"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Post title (required for YouTube, LinkedIn)"
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "type"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to the media file (from Netlify Blobs or external)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["video", "image", "thumbnail"],
+            "description": "Media asset type"
+          }
+        }
+      },
+      "description": "Media attachments (videoUrl maps to media[0] with type=video)"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^#?[\\w]+"
+      },
+      "description": "Hashtags (with or without # prefix)"
+    },
+    "scheduledTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 scheduled publish time (future use)"
+    },
+    "privacy": {
+      "type": "string",
+      "description": "Visibility setting (platform-specific values)"
+    },
+    "commonsGoodCredits": {
+      "type": "string",
+      "description": "Attribution text appended to posts (Commons Good pattern)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "platform": { "const": "x" } }
+      },
+      "then": {
+        "properties": {
+          "content": { "maxLength": 280 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "platform": { "const": "youtube" } }
+      },
+      "then": {
+        "required": ["title", "media"],
+        "properties": {
+          "privacy": {
+            "enum": ["private", "unlisted", "public"]
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "YouTube category ID (default: 22 = People & Blogs)"
+          },
+          "playlistId": {
+            "type": "string",
+            "description": "YouTube playlist to add video to"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "platform": { "const": "instagram" } }
+      },
+      "then": {
+        "required": ["media"],
+        "properties": {
+          "coverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Thumbnail image URL for Reels"
+          },
+          "shareToFeed": {
+            "type": "boolean",
+            "description": "Also share Reel to main feed"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "platform": { "const": "tiktok" } }
+      },
+      "then": {
+        "required": ["media"],
+        "properties": {
+          "privacy": {
+            "enum": ["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "SELF_ONLY"]
+          },
+          "disableComment": { "type": "boolean" },
+          "disableDuet": { "type": "boolean" },
+          "disableStitch": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "platform": { "const": "linkedin" } }
+      },
+      "then": {
+        "required": ["title", "media"],
+        "properties": {
+          "privacy": {
+            "enum": ["PUBLIC", "CONNECTIONS", "LOGGED_IN"]
+          },
+          "postType": {
+            "type": "string",
+            "enum": ["personal", "organization"],
+            "description": "Post as individual or company page"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "platform": "x",
+      "projectId": "proj-001",
+      "runId": "run-abc-123",
+      "content": "Check out our latest adventure! #SirTrav #CommonsGood"
+    },
+    {
+      "platform": "youtube",
+      "projectId": "proj-001",
+      "runId": "run-abc-123",
+      "title": "SirTrav Family Adventure - Episode 1",
+      "content": "Join the SirTrav family on their first big adventure.",
+      "media": [{ "url": "https://blobs.netlify.com/video.mp4", "type": "video" }],
+      "hashtags": ["SirTrav", "FamilyTravel"],
+      "privacy": "unlisted",
+      "commonsGoodCredits": "Created with SirTrav A2A Studio"
+    }
+  ]
+}

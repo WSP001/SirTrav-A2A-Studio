@@ -1,0 +1,6 @@
+2026-02-02T18:44:48.4630713-08:00 | Antigravity | DONE | anchor-rename
+2026-02-02T18:44:48.4633932-08:00 | Antigravity | DONE | ag-010-ci-gate
+2026-02-02T18:44:48.4634019-08:00 | Antigravity | DONE | ag-008-golden-path
+2026-02-02T18:44:48.4634112-08:00 | Antigravity | DONE | justfile-update
+2026-02-02T18:51:18.7071014-08:00 | Antigravity | DONE | validate-layers-1-2
+2026-02-11T17:53:06.0613448-08:00 | claude-code | DONE | layer-1-2-gates

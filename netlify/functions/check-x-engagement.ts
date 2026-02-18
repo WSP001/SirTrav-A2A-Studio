@@ -1,190 +1,226 @@
-import { Handler } from '@netlify/functions';
-import OAuth from 'oauth-1.0a';
-import crypto from 'crypto';
-
-// Types for X API Responses
-interface XUser {
-    id: string;
-    name: string;
-    username: string;
-}
-
-interface XTweet {
-    id: string;
-    text: string;
-    author_id: string;
-    created_at: string;
-    conversation_id?: string;
-}
-
-interface XMentionsResponse {
-    data?: XTweet[];
-    includes?: {
-        users?: XUser[];
-    };
-    meta?: {
-        result_count: number;
-        newest_id: string;
-    };
-    errors?: any[];
-}
-
 /**
- * Helper: Generate OAuth 1.0a Header (Reused from publish-x.ts)
+ * check-x-engagement (Modern function)
+ * GET: Fetches recent mentions/replies from X/Twitter and stores engagement signals.
+ * POST: { runId?, sinceId? } — optional parameters for targeted fetch.
+ *
+ * Engagement signals are stored in evalsStore for the regenerative content loop.
+ * Free tier X API only supports GET /2/users/me — mentions require Basic ($100/mo).
+ * This function gracefully handles tier limitations.
  */
-function getAuthHeader(url: string, method: string) {
-    const oauth = new OAuth({
-        consumer: {
-            key: process.env.TWITTER_API_KEY || process.env.X_API_KEY || '',
-            secret: process.env.TWITTER_API_SECRET || process.env.X_API_SECRET || '',
-        },
-        signature_method: 'HMAC-SHA1',
-        hash_function(base_string, key) {
-            return crypto
-                .createHmac('sha1', key)
-                .update(base_string)
-                .digest('base64');
-        },
-    });
+import { TwitterApi } from 'twitter-api-v2';
+import { evalsStore } from './lib/storage';
 
-    const token = {
-        key: process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN || '',
-        secret: process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_TOKEN_SECRET || '',
-    };
-
-    return oauth.toHeader(oauth.authorize({ url, method }, token));
+interface EngagementSignal {
+  id: string;
+  platform: 'x';
+  type: 'mention' | 'reply';
+  author: string;
+  text: string;
+  timestamp: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  actionable: boolean;
 }
 
-export const handler: Handler = async (event) => {
-    // 1. Basic Auth Check
-    const apiKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
-    if (!apiKey) {
-        return {
-            statusCode: 200,
-            body: JSON.stringify({
-                success: false,
-                disabled: true,
-                message: "X Integration disabled (keys missing)"
-            })
-        };
-    }
+interface EngagementResponse {
+  success: boolean;
+  disabled?: boolean;
+  count?: number;
+  signals?: EngagementSignal[];
+  userId?: string;
+  username?: string;
+  tierLimited?: boolean;
+  invoice?: {
+    endpoint: string;
+    cost: number;
+    total_due: number;
+    timestamp: string;
+    buildId: string;
+  };
+  error?: string;
+  runId?: string;
+}
 
-    // 2. Determine Fetch Parameters
-    // In a real app, we'd read 'since_id' from a DB/Vault to only get new stuff
-    // For now, we fetch the last 5 mentions
-    const maxResults = 5;
-    const userId = 'me'; // Special alias when using OAuth 1.0a User Context
-    const baseUrl = `https://api.twitter.com/2/users/${userId}/mentions`;
-    const queryParams = `max_results=${maxResults}&place.fields=full_name&tweet.fields=created_at,author_id,conversation_id&user.fields=username`;
-    const fullUrl = `${baseUrl}?${queryParams}`;
+const HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+function analyzeSentiment(text: string): 'positive' | 'negative' | 'neutral' {
+  const lower = text.toLowerCase();
+  const positiveWords = ['love', 'great', 'amazing', 'awesome', 'fire', 'nice', 'good', 'best', 'thanks'];
+  const negativeWords = ['bad', 'hate', 'terrible', 'awful', 'worst', 'boring', 'trash', 'broken'];
+
+  const posScore = positiveWords.filter(w => lower.includes(w)).length;
+  const negScore = negativeWords.filter(w => lower.includes(w)).length;
+
+  if (posScore > negScore) return 'positive';
+  if (negScore > posScore) return 'negative';
+  return 'neutral';
+}
+
+function isActionable(text: string): boolean {
+  const lower = text.toLowerCase();
+  const actionWords = ['more', 'less', 'please', 'could you', 'can you', 'should', 'want', 'need', 'try', 'suggest'];
+  return actionWords.some(w => lower.includes(w));
+}
+
+export default async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('', { status: 204, headers: HEADERS });
+  }
+
+  // Parse optional body for POST (runId, sinceId)
+  let runId = 'unknown';
+  let sinceId: string | undefined;
+
+  if (req.method === 'POST') {
+    try {
+      const body = await req.json();
+      runId = body.runId || 'unknown';
+      sinceId = body.sinceId;
+    } catch {
+      // Body is optional
+    }
+  }
+
+  // No Fake Success: disabled if keys missing
+  const appKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
+  const appSecret = process.env.TWITTER_API_SECRET || process.env.X_API_SECRET;
+  const accessToken = process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN;
+  const accessSecret = process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_SECRET;
+
+  if (!appKey || !appSecret || !accessToken || !accessSecret) {
+    const resp: EngagementResponse = {
+      success: false,
+      disabled: true,
+      error: 'X/Twitter disabled (missing keys)',
+      runId,
+    };
+    return new Response(JSON.stringify(resp), { status: 200, headers: HEADERS });
+  }
+
+  try {
+    console.log(`[X-ENGAGEMENT] Checking engagement signals (runId: ${runId})...`);
+
+    const client = new TwitterApi({ appKey, appSecret, accessToken, accessSecret });
+
+    // Step 1: Get authenticated user ID (required for mentions endpoint)
+    const me = await client.v2.me();
+    const userId = me.data.id;
+    const username = me.data.username;
+
+    console.log(`[X-ENGAGEMENT] Authenticated as @${username} (${userId})`);
+
+    // Step 2: Try to fetch mentions (requires Basic tier — $100/mo)
+    let signals: EngagementSignal[] = [];
+    let tierLimited = false;
 
     try {
-        console.log(`📡 [X-LISTENER] Checking mentions for @me...`);
+      const mentionOpts: Record<string, any> = {
+        max_results: 10,
+        'tweet.fields': ['created_at', 'author_id', 'conversation_id'],
+        'user.fields': ['username'],
+        expansions: ['author_id'],
+      };
+      if (sinceId) mentionOpts.since_id = sinceId;
 
-        // 3. Call X API
-        const authHeader = getAuthHeader(baseUrl, 'GET');
+      const mentions = await client.v2.userMentionTimeline(userId, mentionOpts);
 
-        // Note: OAuth 1.0a signature MUST NOT include query params in the base string if they are in the URL
-        // BUT the library handles this if we pass the full URL to authorize().
-        // Let's be careful. The safer way is to sign the base URL and append params later, 
-        // OR pass param object to authorize.
-        // Let's try the robust way:
-
-        const requestData = {
-            url: baseUrl, // Base URL for signing
-            method: 'GET',
-            data: {
-                max_results: maxResults,
-                'tweet.fields': 'created_at,author_id,conversation_id',
-                'user.fields': 'username'
-            }
-        };
-
-        const oauth = new OAuth({
-            consumer: {
-                key: process.env.TWITTER_API_KEY || process.env.X_API_KEY || '',
-                secret: process.env.TWITTER_API_SECRET || process.env.X_API_SECRET || '',
-            },
-            signature_method: 'HMAC-SHA1',
-            hash_function(base_string, key) {
-                return crypto.createHmac('sha1', key).update(base_string).digest('base64');
-            },
+      if (mentions.data?.data) {
+        signals = mentions.data.data.map((tweet) => {
+          const author = mentions.includes?.users?.find((u) => u.id === tweet.author_id);
+          return {
+            id: tweet.id,
+            platform: 'x' as const,
+            type: 'mention' as const,
+            author: author ? `@${author.username}` : 'unknown',
+            text: tweet.text,
+            timestamp: tweet.created_at || new Date().toISOString(),
+            sentiment: analyzeSentiment(tweet.text),
+            actionable: isActionable(tweet.text),
+          };
         });
-
-        const token = {
-            key: process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN || '',
-            secret: process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_TOKEN_SECRET || '',
-        };
-
-        const authHeaderObj = oauth.toHeader(oauth.authorize(requestData, token));
-
-        // Construct final URL with params
-        const finalUrl = `${baseUrl}?max_results=${maxResults}&tweet.fields=created_at,author_id,conversation_id&user.fields=username`;
-
-        const response = await fetch(finalUrl, {
-            method: 'GET',
-            headers: {
-                ...authHeaderObj,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const data = await response.json() as XMentionsResponse;
-
-        if (response.status !== 200) {
-            console.error('❌ X API Error:', data);
-            return {
-                statusCode: response.status,
-                body: JSON.stringify({
-                    success: false,
-                    error: `X API Error: ${response.status}`,
-                    details: data
-                })
-            };
-        }
-
-        // 4. Process Signals
-        const signals = (data.data || []).map(tweet => {
-            const author = data.includes?.users?.find(u => u.id === tweet.author_id);
-            return {
-                id: tweet.id,
-                platform: 'x',
-                type: 'mention',
-                author: author ? `@${author.username}` : 'unknown',
-                text: tweet.text,
-                timestamp: tweet.created_at,
-                sentiment: 'neutral', // Placeholder for actual analysis
-                actionable: tweet.text.toLowerCase().includes('more') || tweet.text.toLowerCase().includes('less')
-            };
-        });
-
-        console.log(`✅ [X-LISTENER] Found ${signals.length} mentions.`);
-
-        // 5. Return Results (In future: Write to Vault)
-        return {
-            statusCode: 200,
-            body: JSON.stringify({
-                success: true,
-                count: signals.length,
-                signals: signals,
-                // Invoice (Costing)
-                invoice: {
-                    endpoint: 'users/:id/mentions',
-                    cost: 0.0001, // Cheap read
-                    total_due: 0.00012, // +20% markup
-                    timestamp: new Date().toISOString()
-                }
-            })
-        };
-
-    } catch (error: any) {
-        console.error('❌ Listener Check Failed:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                success: false,
-                error: error.message
-            })
-        };
+      }
+    } catch (tierErr: any) {
+      // Free tier returns 403 for mentions — expected, not an error
+      if (tierErr.code === 403 || tierErr.data?.status === 403) {
+        console.log('[X-ENGAGEMENT] Mentions endpoint requires Basic tier (Free tier limitation)');
+        tierLimited = true;
+      } else {
+        throw tierErr;
+      }
     }
+
+    // Step 3: Store signals in evalsStore (engagement memory)
+    if (signals.length > 0) {
+      try {
+        const store = evalsStore();
+        const ts = new Date().toISOString();
+        const key = `engagement/${userId}/${ts}.json`;
+        await store.setJSON(key, {
+          runId,
+          userId,
+          username,
+          fetchedAt: ts,
+          signalCount: signals.length,
+          signals,
+        });
+        console.log(`[X-ENGAGEMENT] Stored ${signals.length} signals in evalsStore`);
+      } catch (storeErr) {
+        console.warn('[X-ENGAGEMENT] evalsStore write failed (continuing):', storeErr);
+      }
+    }
+
+    // Step 4: Cost Plus 20% invoice
+    const invoice = {
+      endpoint: 'GET /2/users/:id/mentions',
+      cost: 0.0001,
+      total_due: 0.0001 * 1.2,
+      timestamp: new Date().toISOString(),
+      buildId: process.env.BUILD_ID || 'local-dev',
+    };
+
+    console.log(`[X-ENGAGEMENT] Found ${signals.length} signals${tierLimited ? ' (tier-limited)' : ''}`);
+
+    const resp: EngagementResponse = {
+      success: true,
+      count: signals.length,
+      signals,
+      userId,
+      username,
+      tierLimited,
+      invoice,
+      runId,
+    };
+
+    return new Response(JSON.stringify(resp), { status: 200, headers: HEADERS });
+  } catch (error: any) {
+    console.error('[X-ENGAGEMENT] Error:', error);
+
+    if (error.code === 401 || error.data?.status === 401) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Authentication Failed. Check API Keys.',
+        keysPresent: true,
+        runId,
+      }), { status: 401, headers: HEADERS });
+    }
+
+    if (error.code === 429) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Rate Limit Exceeded. Try again in 15 minutes.',
+        retryAfter: 900,
+        runId,
+      }), { status: 429, headers: HEADERS });
+    }
+
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Internal Server Error',
+      runId,
+    }), { status: 500, headers: HEADERS });
+  }
 };

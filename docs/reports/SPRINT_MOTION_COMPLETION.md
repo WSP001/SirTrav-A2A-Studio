@@ -23,7 +23,7 @@
 ### 3. Resilience & Security (P0-P5) -> **HARDENED**
 - **Timeouts:** `compile-video` bumped to 24s (matching Netlify Pro).
 - **Headers:** Strict `Content-Security-Policy` and `X-Frame-Options` deployed.
-- **Schemas:** API Contracts locked in `docs/schemas/api-responses.json`.
+- **Schemas:** API Contracts locked in `artifacts/contracts/` (legacy: `docs/schemas/api-responses.json`).
 
 ---
 
