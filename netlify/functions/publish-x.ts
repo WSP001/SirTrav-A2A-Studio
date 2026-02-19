@@ -98,7 +98,7 @@ const handler: Handler = async (event) => {
     if (!appKey || !appSecret || !accessToken || !accessSecret) {
         console.warn("⚠️ [DISABLED] Missing one or more Twitter/X API keys.");
         return {
-            statusCode: 200, // Return 200 so UI can handle "disabled" state gracefully
+            statusCode: 503, // Service Unavailable — keys missing, not a success (CC-015-X hardening)
             headers,
             body: JSON.stringify({
                 success: false,

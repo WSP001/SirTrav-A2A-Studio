@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "runId": "truth-2026-02-19T05-41-24",
+    "timestamp": "2026-02-19T05:41:27.154Z",
+    "baseUrl": "https://sirtrav-a2a-studio.netlify.app",
+    "mode": "strict",
+    "cleanedCaches": false,
+    "agent": "Antigravity (AG-013)"
+  },
+  "healthcheck": {
+    "pass": true,
+    "status": "healthy",
+    "services": [
+      {
+        "name": "storage",
+        "status": "ok",
+        "latency_ms": 246
+      },
+      {
+        "name": "ai_services",
+        "status": "ok"
+      },
+      {
+        "name": "social_publishing",
+        "status": "ok",
+        "error": "2/5 platforms (disabled: TikTok, Instagram, LinkedIn)"
+      }
+    ],
+    "checks": {
+      "storage": true,
+      "ai_keys": true,
+      "social_keys": true
+    }
+  },
+  "results": [
+    {
+      "platform": "X/Twitter",
+      "endpoint": "publish-x",
+      "httpStatus": 200,
+      "durationMs": 777,
+      "verdict": "PASS",
+      "honesty": "truthful",
+      "details": [
+        "✅ Genuine post confirmed: tweetId=2024358642791653857",
+        "   URL: https://twitter.com/user/status/2024358642791653857",
+        "   Invoice: $0.0012"
+      ],
+      "raw": {
+        "success": true,
+        "platform": "x",
+        "tweetId": "2024358642791653857",
+        "url": "https://twitter.com/user/status/2024358642791653857",
+        "invoice": {
+          "endpoint": "POST /2/tweets",
+          "cost": 0.001,
+          "total_due": 0.0012,
+          "timestamp": "2026-02-19T05:41:25.973Z",
+          "buildId": "local-dev"
+        }
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "disabled": 0,
+    "liarsDetected": 0,
+    "allHonest": true
+  }
+}

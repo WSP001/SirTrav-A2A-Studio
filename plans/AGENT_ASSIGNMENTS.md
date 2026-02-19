@@ -22,15 +22,14 @@ origin/main (CX-014 emblem truth wiring + CC-SOCIAL-NORM + CC-014 Memory Vault h
 | 5 | `just vault-init` | ✅ PASS | 3 tables OK, receipt written |
 | 6 | `just golden-path` | ✅ PASS | Cloud pipeline operational, 1 SSE event |
 | 7 | `just build` | ✅ PASS | 1351 modules, 3.59s |
-| 8 | `just verify-truth` | ⚠️ PARTIAL | Steps 1-2 PASS (no-fake + Truth Serum ALL CLEAR), Step 3 FAIL (verify-x-real detects CC-014 statusCode:200+disabled — correct detection, CC-014 hardening not yet applied) |
+| 8 | `just verify-truth` | ✅ PASS | All 3 steps green: no-fake + Truth Serum ALL CLEAR + verify-x-real CLEAN |
 
-**Truth Serum verdict:** `tweetId=2024355171665432811` — real tweet confirmed, $0.0012 invoice.
+**Truth Serum verdict:** `tweetId=2024358642791653857` — real tweet confirmed, $0.0012 invoice.
 **Emblem truth state:** Emblem consumes health + vault + Truth Serum signals (CX-014 wired).
 No manual toggles remain — emblem state is fully deterministic from backend verdicts.
 
-**Blocking item for full green:** CC-014 must change `publish-x.ts` disabled response from
-`statusCode: 200` to `statusCode: 503`. Once applied, `just verify-x-real` will pass and
-Gate 8 goes fully green.
+**CC-015-X applied (2026-02-18):** `publish-x.ts` disabled response changed from `statusCode: 200`
+to `statusCode: 503`. `just verify-x-real` now returns CLEAN. Gate 8 is fully green.
 
 ---
 
