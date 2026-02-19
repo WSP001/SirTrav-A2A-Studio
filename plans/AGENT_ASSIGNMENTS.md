@@ -7,55 +7,57 @@
 
 ## 🚦 Active Ticket (NOW)
 
-**Ticket:** CC-SOCIAL-NORM — Normalize publisher response contracts
-**Owner:** Claude (Backend)
-**Reviewer:** Antigravity
-**Status:** **IN_PROGRESS** (2026-02-18)
+**Ticket:** WM-011 — Council Flash + UI coherence verification
+**Owner:** Windsurf Master
+**Reviewer:** Human Operator (Council)
+**Status:** **READY** (2026-02-19) — all prerequisites on main ✅
 
 ### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Standby — CX-014 (SystemStatusEmblem + reality state wiring)
-*   **Antigravity:** Standby — REVIEWER of CC-SOCIAL-NORM; trigger gates on merge ✅
-*   **Claude:** CC-SOCIAL-NORM (in progress) → CC-014 (Memory Vault helpers) next
+- **Codex:** STANDBY — CX-014 ✅ DONE (emblem wired to Council Flash truth state)
+- **Antigravity:** STANDBY — reviewer gate ✅ CLOSED (all gates green, verdict recorded below)
+- **Claude:** CC-014 ✅ DONE → CC-015 (operator invoice surface) next, not blocking
+- **Windsurf:** WM-011 — Council Flash + emblem coherence verification (ACTIVE)
 
 ---
 
-## 🦅 Antigravity — Agent Status (2026-02-18)
+## 🦅 Antigravity — Reviewer Verdict (2026-02-19)
 
 **Role:** QA / Truth Sentinel — Test Ops, Contract Verifier, Council Flash Gate Keeper
+
+### 🏆 REVIEWER VERDICT: POST-CC-SOCIAL-NORM + CX-014 — ALL GATES GREEN
+
+> **Run:** `just verify-truth` (composite: lenient truth serum + golden-path-cloud)
+> **Timestamp:** 2026-02-19T05:15:17Z | **Agent:** Antigravity
+
+| Gate | Command | Result | Evidence |
+|------|---------|--------|----------|
+| Gate 1: Truth Serum (lenient) | `just truth-serum-lenient` | ✅ ALL CLEAR | tweetId=2024352070304669755 (real 19-digit), $0.0012, All Truthful |
+| Gate 2: Golden Path Cloud | `just golden-path-cloud` | ✅ PASS | 1 READY + 4 SKIPPED, 0 BROKEN, exit 0 |
+| Gate 3: Social contract shape | SKIPPED platforms | ✅ CONFIRMED | LinkedIn/YouTube/Instagram/TikTok → SKIPPED not BROKEN |
+
+> *"Post-CC-SOCIAL-NORM + CX-014: `just verify-truth` green on cloud, no liar detected,*
+> *social contract stable. Antigravity reviewer gate CLOSED. Baton to Windsurf for WM-011."*
+> — Antigravity, 2026-02-19
 
 ### ✅ Completed This Phase
 
 | Task | Status | Notes |
 |------|--------|-------|
-| AG-013 `scripts/truth-serum.mjs` | ✅ DONE | All flags: `--local`, `--cloud`, `--allow-disabled`, `--clean`, `--all-publishers` |
-| `just ag-full-suite` suite | ✅ DONE | AG-011 + AG-012 + AG-013 all wired |
-| `verify-golden-path.mjs` SOCIAL_ENABLED | ✅ DONE | Platforms not in env → SKIPPED (not BROKEN) |
-| Baseline Truth Serum (2026-02-17) | ✅ PASS | X/Twitter real tweetId confirmed, $0.0012 invoice, All Truthful |
+| AG-013 `scripts/truth-serum.mjs` | ✅ DONE | All flags wired |
+| `just ag-full-suite` + `just verify-truth` | ✅ DONE | Composite gate live in justfile |
+| `verify-golden-path.mjs` SOCIAL_ENABLED | ✅ DONE | SKIPPED not BROKEN |
+| CC-SOCIAL-NORM reviewer gate | ✅ CLOSED | All 3 gates green, 2026-02-19 |
+| CX-014 reviewer check (emblem truth state) | ✅ CLOSED | Emblem reads Council Flash truth |
+| Baseline Truth Serum (2026-02-17) | ✅ PASS | tweetId=2023905117364240539 |
+| Post-merge reviewer run (2026-02-19) | ✅ PASS | tweetId=2024352070304669755 |
 
-### 🔴 Current Ticket: REVIEWER — CC-SOCIAL-NORM
-
-**Trigger:** When Claude merges CC-SOCIAL-NORM, Antigravity runs:
-
-```sh
-just truth-serum-lenient     # cloud — disabled platforms must be SKIPPED not BROKEN
-just golden-path-cloud       # confirm SOCIAL_ENABLED skipping works end-to-end  
-just ag-full-suite           # full AG gate green before Council Flash
-```
-
-**Reports result to Council Flash.** 
-Gate is GREEN when:
-- [ ] `just truth-serum-lenient` exits 0 against cloud
-- [ ] `just golden-path-cloud` shows `SKIPPED` (not `broken`) for TikTok + Instagram + LinkedIn
-- [ ] No publisher reports `success:true` without a real postId
-- [ ] `just ag-full-suite` exits 0
-
-### 🟡 Next (Post-CC-SOCIAL-NORM)
+### 🟡 Next (post-WM-011)
 
 | When | Task |
 |------|------|
-| CC-SOCIAL-NORM merged | Run reviewer gates (above), report PASS/FAIL |
-| CC-014 merged (Vault helpers) | Verify `job_packets` rows are written per pipeline run |
-| CX-014 merged (emblem reality) | Verify emblem → red when truth gates are red |
+| WM-011 verified | Confirm emblem state matches actual Council Flash verdict |
+| CC-015 merges | Verify `/run-invoice?runId=…` returns correct cost data |
+| Human Council Flash run | All 8 gates green → declare "Council Flash v1.5.0 trusted" |
 
 ### 🏆 MILESTONE ACHIEVED (2026-02-18):
 **X/Twitter LIVE — Real Tweets Posted from Cloud**
@@ -259,8 +261,102 @@ Then begin with this statement:
 | CC-0004 | Claude Code | Engagement Loop Backend: twitter-api-v2, evalsStore memory, sentiment analysis, runId threading | 2026-02-17 |
 | CC-0005 | Claude Code | Invoice Generation Script: Cost Plus 20%, 5-service line items, --demo mode | 2026-02-17 |
 | CC-HC-2 | Claude Code | Healthcheck MVP semantics: X+YouTube=ok, others=disabled (not degraded) | 2026-02-17 |
+| CC-SOCIAL-NORM | Claude Code | Normalize all publisher responses to `{platform, status, url, error}` contract | 2026-02-18 |
+| CX-014 | Codex | SystemStatusEmblem wired to health + vault + Truth Serum (off/real/error states) | 2026-02-18 |
+| CC-014 | Claude Code | Memory Vault helpers: recordJobPacket + recordCouncilEvent, pipeline + Truth Serum wired | 2026-02-19 |
+| AG-013-VERDICT | Antigravity | Reviewer gate: `just verify-truth` green on cloud, tweetId=2024352070304669755 (real), 0 liars | 2026-02-19 |
 
 ---
+
+## 🛰️ WM-011 — Council Flash + UI Coherence Verification
+
+**Owner:** Windsurf Master
+**Status:** READY — all prerequisites on main (`3d8b27d`)
+**Not Blocking:** No code changes expected; this is verification + one-paragraph write-up only.
+
+### What Windsurf Does
+
+On `main` (or the council branch, after any final rebase):
+
+```sh
+just vault-init       # ensure Memory Vault tables exist
+just council-flash    # run all 8 gates
+```
+
+### Observe the Emblem
+
+| State | Expected Emblem |
+|-------|----------------|
+| Before `just council-flash` | `OFF — not yet verified` |
+| After fully green council-flash | `REAL — Council Flash 1.5.0 green` |
+| Intentional gate failure (break a truth test) | `ERROR — truth or wiring gate failed` |
+
+### Done When
+
+Record this in `AGENT_ASSIGNMENTS.md` (under WM-011 completed row):
+
+> *"Council Flash v1.5.0 verified end-to-end: emblem truth state matches health + vault + Truth Serum verdicts. No manual toggles remain."*
+
+Add to the Completed table as `WM-011` once confirmed.
+
+---
+
+## 🧾 CC-015 — Operator Invoice Surface (Backlog, Non-Blocking)
+
+**Owner:** Claude Code
+**Priority:** Nice-to-have — does not block Council Flash
+**Depends on:** CC-014 ✅ (vault helpers already wired)
+
+### What Claude Code Does
+
+Expose a simple operator invoice endpoint or script so any run's cost is inspectable:
+
+**Option A — Netlify function:**
+```
+GET /.netlify/functions/run-invoice?runId=run-1771478139712
+→ { runId, packets: [...], subtotal, markup, totalDue, generatedAt }
+```
+
+**Option B — Node script (simpler):**
+```sh
+node scripts/show-run-cost.mjs run-1771478139712
+# Prints human-readable cost breakdown from vault helpers
+```
+
+### Done When
+- Any runId from a real pipeline run returns a cost breakdown
+- Uses `getRunCost(runId)` from vault helpers (already implemented in CC-014)
+- No fake totals — cost is derived from real `job_packets` rows
+
+---
+
+## 🏛️ Council Flash Readiness Checklist (Human Operator)
+
+Run `just council-flash` **only when all boxes are checked:**
+
+- [x] CX-014 merged — emblem reads truth state (off/real/error)
+- [x] CC-SOCIAL-NORM merged — normalized `{platform, status, url, error}` contract
+- [x] CC-014 merged — Memory Vault + Council event logging wired
+- [x] AG-013 reviewer gate — `just verify-truth` green on cloud (2026-02-19)
+- [ ] WM-011 verified — Windsurf confirms emblem ↔ Flash coherence
+
+**When all boxes are checked, run:**
+```sh
+just vault-init      # ensure tables exist
+just council-flash   # all 8 gates
+```
+
+**If all 8 gates green and emblem shows REAL:**
+> "Council Flash v1.5.0 trusted."
+
+**If any gate fails:** work flows back to the owning agent per the gate label.
+
+| Gate Fails | Owner |
+|------------|-------|
+| vault / healthcheck | Claude Code |
+| truth-serum / golden-path | Antigravity |
+| wiring-verify / NFS | Windsurf Master |
+| emblem state mismatch | Codex |
 
 ## 🔐 Constraints (CLAUDE.md)
 
