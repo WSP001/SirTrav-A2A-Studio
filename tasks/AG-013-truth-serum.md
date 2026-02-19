@@ -1,22 +1,21 @@
-# TASK: AG-013 — The Truth Serum (Verification Trap)
+# TASK: AG-013 — Truth Serum + Receipts
 
 **Owner:** Antigravity Agent
-**Status:** PENDING_ACTIVATION
+**Status:** IN_PROGRESS (scripts exist from origin/main merge)
 **Priority:** P0 (CRITICAL)
-**Sprint:** Operation Truth Serum
+**Sprint:** Council Flash v1.5.0
 **Protocol:** No Fake Success — HARD MODE
 
 ---
 
 ## MISSION OBJECTIVE
 
-Build `scripts/truth-serum.mjs` — an interrogation script that catches any
-agent attempting to fake a result. If the X/Twitter publisher returns success
-but the `tweetId` is undefined or "mock-id", the script crashes with exit
-code 1 and names the liar.
+Build and enforce Truth Serum verification and keep the receipts for
+The Commons Good. If any part of the system pretends to have posted when
+it didn't, you pull the fire alarm and mark the round as failed.
 
-Also build `scripts/verify-x-real.mjs` — a static analysis tool that scans
-`publish-x.ts` for mock patterns and rejects them.
+**Scripts already exist** from origin/main merge. Your job is to ensure they
+match the v1.5.0 contract below and pass `just verify-truth`.
 
 ---
 
@@ -78,20 +77,53 @@ Exit code 0 if clean. Exit code 1 if any pattern found.
 
 ---
 
+## ADDITIONAL: Golden Path + SOCIAL_ENABLED Adaptation
+
+Update Golden Path and contract tests to:
+- Respect `SOCIAL_ENABLED` / per-platform flags
+- Treat disabled platforms as SKIPPED, not BROKEN
+- Ensure `just council-flash` includes at least one Truth Serum run
+
+---
+
+## ADDITIONAL: Truth Report JSON Schema
+
+Define a tiny "truth report" schema. Write to `artifacts/public/metrics/truth-serum-*.json`:
+
+```json
+{
+  "round_id": "string",
+  "branch": "string",
+  "commit": "string",
+  "commands_run": ["string"],
+  "pass_fail": { "command": "PASS|FAIL" },
+  "artifacts": ["string"],
+  "owner": "antigravity",
+  "timestamp": "ISO8601"
+}
+```
+
+Optionally generate a Markdown summary per round for human digestion.
+
+---
+
 ## SUCCESS CRITERIA
 
 1. `just run-truth-serum` exits 0 when publisher is honest (disabled = 503, real = 200+tweetId)
 2. `just run-truth-serum` exits 1 when publisher lies (200 + no tweetId)
-3. `just verify-x-real` scans publish-x.ts and reports CLEAN or DIRTY
-4. Cleanse function wipes cache dirs without error
+3. `just run-truth-serum local` forces localhost:8888 target
+4. `just run-truth-serum cloud` forces cloud URL target
+5. `just verify-x-real` scans publish-x.ts and reports CLEAN or DIRTY
+6. Truth report JSON written to `artifacts/public/metrics/`
+7. Disabled platforms treated as SKIPPED (not BROKEN) in Golden Path
 
 ---
 
-## FILES YOU MAY CREATE
+## FILES YOU MAY EDIT / CREATE
 
 ```
-scripts/truth-serum.mjs      <- CREATE
-scripts/verify-x-real.mjs    <- CREATE
+scripts/truth-serum.mjs      <- UPDATE (ensure --local/--cloud/--strict contract)
+scripts/verify-x-real.mjs    <- UPDATE (ensure banned pattern list matches)
 ```
 
 ## FILES YOU MUST NOT EDIT
@@ -100,6 +132,7 @@ scripts/verify-x-real.mjs    <- CREATE
 justfile                     <- Windsurf owns
 netlify/functions/*          <- Claude Code owns
 src/components/*             <- Codex owns
+scripts/vault-init.mjs       <- Windsurf owns
 ```
 
 ---
@@ -107,7 +140,10 @@ src/components/*             <- Codex owns
 ## VERIFY
 
 ```bash
-just run-truth-serum    # Should exit 0 (honest disabled) or catch liars
-just verify-x-real      # Should report CLEAN after CC-014 is done
-just verify-truth       # Full sequence: cleanse → serum → verify
+just run-truth-serum          # Auto-detect: exit 0 (honest) or exit 1 (liar)
+just run-truth-serum local    # Force local target
+just run-truth-serum cloud    # Force cloud target
+just verify-x-real            # CLEAN after CC-014 is done
+just verify-truth             # Composite: no-fake + serum + verify-x
+just council-flash            # Full 8-gate pipeline (Truth Serum is gate 8)
 ```

@@ -3,7 +3,7 @@
 **Owner:** Codex Agent
 **Status:** PENDING_ACTIVATION
 **Priority:** P1
-**Sprint:** Operation Truth Serum
+**Sprint:** Council Flash v1.5.0
 **Depends On:** CX-012 (SystemStatusEmblem.tsx must exist first)
 **Protocol:** Visual Honesty
 
@@ -81,21 +81,61 @@ The toggle reads from the healthcheck response:
 
 ---
 
+## ADDITIONAL: App.jsx Wiring
+
+In `src/App.jsx`:
+- Use the new emblem states in the header and hero plaque
+- Wire the truth state from `vault.status.json` or healthcheck response
+- Optional: tiny tooltip "Real posts verified" vs "Mock / disabled"
+
+---
+
+## ADDITIONAL: CSS Class Tokens
+
+In `src/components/SystemStatusEmblem.css` (or App.css):
+
+```css
+.emblem--off   { /* Gray state - no shimmer */ }
+.emblem--real  { /* Gold state - full shimmer + pulse */ }
+.emblem--error { /* Red state - pulse only, no shimmer */ }
+```
+
+Reuse existing `emblem-shimmer`, `emblem-rotate`, `emblem-pulse` animations,
+but gate them by state (only full shimmer in `real` mode).
+
+---
+
+## INPUT SOURCES
+
+The emblem reads state from (no secrets in UI, only state + metadata):
+- `GET /.netlify/functions/healthcheck` → social.twitter.configured/enabled
+- `artifacts/council/vault.status.json` → ok, version, timestamp
+- Truth Serum summary → last verified timestamp
+
+When Truth Serum + Council Flash say "real", the emblem glows gold.
+When anything is off or broken, the emblem is obviously not in "prestige" mode.
+
+---
+
 ## SUCCESS CRITERIA
 
 1. Toggle renders next to Shield quadrant at all breakpoints
 2. Clicking ON checks healthcheck → Gold if keys configured, Red if not
 3. Red state shows "Keys Missing" tooltip/label
-4. `just check-zone src/components/SystemStatusEmblem.tsx` confirms toggle exists
-5. `just build` passes with the toggle
+4. `.emblem--off`, `.emblem--real`, `.emblem--error` CSS classes exist
+5. App.jsx imports and uses emblem state
+6. `just check-zone src/components/SystemStatusEmblem.tsx` confirms toggle exists
+7. `just build` passes with the toggle
 
 ---
 
 ## FILES YOU MAY EDIT
 
 ```
-src/components/SystemStatusEmblem.tsx   <- MODIFY (add toggle)
-src/components/SystemStatusEmblem.css   <- MODIFY (add toggle styles)
+src/components/SystemStatusEmblem.tsx   <- MODIFY (add toggle + states)
+src/components/SystemStatusEmblem.css   <- MODIFY (add state-gated styles)
+src/App.jsx                             <- MODIFY (wire emblem states)
+src/App.css                             <- MODIFY (emblem class tokens)
 ```
 
 ## FILES YOU MUST NOT EDIT
@@ -105,6 +145,7 @@ netlify/functions/*          <- Claude Code owns
 justfile                     <- Windsurf owns
 src/remotion/branding.ts     <- READ ONLY (import tokens, don't modify)
 scripts/*                    <- Antigravity owns
+scripts/vault-init.mjs       <- Windsurf owns
 ```
 
 ---
@@ -115,4 +156,5 @@ scripts/*                    <- Antigravity owns
 just check-zone src/components/SystemStatusEmblem.tsx
 just cycle-gate design_tokens
 just build
+just council-flash    # Full 8-gate pipeline
 ```

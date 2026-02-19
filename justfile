@@ -320,16 +320,17 @@ help:
     @echo "  just mvp-verify         - Full truth ritual (10 gates + agentic + build)"
     @echo ""
     @echo "Truth Serum:"
-    @echo "  just restore-north-star - Extract honest publish-x from 098f384"
-    @echo "  just verify-x-real      - Scan publish-x.ts for mock patterns"
-    @echo "  just verify-truth       - Full truth serum verification"
-    @echo "  just run-truth-serum    - Cleanse + interrogate (needs AG-013)"
-    @echo "  just check-zone <file>  - Verify component has required patterns"
+    @echo "  just restore-north-star      - Extract honest publish-x from 098f384"
+    @echo "  just verify-x-real           - Scan publish-x.ts for mock patterns"
+    @echo "  just run-truth-serum [mode]  - Truth Serum (auto/local/cloud)"
+    @echo "  just verify-truth            - Composite: no-fake + serum + verify-x"
+    @echo "  just check-zone <file>       - Verify component has required patterns"
     @echo ""
-    @echo "Council Flash:"
-    @echo "  just vault-init         - Initialize SQLite Memory Vault (Bun)"
-    @echo "  just vault-status       - Check vault receipt"
-    @echo "  just council-flash      - Full 7-gate deterministic pipeline"
+    @echo "Council Flash v1.5.0:"
+    @echo "  just vault-init         - Initialize SQLite Memory Vault"
+    @echo "  just vault-status       - Check vault receipt (stale >24h = fail)"
+    @echo "  just wiring-verify      - Pipeline file + import checks"
+    @echo "  just council-flash      - Full 8-gate deterministic pipeline"
     @echo ""
     @echo "Deploy:"
     @echo "  just deploy         - Deploy to production"
@@ -1244,24 +1245,33 @@ restore-north-star:
     @echo "📋 Next: Tell Claude Code to integrate. See tasks/CC-014-ancestral-restore.md"
 
 # 2. The Cleanse + Truth Serum — Antigravity's interrogation script
-run-truth-serum:
-    @echo "🧪 Injecting Truth Serum..."
-    @powershell -NoProfile -Command "if (Test-Path .cache) { Remove-Item .cache -Recurse -Force; Write-Host 'Cleansed: .cache' }"
-    @powershell -NoProfile -Command "if (Test-Path '.netlify/functions') { Remove-Item '.netlify/functions' -Recurse -Force; Write-Host 'Cleansed: .netlify/functions' }"
+# Usage: just run-truth-serum         (auto-detect)
+#        just run-truth-serum local   (force localhost:8888)
+#        just run-truth-serum cloud   (force cloud URL)
+run-truth-serum mode="":
+    @echo "🧪 Injecting Truth Serum (mode: {{mode}})..."
     @powershell -NoProfile -Command "if (!(Test-Path scripts/truth-serum.mjs)) { Write-Host '❌ Missing scripts/truth-serum.mjs — Antigravity must create it. See tasks/AG-013-truth-serum.md'; exit 1 }"
-    @node scripts/truth-serum.mjs
+    @node scripts/truth-serum.mjs --strict --clean-cache {{ if mode != "" { "--" + mode } else { "" } }}
 
 # 3. Static analysis — verify no mock patterns in publish-x.ts
 verify-x-real:
     @echo "🔍 Scanning publish-x.ts for mock patterns..."
     @node -e "const fs=require('fs');const f=fs.readFileSync('netlify/functions/publish-x.ts','utf8');const bans=[['mock-id','Fake tweet ID'],['Mock Success','Fake success message'],['MOCK_MODE','Mock bypass flag']];let dirty=0;bans.forEach(([p,why])=>{if(f.includes(p)){console.log('DIRTY: ['+p+'] '+why);dirty++}});const m=f.match(/statusCode:\s*200[\s\S]{0,200}disabled:\s*true/g);if(m){console.log('DIRTY: HTTP 200 + disabled:true (soft lie)');dirty++}if(dirty===0){console.log('CLEAN: No mock patterns found in publish-x.ts')}else{console.log(dirty+' mock pattern(s) found. CC-014 must fix');process.exit(1)}"
 
-# 4. The Showdown — full truth verification sequence
+# 4. The Showdown — composite truth verification (one red = all red)
 verify-truth:
     @echo "🦅 OPERATION TRUTH SERUM — Full Verification"
     @echo "═══════════════════════════════════════════════"
+    @echo ""
+    @echo "STEP 1: No Fake Success Pattern..."
+    @just no-fake-success-check
+    @echo ""
+    @echo "STEP 2: Truth Serum (auto-detect)..."
+    @just run-truth-serum
+    @echo ""
+    @echo "STEP 3: Verify X Real (static scan)..."
     @just verify-x-real
-    @just build
+    @echo ""
     @echo "✅ Truth Serum complete — code is honest"
 
 # 5. Check zone — verify a component file contains required patterns
@@ -1278,20 +1288,26 @@ check-zone file:
 
 # Initialize SQLite Memory Vault (local-only operator artifact)
 vault-init:
-    @echo "🧠 Initializing Memory Vault (SQLite via Bun)..."
-    @powershell -NoProfile -Command "if (!(Test-Path (Join-Path $env:USERPROFILE '.bun/bin/bun.exe'))) { Write-Host '❌ Bun not installed. Run: powershell -c irm bun.sh/install.ps1 | iex'; exit 1 }"
-    @powershell -NoProfile -Command "& (Join-Path $env:USERPROFILE '.bun/bin/bun.exe') run scripts/vault-init.mjs"
+    @echo "🧠 Initializing Memory Vault (SQLite via Node)..."
+    @node scripts/vault-init.mjs
     @echo "✅ Memory Vault initialized"
 
-# Check vault status (read-only)
+# Check vault status (read-only, fails if missing or stale >24h)
 vault-status:
     @echo "🧠 Memory Vault Status..."
-    @powershell -NoProfile -Command "if (Test-Path artifacts/council/vault.status.json) { Get-Content artifacts/council/vault.status.json } else { Write-Host '❌ Vault not initialized. Run: just vault-init'; exit 1 }"
+    @node -e "const fs=require('fs');const p='artifacts/council/vault.status.json';if(!fs.existsSync(p)){console.log('Vault not initialized. Run: just vault-init');process.exit(1)}const r=JSON.parse(fs.readFileSync(p,'utf8'));console.log('Path:',r.path);console.log('Version:',r.version);console.log('Tables:',r.tables.join(', '));console.log('Init:',r.timestamp);const age=Date.now()-new Date(r.timestamp).getTime();const hrs=Math.round(age/3600000);console.log('Age:',hrs,'hours');if(hrs>24){console.log('STALE: Vault receipt older than 24h. Run: just vault-init');process.exit(1)}if(!r.ok){console.log('UNHEALTHY: Vault receipt reports not OK');process.exit(1)}console.log('Status: OK (fresh)')"
 
-# One-command Council Flash (gated sequence — stops on first failure)
+# Pipeline wiring check (file + import existence for all layers)
+wiring-verify:
+    @echo "🔗 Wiring Verify (Pipeline file + import checks)..."
+    @just validate-contracts
+    @just stack-check
+    @echo "✅ Wiring verified"
+
+# One-command Council Flash (8-gate sequence — stops on first failure)
 council-flash:
-    @echo "🏛️ Council Flash v1.5.0 — running gated sequence..."
-    @echo "═══════════════════════════════════════════════════════"
+    @echo "🏛️ Council Flash v1.5.0 — 8-gate deterministic pipeline"
+    @echo "═══════════════════════════════════════════════════════════"
     @echo ""
     @echo "GATE 1: Preflight..."
     @just preflight
@@ -1300,10 +1316,10 @@ council-flash:
     @just security-audit
     @echo ""
     @echo "GATE 3: Wiring Verify..."
-    @just validate-contracts
+    @just wiring-verify
     @echo ""
     @echo "GATE 4: No Fake Success..."
-    @just verify-x-real
+    @just no-fake-success-check
     @echo ""
     @echo "GATE 5: Vault Init..."
     @just vault-init
@@ -1314,4 +1330,9 @@ council-flash:
     @echo "GATE 7: Build..."
     @just build
     @echo ""
-    @echo "✅ Council Flash complete — all gates passed (see artifacts/council/*)"
+    @echo "GATE 8: Verify Truth..."
+    @just verify-truth
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo "✅ Council Flash v1.5.0 COMPLETE — all 8 gates passed"
+    @echo "═══════════════════════════════════════════════════════════"
