@@ -65,6 +65,9 @@ export const ASSETS = {
     logoWhite: staticFile("/logo-white.png"),
     logoMark: staticFile("/logo-mark.png"),
 
+    // 🦅 Sir Travis Jennings Gold Emblem (18k animated seal)
+    emblem: staticFile("/sir-travis-emblem.png"),
+
     // Audio
     introSound: staticFile("/audio/intro-beat.mp3"),
     outroSound: staticFile("/audio/outro-stinger.mp3"),
@@ -111,6 +114,24 @@ export const TEMPLATES = {
         description: "Vertical format teaser clip",
         width: 1080,
         height: 1920,
+    },
+    EmblemComposition: {
+        id: "EmblemComposition",
+        label: "Gold Emblem Seal",
+        icon: "🦅",
+        duration: 150, // 5 seconds @ 30fps
+        description: "Animated Sir Travis Jennings 18k gold seal — glitter, sweeping light, prestige rotation",
+        width: 1080,
+        height: 1080,
+    },
+    EmblemThumbnail: {
+        id: "EmblemThumbnail",
+        label: "Emblem Thumbnail (16:9)",
+        icon: "🏅",
+        duration: 90, // 3 seconds @ 30fps
+        description: "Landscape gold emblem for YouTube thumbnails",
+        width: 1280,
+        height: 720,
     },
 } as const;
 

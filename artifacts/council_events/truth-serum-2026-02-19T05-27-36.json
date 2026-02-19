@@ -1,0 +1,16 @@
+{
+  "eventId": "truth-serum-2026-02-19T05-27-36",
+  "kind": "truth-serum",
+  "timestamp": "2026-02-19T05:27:39.523Z",
+  "triggeredBy": "antigravity",
+  "verdict": "PASS",
+  "summary": "1/1 passed. Honesty: ALL TRUTHFUL",
+  "gateResults": [
+    {
+      "gate": "X/Twitter",
+      "verdict": "PASS",
+      "detail": "✅ Genuine post confirmed: tweetId=2024355171665432811"
+    }
+  ],
+  "reportPath": "artifacts/reports/truth-serum-2026-02-19T05-27-36.json"
+}

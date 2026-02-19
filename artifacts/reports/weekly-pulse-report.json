@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-02-17T17:47:54.430Z",
+  "checks": {
+    "weeklyRaw": false,
+    "weeklySchema": false,
+    "socialSchema": false,
+    "harvestScript": false,
+    "analyzeScript": false,
+    "hudComponent": false,
+    "validateScript": false
+  },
+  "gates": {
+    "total": 10,
+    "of": 10
+  }
+}

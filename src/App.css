@@ -243,6 +243,58 @@ body {
   }
 }
 
+/* ─── 🦅 Sir Travis Jennings Emblem Animations ─── */
+
+/* Sweeping gold shimmer — simulates 18k specular highlight */
+@keyframes emblem-shimmer {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(200, 160, 30, 0.7)) brightness(1);
+  }
+
+  25% {
+    filter: drop-shadow(0 0 14px rgba(255, 220, 80, 0.9)) brightness(1.15);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 200, 50, 1)) brightness(1.25);
+  }
+
+  75% {
+    filter: drop-shadow(0 0 10px rgba(200, 160, 30, 0.8)) brightness(1.1);
+  }
+}
+
+/* Slow prestige rotation — 1 full turn per 20s */
+@keyframes emblem-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Glow ring breathing pulse */
+@keyframes emblem-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+    box-shadow: 0 0 8px rgba(200, 160, 30, 0.3);
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+    box-shadow: 0 0 20px rgba(255, 200, 50, 0.6);
+  }
+}
+
+
 /* Button Styles */
 .btn-primary {
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));

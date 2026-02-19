@@ -1,10 +1,10 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // Council Flash v1.5.0 — Memory Vault Initialization
-// Uses Bun's built-in SQLite (zero dependencies)
+// Uses Node + better-sqlite3 for deterministic local receipts.
 // Owner: Windsurf Master (operator-grade local memory receipt)
 
-import { Database } from "bun:sqlite";
-import { mkdirSync, writeFileSync } from "node:fs";
+import Database from 'better-sqlite3';
+import { mkdirSync, writeFileSync } from 'fs';
 
 const VAULT_PATH = "artifacts/memory_vault.sqlite";
 const RECEIPT_DIR = "artifacts/council";
@@ -17,8 +17,8 @@ mkdirSync(RECEIPT_DIR, { recursive: true });
 const db = new Database(VAULT_PATH);
 
 // Performance pragmas
-db.exec("PRAGMA journal_mode=WAL;");
-db.exec("PRAGMA synchronous=NORMAL;");
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 
 // --- vault_assets: RAG-ingestible content store ---
 db.exec(`
@@ -70,8 +70,10 @@ db.exec(`
 `);
 
 // Verify tables exist
-const tables = db.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
-const tableNames = tables.map(t => t.name);
+const tableNames = db
+  .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+  .all()
+  .map((row) => row.name);
 
 const expected = ["council_events", "job_packets", "vault_assets"];
 const missing = expected.filter(t => !tableNames.includes(t));

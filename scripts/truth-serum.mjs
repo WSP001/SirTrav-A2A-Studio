@@ -577,29 +577,63 @@ async function main() {
     const { summary } = report;
     console.log('\n═══════════════════════════════════════════════════════════');
 
+    let exitCode = 0;
+    let verdict = 'PASS';
+    let summaryText = '';
+
     if (summary.liarsDetected > 0) {
+        verdict = 'LIAR_DETECTED';
+        summaryText = `${summary.liarsDetected} publisher(s) attempted to fake results.`;
         console.log('🚨 VERDICT: DISHONESTY DETECTED');
-        console.log(`   ${summary.liarsDetected} publisher(s) attempted to fake results.`);
+        console.log(`   ${summaryText}`);
         console.log('   Investigate immediately. Trust is earned, not inherited.');
-        console.log('═══════════════════════════════════════════════════════════');
-        process.exit(2); // Special exit code for deception
+        exitCode = 2;
     } else if (summary.failed > 0 && summary.disabled === 0) {
+        verdict = 'FAIL';
+        summaryText = `${summary.failed} failure(s). No deception — just honest failures.`;
         console.log(`❌ VERDICT: ${summary.failed} FAILURE(S)`);
         console.log('   No deception — just honest failures. Fix the root cause.');
-        console.log('═══════════════════════════════════════════════════════════');
-        process.exit(1);
+        exitCode = 1;
     } else if (summary.disabled > 0 && !allowDisabled) {
+        verdict = 'DISABLED';
+        summaryText = `${summary.disabled} service(s) honestly unconfigured.`;
         console.log(`⚪ VERDICT: ${summary.disabled} DISABLED`);
         console.log('   Services are honestly unconfigured.');
         console.log('   Re-run with --allow-disabled to accept, or configure keys.');
-        console.log('═══════════════════════════════════════════════════════════');
-        process.exit(1);
+        exitCode = 1;
     } else {
+        verdict = 'PASS';
+        summaryText = `${summary.passed}/${summary.total} passed. Honesty: ${summary.allHonest ? 'ALL TRUTHFUL' : 'MIXED'}`;
         console.log('✅ VERDICT: ALL CLEAR — No deception detected');
-        console.log(`   ${summary.passed}/${summary.total} passed | Honesty: ${summary.allHonest ? 'ALL TRUTHFUL' : 'MIXED'}`);
-        console.log('═══════════════════════════════════════════════════════════');
-        process.exit(0);
+        console.log(`   ${summaryText}`);
+        exitCode = 0;
     }
+    console.log('═══════════════════════════════════════════════════════════');
+
+    // 🎯 CC-014: Write council event to artifacts/council_events/
+    try {
+        const councilEventDir = join(REPORT_DIR.replace('reports', 'council_events'));
+        if (!existsSync(councilEventDir)) mkdirSync(councilEventDir, { recursive: true });
+        const eventId = `truth-serum-${TIMESTAMP}`;
+        const councilEvent = {
+            eventId,
+            kind: allowDisabled ? 'truth-serum-lenient' : 'truth-serum',
+            timestamp: new Date().toISOString(),
+            triggeredBy: 'antigravity',
+            verdict,
+            summary: summaryText,
+            gateResults: results.map(r => ({ gate: r.platform, verdict: r.verdict, detail: r.details?.[0] })),
+            reportPath: `artifacts/reports/truth-serum-${TIMESTAMP}.json`,
+        };
+        const eventPath = join(councilEventDir, `${eventId}.json`);
+        writeFileSync(eventPath, JSON.stringify(councilEvent, null, 2));
+        console.log(`   📋 Council event: artifacts/council_events/${eventId}.json`);
+    } catch (e) {
+        // Non-fatal — never block a gate run
+        console.warn(`   ⚠️  Council event write skipped: ${e.message}`);
+    }
+
+    process.exit(exitCode);
 }
 
 main().catch(err => {

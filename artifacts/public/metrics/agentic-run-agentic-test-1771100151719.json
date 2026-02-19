@@ -1,0 +1,86 @@
+{
+  "harness": "test-agentic-twitter-run v2",
+  "runStartedAt": "2026-02-14T20:15:51.718Z",
+  "baseUrl": "https://sirtrav-a2a-studio.netlify.app",
+  "projectId": "agentic-test-1771100151719",
+  "runId": "run-1771100149659",
+  "mode": "cloud",
+  "publishX": true,
+  "totalMs": 11759,
+  "overallPass": true,
+  "passCount": 6,
+  "failCount": 0,
+  "steps": {
+    "healthcheck": {
+      "pass": true,
+      "ms": 425,
+      "httpStatus": 200,
+      "systemStatus": "degraded",
+      "version": "2.1.0",
+      "storageOk": true,
+      "aiOk": true,
+      "socialStatus": "degraded",
+      "socialError": "2/5 platforms (missing: TikTok, Instagram, LinkedIn)",
+      "envSnapshot": {
+        "openai": true,
+        "elevenlabs": true,
+        "suno": false,
+        "vault_path": "/tmp/sirtrav-vault",
+        "url": "https://sirtrav-a2a-studio.netlify.app"
+      }
+    },
+    "start": {
+      "pass": true,
+      "ms": 480,
+      "httpStatus": 202,
+      "runId": "run-1771100149659",
+      "projectId": "agentic-test-1771100151719",
+      "status": "queued"
+    },
+    "progressPoll": {
+      "pass": true,
+      "ms": 1522,
+      "httpStatus": 200,
+      "eventCount": 0,
+      "events": [],
+      "latestAgent": null,
+      "latestStatus": null
+    },
+    "sse": {
+      "pass": true,
+      "ms": 8129,
+      "eventCount": 1,
+      "endedBy": "stall",
+      "eventTypes": [
+        "connected"
+      ],
+      "lastData": {
+        "projectId": "agentic-test-1771100151719"
+      }
+    },
+    "results": {
+      "pass": true,
+      "ms": 411,
+      "httpStatus": 404,
+      "note": "Results not yet available (pipeline still running)",
+      "contractErrors": []
+    },
+    "publishX": {
+      "pass": true,
+      "ms": 789,
+      "httpStatus": 200,
+      "success": true,
+      "disabled": false,
+      "tweetId": "2022766799083737341",
+      "url": "https://twitter.com/user/status/2022766799083737341",
+      "invoice": {
+        "endpoint": "POST /2/tweets",
+        "cost": 0.001,
+        "total_due": 0.0012,
+        "timestamp": "2026-02-14T20:16:00.862Z",
+        "buildId": "local-dev"
+      },
+      "noFakeSuccess": true
+    }
+  }
+}

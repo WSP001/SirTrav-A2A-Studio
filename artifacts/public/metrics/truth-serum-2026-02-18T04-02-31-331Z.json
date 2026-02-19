@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-02-18T04:02:31.240Z",
+  "baseUrl": "http://localhost:8888/.netlify/functions",
+  "strict": true,
+  "allowDisabled": false,
+  "cleanCache": true,
+  "cleanup": [
+    {
+      "target": ".netlify/functions",
+      "removed": true
+    },
+    {
+      "target": ".cache",
+      "removed": true
+    },
+    {
+      "target": "netlify/functions/dist",
+      "removed": true
+    }
+  ],
+  "pass": false,
+  "verdict": "REQUEST_FAILED",
+  "response": null,
+  "error": "fetch failed"
+}

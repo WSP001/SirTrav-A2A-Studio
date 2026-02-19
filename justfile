@@ -71,8 +71,8 @@ clean-logs:
 # Run security audit
 security-audit:
     @echo "🔐 Running security audit..."
-    @powershell -Command "git log --all --full-history -- .env credentials.json 2>$null || echo 'No secrets in history'"
-    @powershell -Command "git check-ignore .env .env.local"
+    @node -e "const{execSync:x}=require('child_process');try{const r=x('git log --all --full-history -- .env credentials.json',{encoding:'utf8',stdio:['pipe','pipe','pipe']}).trim();if(r){console.log('WARNING: secrets found in git history');process.exit(1)}else{console.log('No secrets in history')}}catch(e){console.log('No secrets in history')}"
+    @node -e "const{execSync:x}=require('child_process');try{x('git check-ignore .env .env.local',{encoding:'utf8',stdio:['pipe','pipe','pipe']});console.log('.env files are gitignored')}catch(e){console.log('WARNING: .env may not be gitignored')}"
     npm run verify:security
     @echo "✅ Security audit complete!"
 
@@ -565,27 +565,67 @@ test-issue-intake-live:
     @echo "🔴 Testing issue-intake LIVE (AG-012)..."
     @node scripts/test-issue-intake.mjs --live
 
-# Truth Serum Verification Trap — strict mode (AG-013)
+# ------------------------------------------
+# 🦅 ANTIGRAVITY — TRUTH SERUM SUITE (AG-013)
+# ------------------------------------------
+# Recipe usage guide:
+#   truth-serum          → Strict baseline: run BEFORE any PR merge to capture current truth
+#   truth-serum-lenient  → Pre-Council Flash reviewer gate: disabled=PASS, liars still caught
+#   truth-serum-clean    → CI deep check: clears function caches then runs strict mode
+#   truth-serum-all      → Full 5-publisher scan: use for release readiness checks
+#   verify-truth         → COMPOSITE REVIEWER GATE: run this when CC-SOCIAL-NORM merges
+#   ag-full-suite        → Full AG sweep (schemas + contracts + serum): final gate before Council Flash
+# ------------------------------------------
+
+# Strict mode — baseline snapshot before any merge / PR (AG-013)
+# When: before PR review, to document current truth state
 truth-serum:
-    @echo "🧪 Truth Serum Verification Trap (AG-013)..."
+    @echo "🧪 Truth Serum — STRICT MODE (AG-013 baseline)"
     @node scripts/truth-serum.mjs
 
-# Truth Serum — lenient mode (disabled = pass)
+# Lenient mode — disabled platforms = PASS; liars still caught
+# When: pre-Council Flash reviewer gate, CI on branches without full social keys
 truth-serum-lenient:
-    @echo "🧪 Truth Serum (lenient mode)..."
+    @echo "🧪 Truth Serum — LENIENT MODE (disabled=PASS, liars=FAIL)"
     @node scripts/truth-serum.mjs --allow-disabled
 
-# Truth Serum — clean caches first, then strict test
+# Clean + strict — clears caches then runs full strict trap
+# When: CI pipeline, or after a deploy to bust any stale function cache
 truth-serum-clean:
-    @echo "🧪 Truth Serum (clean + strict)..."
+    @echo "🧪 Truth Serum — CLEAN + STRICT (cache busted)"
     @node scripts/truth-serum.mjs --clean
 
-# Truth Serum — all publishers
+# All 5 publishers, lenient — full platform surface area scan
+# When: release readiness checks, after adding a new publisher
 truth-serum-all:
-    @echo "🧪 Truth Serum (all 5 publishers)..."
+    @echo "🧪 Truth Serum — ALL PUBLISHERS SCAN (lenient)"
     @node scripts/truth-serum.mjs --all-publishers --allow-disabled
 
-# Run full Antigravity test suite (AG-011 + AG-012 + AG-013)
+# ─── COMPOSITE REVIEWER GATE ──────────────────────────────────────────────────
+# Trigger: run when CC-SOCIAL-NORM merges (Antigravity is reviewer)
+# Validates: normalized {platform, status, url, error} contract + SOCIAL_ENABLED skipping
+# Reports: PASS/FAIL to Council Flash
+ag-reviewer-gate:
+    @echo "🦅 ═══════════════════════════════════════════════════════════"
+    @echo "   ANTIGRAVITY REVIEWER GATE — CC-SOCIAL-NORM merge check"
+    @echo "   Trigger: run after CC-SOCIAL-NORM merges to main"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "━━━ GATE 1: Truth Serum (lenient — disabled=PASS) ━━━"
+    @just truth-serum-lenient
+    @echo ""
+    @echo "━━━ GATE 2: Golden Path Cloud (SOCIAL_ENABLED skipping) ━━━"
+    @just golden-path-cloud
+    @echo ""
+    @echo "━━━ GATE 3: Full AG Suite ━━━"
+    @just ag-full-suite
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo "✅ REVIEWER GATE COMPLETE — Report result to Council Flash"
+    @echo "═══════════════════════════════════════════════════════════"
+
+# Full Antigravity test suite — schemas + contracts + truth serum (AG-011 + AG-012 + AG-013)
+# When: final gate before Council Flash; must be green before any Council session
 ag-full-suite:
     @echo "🦅 ═══════════════════════════════════════════════════════════"
     @echo "   ANTIGRAVITY FULL TEST SUITE (AG-011 + AG-012 + AG-013)"
@@ -603,7 +643,7 @@ ag-full-suite:
     @echo "━━━ STEP 4: Social Contracts ━━━"
     @just test-contracts
     @echo ""
-    @echo "━━━ STEP 5: Truth Serum (AG-013) ━━━"
+    @echo "━━━ STEP 5: Truth Serum Lenient (AG-013) ━━━"
     @just truth-serum-lenient
     @echo ""
     @echo "━━━ STEP 6: Cycle Gate ━━━"

@@ -19,7 +19,11 @@
     "test:all": "npm run preflight && npm run practice:test && npm run verify:security",
     "test:full": "npm run test:all && npm run verify:idempotency && npm run stress:sse",
     "test:skill:narrate": "node scripts/test_narrate_project.mjs",
-    "test:motion": "node scripts/test_motion_graphic.mjs"
+    "test:motion": "node scripts/test_motion_graphic.mjs",
+    "verify:integrations": "node scripts/verify-integrations.mjs",
+    "verify:integrations:cloud": "node scripts/verify-integrations.mjs --cloud",
+    "verify:integrations:youtube": "node scripts/verify-integrations.mjs --youtube",
+    "verify:integrations:remotion": "node scripts/verify-integrations.mjs --remotion"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",

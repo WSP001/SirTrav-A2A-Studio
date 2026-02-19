@@ -241,8 +241,19 @@ function App() {
       <header className="header">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="logo-icon logo-icon-animated">
-              <Zap className="w-5 h-5" />
+            <div className="logo-icon logo-icon-animated" style={{ background: 'none', padding: 0, border: 'none', width: 36, height: 36 }}>
+              <img
+                src="/sir-travis-emblem.png"
+                alt="Sir Travis Jennings Emblem"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  filter: 'drop-shadow(0 0 6px rgba(200,160,30,0.7))',
+                  animation: 'emblem-shimmer 3s ease-in-out infinite',
+                }}
+              />
             </div>
             <span className="text-lg font-semibold text-white">SirTrav A2A Studio</span>
             <span className="version-badge">{APP_VERSION}</span>
@@ -293,11 +304,37 @@ function App() {
         <div className="signature-plaque">
           <div className="signature-border">
             <div className="signature-inner">
-              <div className="signature-icon">
-                <Award className="w-6 h-6" />
+              {/* Active Emblem — the real gold seal */}
+              <div style={{
+                position: 'relative',
+                width: 64,
+                height: 64,
+                flexShrink: 0,
+              }}>
+                <img
+                  src="/sir-travis-emblem.png"
+                  alt="Sir Travis Jennings Gold Seal"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    filter: 'drop-shadow(0 0 12px rgba(200,160,30,0.8))',
+                    animation: 'emblem-shimmer 3s ease-in-out infinite, emblem-rotate 20s linear infinite',
+                  }}
+                />
+                {/* Live pulse ring */}
+                <div style={{
+                  position: 'absolute',
+                  inset: -4,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(200,160,30,0.5)',
+                  animation: 'emblem-pulse 2s ease-in-out infinite',
+                  pointerEvents: 'none',
+                }} />
               </div>
               <div className="signature-text">
-                <span className="signature-name">SirTrav</span>
+                <span className="signature-name">Sir Travis Jennings</span>
                 <span className="signature-tagline">For the Commons Good</span>
               </div>
               <div className="signature-seal">

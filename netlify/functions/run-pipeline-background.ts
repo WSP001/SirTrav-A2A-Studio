@@ -16,6 +16,8 @@ import { appendProgress } from './lib/progress-store';
 import { ManifestGenerator } from './lib/cost-manifest';
 import { inspectOutput } from './lib/quality-gate';
 import { publishVideo, flushCredentials } from './lib/publish';
+// 🎯 CC-014: Memory Vault write helpers
+import { recordJobPacket } from './lib/vault-helpers';
 
 type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -550,6 +552,7 @@ export const handler: Handler = async (event) => {
     // 💰 RECORD COST: Director (Vision)
     // Base Cost: $0.03 input + $0.06 output ~= $0.09
     manifest.addEntry('Director', 'Vision Analysis', 0.09);
+    recordJobPacket({ runId, projectId, agent: 'director', action: 'curate_scenes', jobType: 'Director Agent - Curate Media', status: agentResults.director.success ? 'success' : 'failed', publicResult: { sceneCount: agentResults.director.data?.scenes?.length }, cost: { baseCost: 0.09 }, error: agentResults.director.error });
 
     await updateRun(projectId, runId, {
       progress: 15,
@@ -572,6 +575,7 @@ export const handler: Handler = async (event) => {
     // 💰 RECORD COST: Writer (GPT-4)
     // Base Cost: ~500 tokens = $0.03
     manifest.addEntry('Writer', 'Script Generation', 0.03);
+    recordJobPacket({ runId, projectId, agent: 'writer', action: 'narrate_script', jobType: 'Writer Agent - Script Generation', status: agentResults.writer.success ? 'success' : 'failed', publicResult: { wordCount: agentResults.writer.data?.narrative?.split(' ').length }, cost: { baseCost: 0.03 }, error: agentResults.writer.error });
 
     await updateRun(projectId, runId, {
       progress: 35,
@@ -604,6 +608,8 @@ export const handler: Handler = async (event) => {
     // 💰 RECORD COST: Voice (ElevenLabs) & Composer (Suno)
     manifest.addEntry('Voice', 'Speech Synthesis', 0.12);
     manifest.addEntry('Composer', 'Music Generation', 0.08);
+    recordJobPacket({ runId, projectId, agent: 'voice', action: 'synthesize_audio', jobType: 'Voice Agent - Speech Synthesis', status: voiceResult.success ? 'success' : 'failed', publicResult: { audioUrl: voiceResult.data?.audioUrl }, cost: { baseCost: 0.12 }, error: voiceResult.error });
+    recordJobPacket({ runId, projectId, agent: 'composer', action: 'generate_music', jobType: 'Composer Agent - Music Generation', status: composerResult.success ? 'success' : 'failed', publicResult: { mood, musicUrl: composerResult.data?.musicUrl }, cost: { baseCost: 0.08 }, error: composerResult.error });
 
     await updateRun(projectId, runId, {
       progress: 70,
@@ -632,6 +638,7 @@ export const handler: Handler = async (event) => {
 
     // 💰 RECORD COST: Editor (Compute)
     manifest.addEntry('Editor', 'Video Compilation', 0.05);
+    recordJobPacket({ runId, projectId, agent: 'editor', action: 'compile_video', jobType: 'Editor Agent - Video Compilation', status: agentResults.editor.success ? 'success' : 'failed', publicResult: { videoUrl: agentResults.editor.data?.videoUrl, duration: agentResults.editor.data?.duration, placeholder: agentResults.editor.data?.placeholder }, cost: { baseCost: 0.05 }, error: agentResults.editor.error });
 
     await updateRun(projectId, runId, {
       progress: 90,
@@ -653,6 +660,7 @@ export const handler: Handler = async (event) => {
 
     // 💰 RECORD COST: Attribution (Data Processing)
     manifest.addEntry('Attribution', 'Commons Good Audit', 0.01);
+    recordJobPacket({ runId, projectId, agent: 'attribution', action: 'generate_credits', jobType: 'Attribution Agent - Commons Good Audit', status: agentResults.attribution.success ? 'success' : 'failed', cost: { baseCost: 0.01 }, error: agentResults.attribution.error });
 
     await updateRun(projectId, runId, {
       progress: 98,

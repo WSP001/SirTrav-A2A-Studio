@@ -1,0 +1,65 @@
+{
+  "harness": "test-agentic-twitter-run v2",
+  "runStartedAt": "2026-02-17T00:08:35.313Z",
+  "baseUrl": "https://sirtrav-a2a-studio.netlify.app",
+  "projectId": "agentic-test-1771286915314",
+  "runId": "agentic-test-1771286915314",
+  "mode": "dry-run",
+  "publishX": false,
+  "totalMs": 5098,
+  "overallPass": true,
+  "passCount": 6,
+  "failCount": 0,
+  "steps": {
+    "healthcheck": {
+      "pass": true,
+      "ms": 2297,
+      "httpStatus": 200,
+      "systemStatus": "degraded",
+      "version": "2.1.0",
+      "storageOk": true,
+      "aiOk": true,
+      "socialStatus": "degraded",
+      "socialError": "2/5 platforms (missing: TikTok, Instagram, LinkedIn)",
+      "envSnapshot": {
+        "openai": true,
+        "elevenlabs": true,
+        "suno": false,
+        "vault_path": "/tmp/sirtrav-vault",
+        "url": "https://sirtrav-a2a-studio.netlify.app"
+      }
+    },
+    "start": {
+      "pass": true,
+      "ms": 0,
+      "note": "DRY-RUN: skipped"
+    },
+    "progressPoll": {
+      "pass": true,
+      "ms": 1374,
+      "httpStatus": 200,
+      "eventCount": 0,
+      "events": [],
+      "latestAgent": null,
+      "latestStatus": null
+    },
+    "sse": {
+      "pass": true,
+      "ms": 0,
+      "note": "DRY-RUN: skipped",
+      "eventCount": 0
+    },
+    "results": {
+      "pass": true,
+      "ms": 1423,
+      "httpStatus": 404,
+      "note": "Results not yet available (pipeline still running)",
+      "contractErrors": []
+    },
+    "publishX": {
+      "pass": true,
+      "ms": 0,
+      "note": "Not requested (use --publish-x)"
+    }
+  }
+}
