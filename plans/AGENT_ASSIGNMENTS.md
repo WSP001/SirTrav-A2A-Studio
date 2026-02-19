@@ -13,9 +13,49 @@
 **Status:** **IN_PROGRESS** (2026-02-18)
 
 ### ONE-TICKET RULE (Per Agent)
-*   **Codex:** Standby — next task: Error Boundary + Diagnostics Panel
-*   **Antigravity:** Standby — update verify-golden-path.mjs for SOCIAL_ENABLED
-*   **Claude:** CC-SOCIAL-NORM (this session)
+*   **Codex:** Standby — CX-014 (SystemStatusEmblem + reality state wiring)
+*   **Antigravity:** Standby — REVIEWER of CC-SOCIAL-NORM; trigger gates on merge ✅
+*   **Claude:** CC-SOCIAL-NORM (in progress) → CC-014 (Memory Vault helpers) next
+
+---
+
+## 🦅 Antigravity — Agent Status (2026-02-18)
+
+**Role:** QA / Truth Sentinel — Test Ops, Contract Verifier, Council Flash Gate Keeper
+
+### ✅ Completed This Phase
+
+| Task | Status | Notes |
+|------|--------|-------|
+| AG-013 `scripts/truth-serum.mjs` | ✅ DONE | All flags: `--local`, `--cloud`, `--allow-disabled`, `--clean`, `--all-publishers` |
+| `just ag-full-suite` suite | ✅ DONE | AG-011 + AG-012 + AG-013 all wired |
+| `verify-golden-path.mjs` SOCIAL_ENABLED | ✅ DONE | Platforms not in env → SKIPPED (not BROKEN) |
+| Baseline Truth Serum (2026-02-17) | ✅ PASS | X/Twitter real tweetId confirmed, $0.0012 invoice, All Truthful |
+
+### 🔴 Current Ticket: REVIEWER — CC-SOCIAL-NORM
+
+**Trigger:** When Claude merges CC-SOCIAL-NORM, Antigravity runs:
+
+```sh
+just truth-serum-lenient     # cloud — disabled platforms must be SKIPPED not BROKEN
+just golden-path-cloud       # confirm SOCIAL_ENABLED skipping works end-to-end  
+just ag-full-suite           # full AG gate green before Council Flash
+```
+
+**Reports result to Council Flash.** 
+Gate is GREEN when:
+- [ ] `just truth-serum-lenient` exits 0 against cloud
+- [ ] `just golden-path-cloud` shows `SKIPPED` (not `broken`) for TikTok + Instagram + LinkedIn
+- [ ] No publisher reports `success:true` without a real postId
+- [ ] `just ag-full-suite` exits 0
+
+### 🟡 Next (Post-CC-SOCIAL-NORM)
+
+| When | Task |
+|------|------|
+| CC-SOCIAL-NORM merged | Run reviewer gates (above), report PASS/FAIL |
+| CC-014 merged (Vault helpers) | Verify `job_packets` rows are written per pipeline run |
+| CX-014 merged (emblem reality) | Verify emblem → red when truth gates are red |
 
 ### 🏆 MILESTONE ACHIEVED (2026-02-18):
 **X/Twitter LIVE — Real Tweets Posted from Cloud**
