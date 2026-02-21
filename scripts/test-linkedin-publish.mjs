@@ -71,11 +71,14 @@ const healthStatus = {
 console.log('\n📊 Health Status (JSON):');
 console.log(JSON.stringify(healthStatus, null, 2));
 
-if (!allPresent && !DRY_RUN) {
-  console.log('\n⚠️  LinkedIn is DISABLED (keys not configured)');
+if (!allPresent && !DRY_RUN && !LIVE) {
+  console.log('\n⚠️  LinkedIn is DISABLED (keys not configured locally)');
   console.log('   Add credentials to Netlify env vars or .env file');
   console.log('\n🏁 Test complete (CHECK-ONLY mode)');
   process.exit(0);
+}
+if (!allPresent && LIVE) {
+  console.log('\n⚠️  Local env vars missing — proceeding to cloud (function has its own env)');
 }
 
 // Step 2: Dry-run (validate request shape)
