@@ -223,6 +223,41 @@ function App() {
     }
   };
 
+  const previewResult = videoResult
+    ? {
+        videoUrl: videoResult.videoUrl,
+        projectId,
+        invoice: videoResult.invoice,
+        metadata: {
+          resolution: videoResult.resolution,
+        },
+        credits: {
+          platform: 'SirTrav A2A Studio',
+        },
+      }
+    : {
+        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        projectId: "test-project-123",
+        runId: "ui-demo-run",
+        metadata: {
+          duration: 154,
+          resolution: "1080p",
+          platform: "TikTok",
+          fileSize: 24500000
+        },
+        invoice: {
+          jobId: "ui-demo-0001",
+          subtotal: 1.234,
+          markupTotal: 0.247,
+          totalDue: 1.481
+        },
+        credits: {
+          music: "Suno AI",
+          voice: "ElevenLabs",
+          platform: "SirTrav A2A Studio"
+        }
+      };
+
   return (
     <div className="app min-h-screen relative">
       {/* Toast Notification */}
@@ -913,22 +948,7 @@ function App() {
       {/* Results Preview Modal */}
       {showResultsPreview && (
         <ResultsPreview
-          result={{
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-            projectId: "test-project-123",
-            runId: "ui-demo-run",
-            metadata: {
-              duration: 154,
-              resolution: "1080p",
-              platform: "TikTok",
-              fileSize: 24500000
-            },
-            credits: {
-              music: "Suno AI",
-              voice: "ElevenLabs",
-              platform: "SirTrav A2A Studio"
-            }
-          }}
+          result={previewResult}
           onClose={() => setShowResultsPreview(false)}
           onFeedback={async (projectId, rating, comments) => {
             try {
