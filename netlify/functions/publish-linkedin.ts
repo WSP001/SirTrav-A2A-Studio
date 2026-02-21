@@ -340,8 +340,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     // Determine owner URN (organization or personal)
     let ownerUrn: string;
+    const personUrn = process.env.LINKEDIN_PERSON_URN;
     if (request.postType === 'organization' && organizationId) {
       ownerUrn = `urn:li:organization:${organizationId}`;
+    } else if (personUrn && personUrn.startsWith('urn:li:person:')) {
+      ownerUrn = personUrn;
     } else {
       const userUrn = await getUserUrn(accessToken);
       if (!userUrn) {
@@ -352,7 +355,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             success: false,
             projectId: request.projectId,
             status: 'failed',
-            error: 'Failed to get LinkedIn user profile',
+            error: 'Failed to get LinkedIn user profile. Set LINKEDIN_PERSON_URN or ensure token has openid scope.',
           } as LinkedInResponse),
         };
       }

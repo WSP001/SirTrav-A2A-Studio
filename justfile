@@ -134,12 +134,12 @@ preflight:
 # Healthcheck - local (requires netlify dev)
 healthcheck:
     @echo "📊 Running healthcheck (local)..."
-    @powershell -Command "curl -s http://localhost:8888/.netlify/functions/healthcheck 2>$null || echo '{\"error\": \"Server not running. Run: just dev or just healthcheck-cloud\"}'" 
+    @powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8888/.netlify/functions/healthcheck').Content } catch { @{ error = 'Server not running. Run: just dev or just healthcheck-cloud' } | ConvertTo-Json -Compress }"
 
 # Healthcheck - cloud (live deployment)
 healthcheck-cloud:
     @echo "📊 Running healthcheck (cloud)..."
-    @powershell -Command "curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck"
+    @powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -Uri 'https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck').Content } catch { @{ error = 'Cloud healthcheck request failed' } | ConvertTo-Json -Compress }"
 
 # Start Claude Code with init hook
 claude-init:
@@ -177,12 +177,24 @@ linkedin-dry:
     @echo "💼 Testing LinkedIn Publisher (dry-run)..."
     node scripts/test-linkedin-publish.mjs --dry-run
 
-# Test LinkedIn publish (live)
+# LinkedIn runbook helper
+linkedin-doc:
+    @echo "📘 LinkedIn setup runbook: docs/LINKEDIN_SETUP.md"
+    @echo "   Follow this top-to-bottom, then run: just linkedin-dry && just linkedin-live"
+
+# Test LinkedIn publish (live, cloud — default for audits)
 linkedin-live:
-    @echo "💼 Testing LinkedIn Publisher (LIVE)..."
+    @echo "💼 Testing LinkedIn Publisher (LIVE → CLOUD)..."
     @echo "⚠️  This will post to LinkedIn!"
     @powershell -Command "Start-Sleep -Seconds 3"
-    node scripts/test-linkedin-publish.mjs --live
+    node scripts/test-linkedin-publish.mjs --live --cloud
+
+# Test LinkedIn publish (live, local — requires netlify dev)
+linkedin-live-local:
+    @echo "💼 Testing LinkedIn Publisher (LIVE → LOCAL)..."
+    @echo "⚠️  This will post to LinkedIn via localhost:8888!"
+    @powershell -Command "Start-Sleep -Seconds 3"
+    node scripts/test-linkedin-publish.mjs --live --local
 
 # Test YouTube publish (dry-run)
 youtube-dry:
@@ -286,6 +298,7 @@ help:
     @echo ""
     @echo "Social Media:"
     @echo "  just x-dry          - Test X/Twitter (dry-run)"
+    @echo "  just linkedin-doc   - LinkedIn setup checklist"
     @echo "  just linkedin-dry   - Test LinkedIn (dry-run)"
     @echo "  just youtube-dry    - Test YouTube (dry-run)"
     @echo ""
@@ -984,6 +997,34 @@ council-flash:
     @just no-fake-success-check
     @just cycle-all
     @echo "✅ Council Flash complete — all gates passed"
+
+# ─── council-flash-linkedin ──────────────────────────────────────────────────
+# LinkedIn-specific proof run. Unambiguous: always hits CLOUD.
+# Preconditions: Netlify env vars set (LINKEDIN_ACCESS_TOKEN + LINKEDIN_PERSON_URN)
+# Pass criteria: healthcheck responds, truth-serum exits 0, linkedin-live prints success+URL
+council-flash-linkedin:
+    @echo "🏛️ ═══════════════════════════════════════════════════════════"
+    @echo "   COUNCIL FLASH — LINKEDIN PROOF RUN (UNAMBIGUOUS)"
+    @echo "   Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo ""
+    @echo "── Repo Status ──"
+    @git rev-parse --abbrev-ref HEAD
+    @git rev-parse HEAD
+    @git status --short
+    @echo ""
+    @echo "── Cloud Healthcheck ──"
+    @just healthcheck-cloud
+    @echo ""
+    @echo "── Truth Serum (cloud, lenient) ──"
+    @node scripts/truth-serum.mjs --allow-disabled
+    @echo ""
+    @echo "── LinkedIn LIVE (cloud only) ──"
+    @node scripts/test-linkedin-publish.mjs --live --cloud
+    @echo ""
+    @echo "═══════════════════════════════════════════════════════════"
+    @echo "   END COUNCIL FLASH — LINKEDIN PROOF RUN"
+    @echo "═══════════════════════════════════════════════════════════"
 
 # ─── vault-init ──────────────────────────────────────────────────────────────
 # Windsurf Master / Human Operator prerequisite before council-flash.
