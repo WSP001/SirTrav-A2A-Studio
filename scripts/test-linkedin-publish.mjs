@@ -10,18 +10,42 @@
 //   node scripts/test-linkedin-publish.mjs --live --cloud           # Post via sirtrav-a2a-studio.netlify.app
 //   node scripts/test-linkedin-publish.mjs --live --base-url <url>  # Post via explicit URL
 
-const DRY_RUN = process.argv.includes('--dry-run');
-const LIVE = process.argv.includes('--live');
+const args = process.argv.slice(2);
+const DRY_RUN = args.includes('--dry-run');
+const LIVE = args.includes('--live');
+const HELP = args.includes('--help') || args.includes('-h');
+
+const knownFlags = new Set(['--dry-run', '--live', '--local', '--cloud', '--base-url', '--help', '-h']);
+const unknownFlags = [];
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (!a.startsWith('--')) continue;
+  if (!knownFlags.has(a)) {
+    unknownFlags.push(a);
+    continue;
+  }
+  if (a === '--base-url') i++; // Skip value token
+}
+
+function printUsage() {
+  console.log('Usage:');
+  console.log('  node scripts/test-linkedin-publish.mjs                          # Check-only mode');
+  console.log('  node scripts/test-linkedin-publish.mjs --dry-run                # Validate payload');
+  console.log('  node scripts/test-linkedin-publish.mjs --live                   # Post (auto-detect local→cloud)');
+  console.log('  node scripts/test-linkedin-publish.mjs --live --local           # Post via localhost:8888');
+  console.log('  node scripts/test-linkedin-publish.mjs --live --cloud           # Post via sirtrav-a2a-studio.netlify.app');
+  console.log('  node scripts/test-linkedin-publish.mjs --live --base-url <url>  # Post via explicit URL');
+}
 
 // ── Target resolution: --base-url > --cloud > --local > auto-detect ──
 const CLOUD_URL = 'https://sirtrav-a2a-studio.netlify.app';
 const LOCAL_URL = 'http://localhost:8888';
 
 function resolveBaseUrl() {
-  const idx = process.argv.indexOf('--base-url');
-  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
-  if (process.argv.includes('--cloud')) return CLOUD_URL;
-  if (process.argv.includes('--local')) return LOCAL_URL;
+  const idx = args.indexOf('--base-url');
+  if (idx !== -1 && args[idx + 1]) return args[idx + 1];
+  if (args.includes('--cloud')) return CLOUD_URL;
+  if (args.includes('--local')) return LOCAL_URL;
   return null; // auto-detect
 }
 
@@ -39,6 +63,31 @@ async function autoDetectBaseUrl() {
 console.log('🧪 LinkedIn Publisher Test');
 console.log(`Mode: ${DRY_RUN ? 'DRY-RUN' : LIVE ? 'LIVE' : 'CHECK-ONLY'}`);
 console.log('─'.repeat(50));
+
+if (HELP) {
+  printUsage();
+  process.exit(0);
+}
+
+if (unknownFlags.length > 0) {
+  console.log(`\n❌ Unknown flags: ${unknownFlags.join(', ')}`);
+  printUsage();
+  process.exit(1);
+}
+
+if (args.includes('--local') && args.includes('--cloud')) {
+  console.log('\n❌ Use only one target flag: --local OR --cloud');
+  process.exit(1);
+}
+
+if (args.includes('--base-url')) {
+  const idx = args.indexOf('--base-url');
+  if (!args[idx + 1] || args[idx + 1].startsWith('--')) {
+    console.log('\n❌ Missing value for --base-url');
+    printUsage();
+    process.exit(1);
+  }
+}
 
 // Step 1: Verify env vars exist (No Fake Success pattern)
 const requiredVars = [
@@ -115,6 +164,7 @@ if (DRY_RUN) {
 
 // Step 3: Live test (local, cloud, or auto-detect)
 if (LIVE) {
+  const runId = `live-test-${Date.now()}`;
   const baseUrl = await autoDetectBaseUrl();
   const target = baseUrl === LOCAL_URL ? 'LOCAL' : baseUrl === CLOUD_URL ? 'CLOUD' : 'CUSTOM';
   console.log(`\n🚀 Target: ${target} → ${baseUrl}`);
@@ -126,6 +176,7 @@ if (LIVE) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId: `sirtrav-live-test-${Date.now()}`,
+        runId,
         videoUrl: 'https://sirtrav-a2a-studio.netlify.app/test-assets/sample.mp4',
         title: 'SirTrav LinkedIn Integration Test',
         description: '🧪 Test post from SirTrav-A2A-Studio - validating LinkedIn integration #ForTheCommonsGood',
@@ -155,7 +206,8 @@ if (LIVE) {
       process.exit(1);
     }
   } catch (error) {
-    if (error.code === 'ECONNREFUSED') {
+    const errCode = error?.code || error?.cause?.code;
+    if (errCode === 'ECONNREFUSED') {
       console.log('\n❌ Connection refused. Is netlify dev running?');
       console.log('   Run: just dev (or: netlify dev)');
     } else {
