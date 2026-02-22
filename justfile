@@ -177,6 +177,15 @@ linkedin-dry:
     @echo "💼 Testing LinkedIn Publisher (dry-run)..."
     node scripts/test-linkedin-publish.mjs --dry-run
 
+# LinkedIn setup helper (interactive — test token, generate auth URL, exchange code)
+linkedin-setup:
+    @echo "🔧 LinkedIn Setup Helper..."
+    node scripts/linkedin-setup-helper.mjs status
+
+# LinkedIn auth URL generator (step 1 of OAuth flow)
+linkedin-auth-url:
+    node scripts/linkedin-setup-helper.mjs auth-url
+
 # LinkedIn runbook helper
 linkedin-doc:
     @echo "📘 LinkedIn setup runbook: docs/LINKEDIN_SETUP.md"

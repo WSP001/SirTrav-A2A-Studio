@@ -32,6 +32,12 @@
 [functions."run-pipeline-background"]
   timeout = 900
 
+# LinkedIn OAuth callback → serverless function
+[[redirects]]
+  from = "/auth/linkedin/callback"
+  to = "/.netlify/functions/auth-linkedin-callback"
+  status = 200
+
 # SPA fallback redirect
 [[redirects]]
   from = "/*"

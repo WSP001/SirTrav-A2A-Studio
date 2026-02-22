@@ -61,15 +61,27 @@ Invoke-RestMethod -Method Post `
 
 ## 5) Build `LINKEDIN_PERSON_URN`
 
+Preferred (requires `openid` scope):
+
 ```powershell
 $token = "PASTE_ACCESS_TOKEN"
+Invoke-RestMethod -Method Get -Uri "https://api.linkedin.com/v2/userinfo" -Headers @{ Authorization = "Bearer $token" }
+```
+
+If `sub` is returned, set `LINKEDIN_PERSON_URN=urn:li:person:<sub>`.
+
+Fallback (if `/v2/userinfo` returns 401):
+
+```powershell
 Invoke-RestMethod -Method Get -Uri "https://api.linkedin.com/v2/me" -Headers @{ Authorization = "Bearer $token" }
 ```
 
-If `id` is returned, set:
+If `id` is returned, set `LINKEDIN_PERSON_URN=urn:li:person:<id>`.
 
-```text
-LINKEDIN_PERSON_URN=urn:li:person:<id>
+Or use the helper script (tries both automatically):
+
+```bash
+node scripts/linkedin-setup-helper.mjs test-token
 ```
 
 ## 6) Netlify env vars (sirtrav-a2a-studio)
@@ -88,11 +100,19 @@ Save and redeploy.
 ## 7) Validate
 
 ```bash
-just linkedin-doc
 just linkedin-dry
 just linkedin-live
+just council-flash-linkedin
 ```
 
 Expected:
 - Missing envs => disabled truth state.
 - Valid envs/token => success with URL field.
+
+## Quick setup (all-in-one)
+
+```bash
+node scripts/linkedin-setup-helper.mjs auth-url       # Step 1: get auth URL
+node scripts/linkedin-setup-helper.mjs full-setup CODE # Step 2: exchange + fetch URN
+just council-flash-linkedin                            # Step 3: prove it works
+```
