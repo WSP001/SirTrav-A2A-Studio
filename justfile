@@ -994,6 +994,48 @@ weekly-analyze:
     node scripts/weekly-analyze.mjs
 
 # ============================================
+# 🔗 OPS SPINE (One Command = Full Verification)
+# ============================================
+
+# Ops Spine — local: preflight → healthcheck → all dry-runs (stops on first failure)
+ops-spine:
+    @echo "🔗 OPS SPINE — Local Verification Sequence"
+    @echo "═══════════════════════════════════════════"
+    @just preflight
+    @just healthcheck
+    @just x-dry
+    @just linkedin-dry
+    @just youtube-dry
+    @echo "═══════════════════════════════════════════"
+    @echo "✅ OPS SPINE COMPLETE — all dry-runs passed"
+
+# Ops Spine — cloud: preflight → healthcheck-cloud → all dry-runs (stops on first failure)
+ops-spine-cloud:
+    @echo "🔗 OPS SPINE CLOUD — Cloud Verification Sequence"
+    @echo "═══════════════════════════════════════════"
+    @just preflight
+    @just healthcheck-cloud
+    @just x-dry
+    @just linkedin-dry
+    @just youtube-dry
+    @echo "═══════════════════════════════════════════"
+    @echo "✅ OPS SPINE CLOUD COMPLETE — all dry-runs passed"
+
+# Ops Release Pass — full RC: spine + golden-path + rc1-verify
+ops-release-pass:
+    @echo "🏁 OPS RELEASE PASS — Full RC Verification"
+    @just ops-spine
+    @just golden-path
+    @just rc1-verify
+
+# Ops Release Pass — cloud variant
+ops-release-pass-cloud:
+    @echo "🏁 OPS RELEASE PASS CLOUD — Full RC Verification"
+    @just ops-spine-cloud
+    @just golden-path-cloud
+    @just rc1-verify
+
+# ============================================
 # 🏛️ COUNCIL FLASH v1.5.0 (Deterministic)
 # ============================================
 
@@ -1335,18 +1377,20 @@ orient-human:
     @echo "👤 HUMAN (SCOTT) ORIENTATION"
     @echo "════════════════════════════════"
     @echo ""
-    @echo "YOUR TASKS:"
-    @echo "  1. ✅ Netlify Dashboard Build Settings (DONE)"
-    @echo "  2. 🔴 X/Twitter API Keys (4 vars in Netlify → TWITTER_ prefix)"
-    @echo "     TWITTER_API_KEY"
-    @echo "     TWITTER_API_SECRET"
-    @echo "     TWITTER_ACCESS_TOKEN"
-    @echo "     TWITTER_ACCESS_SECRET"
-    @echo "  3. ⏳ TikTok/Instagram/LinkedIn keys (when available)"
+    @echo "SOCIAL PUBLISHING STATUS:"
+    @echo "  ✅ X/Twitter   — WORKING (4 TWITTER_ vars set)"
+    @echo "  ✅ LinkedIn    — WORKING (4 LINKEDIN_ vars set, OAuth callback live)"
+    @echo "  ⏳ YouTube     — keys needed (YOUTUBE_CLIENT_ID, etc.)"
+    @echo "  ⏳ TikTok      — keys needed (TIKTOK_CLIENT_KEY, etc.)"
+    @echo "  ⏳ Instagram   — keys needed (INSTAGRAM_ACCESS_TOKEN, etc.)"
     @echo ""
-    @echo "VERIFY AFTER KEY UPDATE:"
-    @echo "  just x-dry-run"
-    @echo "  just x-live-test"
+    @echo "LINKEDIN SETUP (if token expires):"
+    @echo "  Open: https://sirtrav-a2a-studio.netlify.app/auth/linkedin/callback"
+    @echo "  Click Authorize → copy token + URN → paste into Netlify env vars"
+    @echo ""
+    @echo "VERIFY AFTER ANY KEY CHANGE:"
+    @echo "  just ops-spine-cloud     # Full dry-run verification"
+    @echo "  just council-flash-linkedin  # LinkedIn-specific proof"
     @echo ""
     @echo "FULL STATUS:"
     @echo "  just cycle-status"
