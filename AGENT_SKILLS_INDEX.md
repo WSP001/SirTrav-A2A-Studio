@@ -76,7 +76,9 @@ Run these to brief a specific agent before assigning work:
 |---------|---------|
 | `just x-dry` | X/Twitter dry-run (validates payload, no post) |
 | `just x-live-test` | X/Twitter live post (REAL TWEET — use carefully) |
-| `just linkedin-dry` | LinkedIn dry-run |
+| `just linkedin-dry` | LinkedIn dry-run (validates payload, no post) |
+| `just linkedin-live` | LinkedIn live post (CLOUD — real post, use carefully) |
+| `just council-flash-linkedin` | Full LinkedIn proof run (healthcheck + truth-serum + live) |
 | `just youtube-dry` | YouTube dry-run |
 | `just validate-contracts` | Validate all social response contracts |
 | `just truth-serum-lenient` | Verify all 5 publishers (lenient mode) |

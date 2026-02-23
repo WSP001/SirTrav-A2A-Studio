@@ -300,6 +300,54 @@ The justfile stubs are commented out. When Windsurf or the human operator is rea
 
 ---
 
+### CC-OPS-SUMMARY — Post PR #11 / LinkedIn RunId
+
+> **As of 2026-02-22 | Claude Code | Read from:** `AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md`, `docs/AGENT_OPS_SPINE.md`, `plans/AGENT_ASSIGNMENTS.md`
+
+#### Official Release Gates (run in this order)
+
+| Step | Command | When |
+|------|---------|------|
+| 1 | `just ops-spine-cloud` | After every deploy — steps 1–5 (preflight → healthcheck → x-dry → linkedin-dry → youtube-dry) |
+| 2 | `just council-flash-cloud` | Human Operator GATE — 5-gate cloud proof; declares "Council Flash v1.5.0 trusted" |
+| 3 | `just rc1-verify` | Full Release Candidate — wiring + NFS + golden-path + all dry-runs (WM owns) |
+| 4 | `just council-flash-linkedin` | LinkedIn-specific proof run — healthcheck + truth-serum + live post |
+
+#### Social Platform Status (2026-02-22)
+
+| Platform | Status | Proof |
+|----------|--------|-------|
+| X/Twitter | ✅ WORKING | tweetId confirmed via `truth-serum` (19-digit, real) |
+| LinkedIn | ✅ WORKING | `urn:li:ugcPost:7431201708828946432` — runId threaded end-to-end |
+| YouTube | ⏳ Keys needed | `publish-youtube.ts` wired; Netlify env vars missing |
+| TikTok | ⏳ Keys needed | — |
+| Instagram | ⏳ Keys needed | — |
+
+#### Agent Layer Ownership
+
+| Layer | Owner | Primary Commands | Library / Zone |
+|-------|-------|-----------------|---------------|
+| DevKit (workstation spin-up) | CLD-BE (Claude Code) | `just devkit-tools`, `just devkit-ci` | `devkit-spinup.ps1`, `scripts/verify-devkit.mjs` |
+| AgentSkillRouter (worktree isolation) | WM (Windsurf) | `just sirtrav-worktree`, `just worktree-list` | `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` |
+| Council Flash + Memory Vault | CLD-BE + HUMAN-OPS | `just vault-init`, `just council-flash-cloud` | `netlify/functions/` |
+| Social dry-run tests | AG-QA (Antigravity) | `just x-dry`, `just linkedin-dry`, `just youtube-dry` | `scripts/test-*.mjs` |
+| Release verification | WM (Windsurf) | `just rc1-verify`, `just ops-spine-cloud` | `justfile`, `docs/AGENT_OPS_SPINE.md` |
+| Frontend / UI | CDX-UI (Codex) | `just preflight`, `just healthcheck` | `src/` |
+
+#### Where to Find the Library
+
+| Need | Go here |
+|------|---------|
+| All justfile entrypoints | `AGENT_SKILLS_INDEX.md` (repo root) — the master directory |
+| Worktree workflow policy | `docs/AGENT_SKILL_ROUTER.md` |
+| Ops command spine + roles | `docs/AGENT_OPS_SPINE.md` |
+| Ticket assignments + ownership | `plans/AGENT_ASSIGNMENTS.md` (this file) |
+| LinkedIn OAuth + test commands | `docs/LINKEDIN_SETUP.md` |
+
+**Open HUMAN-GATE:** `just council-flash-cloud` → declare "Council Flash v1.5.0 trusted." All 5 prerequisites ✅ DONE.
+
+---
+
 ### P0 — Core Infrastructure (Completed Sprint)
 
 #### 🎬 MG-001 to MG-003 (Motion Pipeline) ✅

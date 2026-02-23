@@ -27,7 +27,8 @@ jobs:
       
       - name: Preflight Environment Check
         # Validates file structure and critical config
-        run: npm run preflight
+        # --skip-healthcheck: no local Netlify dev server in CI; file/dir checks still run
+        run: npm run preflight -- --skip-healthcheck
       
       - name: Security Handshake Verification
         # Verifies 401/202 responses and Token validation (P7)
