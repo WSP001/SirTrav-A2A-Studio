@@ -1094,7 +1094,6 @@ wm-011:
     @echo "═══════════════════════════════════════════════════════════"
 
 # Step 2: Dry-run validation (Antigravity runs this, auto-detects local/cloud)
->>>>>>> origin/main
 x-dry-run:
     @echo "🧪 Running X/Twitter dry-run test (auto-detect)..."
     @echo ""
@@ -1316,11 +1315,6 @@ harvest-dry-run:
     @powershell -NoProfile -Command "if (!(Test-Path scripts/harvest-week.mjs)) { Write-Host '❌ Missing scripts/harvest-week.mjs — Claude Code must create it'; exit 1 }"
     @node scripts/harvest-week.mjs --dry-run
 
-# Analyze harvested data (calls OpenRouter or dry-run)
-weekly-analyze:
-    @echo "🧠 Running Weekly Signal Analysis..."
-    @powershell -NoProfile -Command "if (!(Test-Path scripts/weekly-analyze.mjs)) { Write-Host '❌ Missing scripts/weekly-analyze.mjs — Claude Code must create it'; exit 1 }"
-    @node scripts/weekly-analyze.mjs
 
 # Analyze dry-run (no API call)
 weekly-analyze-dry:
@@ -1637,59 +1631,52 @@ admin-report:
     @echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ============================================
-# 🏛️ COUNCIL FLASH v1.5.0 (Deterministic)
+# 🏛️ WSP-GOVERNANCE (Branch Discipline Gate)
 # ============================================
-# Memory Vault + Gated Pipeline: TRUTH → CONTRACTS → DESIGN → DELIVER
-# Uses Bun SQLite (zero deps). Receipt: artifacts/council/vault.status.json
+# Layer: Organizational Discipline (independent of DevKit, PathGuard, Truth Serum)
+# Enforces Linear ticket alignment at the justfile level
 # Owner: Windsurf Master
 
-# Initialize SQLite Memory Vault (local-only operator artifact)
-vault-init:
-    @echo "🧠 Initializing Memory Vault (SQLite via Node)..."
-    @node scripts/vault-init.mjs
-    @echo "✅ Memory Vault initialized"
+# Validate current branch maps to a WSP Linear ticket
+ticket-status:
+    @node -e "const b=require('child_process').execSync('git rev-parse --abbrev-ref HEAD',{encoding:'utf8'}).trim();const rx=/^feature\/WSP-[0-9]+-.+/;if(!rx.test(b)){console.log('LinearAlignment FAILED — branch must map to WSP ticket');console.log('  Current: '+b);console.log('  Expected: feature/WSP-<number>-<slug>');console.log('  Example:  feature/WSP-5-recursive-directory-nesting');process.exit(1)}else{const m=b.match(/WSP-(\d+)/);console.log('LinearAlignment PASS — '+b);console.log('  Ticket: WSP-'+m[1])}"
 
-# Check vault status (read-only, fails if missing or stale >24h)
-vault-status:
-    @echo "🧠 Memory Vault Status..."
-    @node -e "const fs=require('fs');const p='artifacts/council/vault.status.json';if(!fs.existsSync(p)){console.log('Vault not initialized. Run: just vault-init');process.exit(1)}const r=JSON.parse(fs.readFileSync(p,'utf8'));console.log('Path:',r.path);console.log('Version:',r.version);console.log('Tables:',r.tables.join(', '));console.log('Init:',r.timestamp);const age=Date.now()-new Date(r.timestamp).getTime();const hrs=Math.round(age/3600000);console.log('Age:',hrs,'hours');if(hrs>24){console.log('STALE: Vault receipt older than 24h. Run: just vault-init');process.exit(1)}if(!r.ok){console.log('UNHEALTHY: Vault receipt reports not OK');process.exit(1)}console.log('Status: OK (fresh)')"
+# Machine gate — exit 1 if machine health score < 5
+machine-gate:
+    @echo "🖥️ Machine Gate (health score ≥ 5 required)..."
+    @node scripts/check-machine-health.mjs --gate
 
-# Pipeline wiring check (file + import existence for all layers)
-wiring-verify:
-    @echo "🔗 Wiring Verify (Pipeline file + import checks)..."
-    @just validate-contracts
-    @just stack-check
-    @echo "✅ Wiring verified"
+# Pre-merge guard — composite gate (all must pass before merge)
+pre-merge-guard:
+    @echo "🛡️ Pre-Merge Guard — 4-point discipline check"
+    @echo "═══════════════════════════════════════════════"
+    @echo ""
+    @echo "CHECK 1: Working tree clean..."
+    @just guard-clean
+    @echo ""
+    @echo "CHECK 2: Up-to-date with origin..."
+    @just guard-up-to-date
+    @echo ""
+    @echo "CHECK 3: Machine health gate..."
+    @just machine-gate
+    @echo ""
+    @echo "CHECK 4: DevKit quick verify..."
+    @just devkit-quick
+    @echo ""
+    @echo "═══════════════════════════════════════════════"
+    @echo "✅ Pre-Merge Guard PASSED — safe to merge"
 
-# One-command Council Flash (8-gate sequence — stops on first failure)
-council-flash:
-    @echo "🏛️ Council Flash v1.5.0 — 8-gate deterministic pipeline"
-    @echo "═══════════════════════════════════════════════════════════"
+# Flow — the disciplined development workflow (ticket-first)
+flow:
+    @echo "🌊 FLOW — Disciplined Development Workflow"
+    @echo "═══════════════════════════════════════════════"
+    @just ticket-status
     @echo ""
-    @echo "GATE 1: Preflight..."
-    @just preflight
+    @echo "Ticket validated. Running verification gates..."
     @echo ""
-    @echo "GATE 2: Security Audit..."
-    @just security-audit
+    @just devkit-quick
+    @just check-machine-health
     @echo ""
-    @echo "GATE 3: Wiring Verify..."
-    @just wiring-verify
-    @echo ""
-    @echo "GATE 4: No Fake Success..."
-    @just no-fake-success-check
-    @echo ""
-    @echo "GATE 5: Vault Init..."
-    @just vault-init
-    @echo ""
-    @echo "GATE 6: Golden Path..."
-    @just golden-path
-    @echo ""
-    @echo "GATE 7: Build..."
-    @just build
-    @echo ""
-    @echo "GATE 8: Verify Truth..."
-    @just verify-truth
-    @echo ""
-    @echo "═══════════════════════════════════════════════════════════"
-    @echo "✅ Council Flash v1.5.0 COMPLETE — all 8 gates passed"
-    @echo "═══════════════════════════════════════════════════════════"
+    @echo "═══════════════════════════════════════════════"
+    @echo "✅ FLOW COMPLETE — you are on-ticket and verified"
+
