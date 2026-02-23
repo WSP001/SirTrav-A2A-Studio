@@ -1523,6 +1523,120 @@ check-zone file:
     @node -e "const fs=require('fs');if(!fs.existsSync('{{file}}')){console.log('MISSING: {{file}}');process.exit(1)}const f=fs.readFileSync('{{file}}','utf8');console.log('EXISTS: {{file}} ('+f.split('\\n').length+' lines)');if('{{file}}'.includes('SystemStatusEmblem')){const checks=[['THEME','branding.ts import'],['healthcheck','API fetch'],['toggle','Reality toggle (CX-014)']];checks.forEach(([p,what])=>{if(f.includes(p)){console.log('  PASS: '+what)}else{console.log('  PEND: '+what)}})}"
 
 # ============================================
+# 🔧 DEVKIT — Install, Verify, Path Guard, Machine Health
+# ============================================
+# Pattern: devkit-spinup.ps1 installs → verify-devkit.mjs gates → justfile wires
+# Exit 0 = green | Exit 1 = fixable | Exit 3 = blocked on external
+
+# Full DevKit spinup: install all tools + verify (new machine)
+devkit:
+    @echo "🔧 DevKit Spinup — Full Install + Verify..."
+    @powershell -NoProfile -ExecutionPolicy Bypass -File devkit-spinup.ps1
+
+# Verify devkit health (already installed, just check)
+devkit-verify:
+    @echo "🔍 DevKit Verify — 5-Layer Gate Check..."
+    @node scripts/verify-devkit.mjs
+
+# Tools-only check (Layer 0a + 0b, no network)
+devkit-tools:
+    @echo "🔧 DevKit Tools Check (no network)..."
+    @node scripts/verify-devkit.mjs --tools
+
+# Quick check (tools + env + path guard, skip build/serum)
+devkit-quick:
+    @echo "⚡ DevKit Quick Check..."
+    @node scripts/verify-devkit.mjs --quick
+
+# Local-only (tools + env + local healthcheck)
+devkit-local:
+    @echo "🏠 DevKit Local Check..."
+    @node scripts/verify-devkit.mjs
+
+# Cloud check (tools + env + cloud healthcheck)
+devkit-cloud:
+    @echo "☁️ DevKit Cloud Check..."
+    @node scripts/verify-devkit.mjs --ci
+
+# Lenient mode (skips truth serum failures)
+devkit-lenient:
+    @echo "🟡 DevKit Lenient Check..."
+    @node scripts/verify-devkit.mjs --quick
+
+# CI-safe (cloud, no keys needed, no local server)
+devkit-ci:
+    @echo "🤖 DevKit CI Check (cloud-safe)..."
+    @node scripts/verify-devkit.mjs --ci
+
+# ── PATH GUARD (MAX_PATH / OneDrive fix) ──────────────────
+
+# Scan for recursive directory nesting (read-only)
+path-scan:
+    @echo "🔍 Scanning for recursive path loops..."
+    @node scripts/fix-recursive-nest.mjs --scan
+
+# Fix recursive nesting (flatten + rescue files + install guard)
+fix-recursive-nest:
+    @echo "🔧 Fixing recursive directory nesting..."
+    @node scripts/fix-recursive-nest.mjs --auto
+
+# Fix a specific target directory
+fix-path target:
+    @echo "🔧 Fixing paths in {{target}}..."
+    @node scripts/fix-recursive-nest.mjs --auto --target {{target}}
+
+# Fix the Sir James archive specifically
+fix-sirjames-archive:
+    @echo "🔧 Fixing Sir James MASTER_RESEARCH_ARCHIVE..."
+    @node scripts/fix-recursive-nest.mjs --auto --target "./Sir James/LOGIC SirJames_Interactive_Prototype_With_Chapter10/MASTER_RESEARCH_ARCHIVE"
+
+# ── MACHINE HEALTH (AMD Ryzen AI 9 HX aware) ─────────────
+
+# Full machine health report
+check-machine-health:
+    @echo "🖥️ Machine Health Check..."
+    @node scripts/check-machine-health.mjs
+
+# Machine health as JSON (for agent consumption)
+machine-health-json:
+    @echo "🖥️ Machine Health (JSON)..."
+    @node scripts/check-machine-health.mjs --json
+
+# Machine health gate (exit 1 if score < 5)
+check-machine-load:
+    @echo "🖥️ Machine Load Gate..."
+    @node scripts/check-machine-health.mjs --gate
+
+# ── ADMIN SKILLS (TierP0) ─────────────────────────────────
+
+# Emergency path fixer (Python — Master Fixer with AI agent)
+emergency-fix:
+    @echo "🚨 Emergency Path Fixer (Python) — TierP0..."
+    @python scripts/emergency_path_fixer.py --no-agent
+
+# Emergency fix with AI agent analysis (requires pydantic-ai + API key)
+emergency-fix-ai:
+    @echo "🚨 Emergency Path Fixer + AI Agent..."
+    @python scripts/emergency_path_fixer.py
+
+# Emergency scan only (read-only, no changes)
+emergency-scan:
+    @echo "🔍 Emergency Path Scan (read-only)..."
+    @python scripts/emergency_path_fixer.py --scan
+
+# Emergency fix for specific target directory
+emergency-fix-target target:
+    @echo "🚨 Emergency Path Fix: {{target}}..."
+    @python scripts/emergency_path_fixer.py --target {{target}}
+
+# Admin report — show latest AGENT_RUN_LOG entries
+admin-report:
+    @echo "📊 Admin Report — TierP0 Actions..."
+    @echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    @node -e "const fs=require('fs'),p='artifacts/metrics/AGENT_RUN_LOG.ndjson';if(!fs.existsSync(p)){const p2='artifacts/AGENT_RUN_LOG.ndjson';if(!fs.existsSync(p2)){console.log('No AGENT_RUN_LOG found. Run a fix first.');process.exit(0)}var d=fs.readFileSync(p2,'utf8')}else{var d=fs.readFileSync(p,'utf8')}const lines=d.trim().split('\\n').filter(Boolean);console.log('Total entries: '+lines.length);lines.slice(-10).forEach(l=>{try{const e=JSON.parse(l);console.log('['+e.Timestamp+'] '+e.Agent+' — '+e.Action+' — '+e.Status+' ('+e.Ticket+')')}catch{console.log(l)}})"
+    @echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# ============================================
 # 🏛️ COUNCIL FLASH v1.5.0 (Deterministic)
 # ============================================
 # Memory Vault + Gated Pipeline: TRUTH → CONTRACTS → DESIGN → DELIVER

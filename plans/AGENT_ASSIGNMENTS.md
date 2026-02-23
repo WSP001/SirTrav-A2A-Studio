@@ -555,6 +555,7 @@ Then begin with this statement:
 | CC-014 | Claude Code | Memory Vault helpers: recordJobPacket + recordCouncilEvent, pipeline + Truth Serum wired | 2026-02-19 |
 | AG-013-VERDICT | Antigravity | Reviewer gate: `just verify-truth` green on cloud, tweetId=2024352070304669755 (real), 0 liars | 2026-02-19 |
 | WM-011 | Windsurf Master | Council Flash cloud gates: 5/5 green, vault-init + council-flash-cloud recipes added, emblem REAL | 2026-02-20 |
+| WM-012 | Windsurf Master | DevKit Spinup + Path Guard + Machine Health (devkit-spinup.ps1, verify-devkit.mjs, fix-recursive-nest.mjs, check-machine-health.mjs) | 2026-02-22 |
 
 ---
 
@@ -866,6 +867,75 @@ When Remotion Lambda env vars are set, Step 5 will produce real video instead of
 | `C:\WSP001\...\trusting-hamilton` (worktree) | `claude/trusting-hamilton` | `d60e36ac` | ✅ Pushed, 1 commit ahead of main |
 
 **Orphan commit preserved:** `backup/local-main-aaf2d05f` branch in WSP001
+
+---
+
+## 🔧 WM-012: DevKit Spinup + Path Guard + Machine Health (2026-02-22)
+
+**Owner:** Windsurf Master
+**Status:** ✅ DELIVERED
+
+### Files Created/Modified
+
+| File | What it does |
+|------|-------------|
+| `devkit-spinup.ps1` | Idempotent winget installer — 9 tools + netlify-cli via npm, refreshes PATH+PATHEXT from registry, delegates to verifier, includes path-depth scanner |
+| `scripts/verify-devkit.mjs` | 5-layer gate verifier — Layer 0a (system tools), 0b (project tools), 1 (env + path guard), 2 (healthcheck), 3 (pipeline smoke), 4 (truth-serum subprocess) |
+| `scripts/fix-recursive-nest.mjs` | Recursive directory flattener — detects duplicate folder names in ancestry chain, rescues files, cleans empty dirs, installs `.path-guard.json` sentinel, logs to `AGENT_RUN_LOG.ndjson` |
+| `scripts/check-machine-health.mjs` | Hardware-aware health check — AMD Ryzen AI 9 HX CPU/NPU detection, memory/disk/path-depth monitoring, health score 1-10, LowEnergyMode gate |
+| `justfile` | 8 devkit recipes: `devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci` + 4 path recipes: `path-scan`, `fix-recursive-nest`, `fix-path`, `fix-sirjames-archive` + 3 machine recipes: `check-machine-health`, `machine-health-json`, `check-machine-load` |
+| `package.json` | 4 new scripts: `verify:devkit`, `verify:devkit:tools`, `verify:devkit:quick`, `verify:devkit:ci` |
+
+### Quick Start
+```sh
+# New machine — install everything + verify:
+.\devkit-spinup.ps1
+
+# Already installed, just check health:
+just devkit-verify
+
+# CI-safe (cloud, no keys needed):
+just devkit-ci
+
+# No network (just tool check):
+just devkit-tools
+
+# Fix recursive path nesting (OneDrive MAX_PATH):
+just fix-recursive-nest
+
+# Check machine health before heavy inference:
+just check-machine-health
+```
+
+### Prevention Rules (enforced by `.path-guard.json`)
+- **DepthConstraint:** Max 4 levels from project root
+- **PathNaming:** DoubleWordCase timestamps. Never repeat parent folder name in child.
+- **MaxPathChars:** 250 characters max (under Windows 260 limit)
+- **MaxFolderNameRepeats:** Same folder name appears max 2x in any path
+- **NpuThrottling:** If `just check-machine-load` fails (score < 5), agent enters LowEnergyMode
+
+### Improvement Suggestions — Addressed
+
+| Suggestion | Status |
+|-----------|--------|
+| Exit code 3 for external blocks (429/outage) | ✅ Built into verify-devkit.mjs |
+| Docker runtime gate (binary + daemon) | ✅ Layer 0a checks both |
+| System vs Project tools split | ✅ Layer 0a + 0b separate |
+| Deterministic SKIP categories | ✅ 5 categories: SKIP_KEYS_MISSING, SKIP_AUTH_GATE_ACTIVE, SKIP_LONG_RUNNING, SKIP_NO_LOCAL_ENV, SKIP_LAYER_DEPENDENCY |
+| Layer timing metadata | ✅ Each layer's ms in council event JSON |
+| PATHEXT refresh | ✅ devkit-spinup.ps1 refreshes both PATH and PATHEXT |
+
+### Recommended Follow-Up Tickets
+
+| Item | Why separate |
+|------|-------------|
+| Centralized 429 policy module (exponential backoff + Retry-After) | Touches all 5 publishers, needs own contract design |
+| Social outbox queue + idempotency keys | New infrastructure primitive (artifacts/outbox/social/) |
+| LinkedIn token-age / scope validation | Needs LinkedIn API research + w_member_social scope |
+| `--dry-run --validate-provider` flag | Enhancement to existing publisher functions |
+| WSL2 status check (`wsl --status`) | Docker reliability gate |
+
+---
 
 ### Pending PR: `claude/trusting-hamilton` → `main`
 
