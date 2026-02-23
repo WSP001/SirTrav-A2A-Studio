@@ -2,6 +2,27 @@
 
 Purpose: keep local builds and agent loops responsive under sustained Node/Vite/Netlify workloads.
 
+## Flow Mode (Team Default)
+
+Use one of these as your first command each session:
+
+1. `just flow` (local lane)
+2. `just flow-cloud` (cloud lane)
+
+What `flow` does:
+
+1. Runs `just machine-gate`
+2. Runs `just preflight`
+3. Shows a safe next-step menu
+4. Starts local dev server
+
+What `flow-cloud` does:
+
+1. Runs `just machine-gate`
+2. Runs `just preflight`
+3. Runs `just ops-spine-cloud`
+4. Prints cloud truth summary
+
 ## Golden Rule: One Loop
 
 Run one heavy workflow at a time:
@@ -16,6 +37,8 @@ Run one heavy workflow at a time:
   - Informational check with CPU, memory, and top 5 RAM-consuming processes.
 - `just machine-gate`
   - Same check, but exits non-zero when machine is overloaded (`ThrottlingRequired`).
+- `just recover-ram`
+  - Safe recovery helper that prints top memory consumers and next manual actions.
 
 Target headroom:
 
@@ -68,3 +91,4 @@ Reduce indexer contention on build artifacts:
 - If status is `DevCaution`, continue only one heavy task at a time.
 - If status is `ThrottlingRequired`, stop and recover headroom before continuing.
 - Paste gate output into tickets when reporting local performance issues.
+- Every health run appends one record to `artifacts/metrics/machine_health.ndjson`.

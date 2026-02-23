@@ -82,6 +82,7 @@ security-audit:
 
 # Start Netlify dev server (includes functions)
 dev:
+    @just machine-gate
     @echo "🚀 Starting SirTrav-A2A-Studio..."
     @echo "📍 Functions: http://localhost:8888/.netlify/functions/"
     @echo "📍 App: http://localhost:8888"
@@ -89,6 +90,7 @@ dev:
 
 # Build for production
 build:
+    @just machine-gate
     @echo "🏗️ Building for production..."
     npm run build
     @echo "✅ Build complete!"
@@ -407,6 +409,7 @@ wiring-verify:
 
 # Full Golden Path test (all services)
 golden-path-full:
+    @just machine-gate
     @echo "🏆 Running Full Golden Path Test..."
     @echo ""
     @echo "Step 1: Contract Validation"
@@ -1001,6 +1004,7 @@ weekly-analyze:
 ops-spine:
     @echo "🔗 OPS SPINE — Local Verification Sequence"
     @echo "═══════════════════════════════════════════"
+    @just machine-gate
     @just preflight
     @just healthcheck
     @just x-dry
@@ -1013,6 +1017,7 @@ ops-spine:
 ops-spine-cloud:
     @echo "🔗 OPS SPINE CLOUD — Cloud Verification Sequence"
     @echo "═══════════════════════════════════════════"
+    @just machine-gate
     @just preflight
     @just healthcheck-cloud
     @just x-dry
@@ -1031,9 +1036,58 @@ ops-release-pass:
 # Ops Release Pass — cloud variant
 ops-release-pass-cloud:
     @echo "🏁 OPS RELEASE PASS CLOUD — Full RC Verification"
+    @just machine-gate
     @just ops-spine-cloud
     @just golden-path-cloud
     @just rc1-verify
+
+# ============================================
+# 🌊 FLOW MODE (Default Team Entry)
+# ============================================
+
+# Flow Mode — local lane: gate -> preflight -> menu -> dev server
+flow:
+    @echo "🌊 FLOW MODE — Local Dev Lane"
+    @echo "═══════════════════════════════════════════"
+    @just machine-gate
+    @just preflight
+    @echo ""
+    @echo "FLOW MENU (safe next moves):"
+    @echo "  1) just dev             # Start local Netlify dev"
+    @echo "  2) just ops-spine       # Local dry-run verification sequence"
+    @echo "  3) just golden-path     # End-to-end smoke path"
+    @echo ""
+    @echo "Starting local dev server..."
+    @just dev
+
+# Flow Mode — cloud lane: gate -> preflight -> cloud spine -> summary
+flow-cloud:
+    @echo "🌊 FLOW MODE — Cloud Verification Lane"
+    @echo "═══════════════════════════════════════════"
+    @just machine-gate
+    @just preflight
+    @just ops-spine-cloud
+    @echo ""
+    @echo "Cloud truth state summary:"
+    @echo "  ✅ machine gate passed"
+    @echo "  ✅ preflight passed"
+    @echo "  ✅ ops-spine-cloud passed"
+
+# Recovery helper — safe/non-destructive headroom guidance
+recover-ram:
+    @echo "🛟 RAM RECOVERY (Safe Guidance)"
+    @echo "═══════════════════════════════════════════"
+    @just machine-health
+    @echo ""
+    @echo "Suggested quick actions (safe, manual):"
+    @echo "  1) wsl --shutdown"
+    @echo "  2) Close extra Windsurf windows/workspaces"
+    @echo "  3) Close browser video/heavy tabs"
+    @echo ""
+    @echo "Top processes right now:"
+    @powershell -NoProfile -Command "Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 8 ProcessName,WorkingSet64 | Format-Table -AutoSize"
+    @echo ""
+    @echo "Re-run gate: just machine-gate"
 
 # ============================================
 # 🏛️ COUNCIL FLASH v1.5.0 (Deterministic)
