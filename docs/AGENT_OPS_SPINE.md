@@ -100,6 +100,7 @@ Run in this order. **If any step is RED, STOP and open ONE ticket.**
 | **GREEN proof** | `just golden-path` exits 0 + cost manifest emitted + no fake-success |
 | **Ticket prefix** | `CLD-BE-###` |
 | **Allowed edits** | `netlify/functions/`, `scripts/`, `src/lib/` |
+| **runId tracing** | `publish-linkedin.ts` threads `runId` through all response paths (disabled / success / error). Canonical test: `node scripts/test-linkedin-publish.mjs --dry-run` (safe) or `--live --cloud` (real post). Flags: `--dry-run`, `--live`, `--local`, `--cloud`, `--help`. |
 
 ---
 
