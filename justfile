@@ -1395,3 +1395,110 @@ orient-human:
     @echo "FULL STATUS:"
     @echo "  just cycle-status"
 
+# ============================================
+# 🔧 DEVKIT SPIN-UP VERIFICATION (CC-DEVKIT)
+# ============================================
+# Owner: Claude Code / Human Operator
+# Pattern: Install tools via winget, then verify tool + project health
+# Gates: Layer 0 (TOOLS) → 1 (ENV) → 2 (ALIVE) → 3 (PIPELINE) → 4 (TRUTH)
+# Exit codes: 0=pass  1=failed  2=critical-tool-missing  3=blocked-external
+# ============================================
+
+# Full DevKit: run winget install + post-install verification
+devkit:
+    @echo "DevKit Spin-Up (install + verify)"
+    @echo "==================================="
+    @powershell -NoProfile -ExecutionPolicy Bypass -File devkit-spinup.ps1
+
+# Skip install — run all 5 verification layers only
+devkit-verify:
+    @echo "DevKit Verification Suite (all layers)"
+    @echo "======================================="
+    @node scripts/verify-devkit.mjs
+
+# Layer 0 only: check tool versions — no network required
+devkit-tools:
+    @echo "DevKit Tool Check (Layer 0 — no network)"
+    @node scripts/verify-devkit.mjs --tools-only
+
+# Layers 0-2 only: tools + env + healthcheck ping — skip slow pipeline
+devkit-quick:
+    @echo "DevKit Quick Check (layers 0-2 — skip pipeline)"
+    @node scripts/verify-devkit.mjs --no-pipeline
+
+# Force verification against localhost:8888 (requires: netlify dev)
+devkit-local:
+    @echo "DevKit Verification (force local — requires netlify dev)"
+    @node scripts/verify-devkit.mjs --local
+
+# Force verification against cloud deployment
+devkit-cloud:
+    @echo "DevKit Verification (force cloud)"
+    @node scripts/verify-devkit.mjs --cloud
+
+# Lenient mode: disabled social platforms count as PASS (truth-serum --allow-disabled)
+devkit-lenient:
+    @echo "DevKit Verification (lenient — disabled=PASS)"
+    @node scripts/verify-devkit.mjs --allow-disabled
+
+# CI-safe gate: cloud + lenient truth-serum (no social keys needed)
+devkit-ci:
+    @echo "DevKit CI Gate (cloud + lenient)"
+    @node scripts/verify-devkit.mjs --cloud --allow-disabled
+
+# ============================================
+# 🌿 AGENT SKILL ROUTER — WORKTREE LAYER
+# ============================================
+# Pattern: One ticket = one worktree = one agent run
+# Usage:   just agent-worktree name=<ticket-id>
+# Safety:  Lens + GitKraken stay on main; agents work in .claude/worktrees/*
+# Docs:    docs/AGENT_SKILL_ROUTER.md
+# Index:   AGENT_SKILLS_INDEX.md
+# ============================================
+
+# Generic canonical entrypoint — all project recipes delegate here.
+# Do NOT call from CI. Use project-specific entrypoints below.
+agent-worktree name="agent-session":
+    @echo "🌿 Starting Claude worktree: {{name}}"
+    @echo "   Branch : worktree-{{name}}"
+    @echo "   Path   : .claude/worktrees/{{name}}"
+    @echo "   Lens stays on main. Review + merge when agent is done."
+    claude --worktree {{name}}
+
+# SirTrav A2A Studio — video pipeline agent sessions
+sirtrav-worktree name="sirtrav-skill":
+    @echo "🎬 SirTrav worktree: {{name}}"
+    @just agent-worktree name={{name}}
+
+# SeaTrace — stub (uncomment + copy to SeaTrace repo when ready)
+# seatrace-worktree name="seatrace-skill":
+#     @echo "🌊 SeaTrace worktree: {{name}}"
+#     @just agent-worktree name={{name}}
+
+# SirJames — stub (uncomment + copy to SirJames repo when ready)
+# sirjames-worktree name="sirjames-skill":
+#     @echo "📖 SirJames worktree: {{name}}"
+#     @just agent-worktree name={{name}}
+
+# List all active worktrees (see what agents are currently running)
+worktree-list:
+    @echo "🌿 Active worktrees:"
+    git worktree list
+
+# Remove a finished worktree after its branch is merged into main
+# WARNING: only run AFTER merging worktree-<name> into main
+worktree-clean name="":
+    @echo "🧹 Removing worktree: {{name}}"
+    @echo "   (Only run AFTER merging worktree-{{name}} into main)"
+    git worktree remove ".claude/worktrees/{{name}}" --force
+    git branch -d "worktree-{{name}}" 2>nul; echo "Worktree {{name}} cleaned."
+
+# Show all worktrees + which branches have not yet merged back to main
+worktree-status:
+    @echo "🌿 Worktree Status"
+    @echo "================================="
+    git worktree list
+    @echo ""
+    @echo "Branches NOT yet merged to main:"
+    git branch --no-merged main 2>nul; echo ""
+

@@ -23,7 +23,11 @@
     "verify:integrations": "node scripts/verify-integrations.mjs",
     "verify:integrations:cloud": "node scripts/verify-integrations.mjs --cloud",
     "verify:integrations:youtube": "node scripts/verify-integrations.mjs --youtube",
-    "verify:integrations:remotion": "node scripts/verify-integrations.mjs --remotion"
+    "verify:integrations:remotion": "node scripts/verify-integrations.mjs --remotion",
+    "verify:devkit": "node scripts/verify-devkit.mjs",
+    "verify:devkit:tools": "node scripts/verify-devkit.mjs --tools-only",
+    "verify:devkit:quick": "node scripts/verify-devkit.mjs --no-pipeline",
+    "verify:devkit:ci": "node scripts/verify-devkit.mjs --cloud --allow-disabled"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",

@@ -14,8 +14,8 @@
 ### ONE-TICKET RULE (Per Agent)
 - **Codex:** ✅ DONE — CX-014 (emblem wired to Council Flash truth state)
 - **Antigravity:** ✅ DONE — reviewer gate closed, all gates green (2026-02-19)
-- **Claude:** ✅ DONE — CC-014; CC-015 (invoice surface) queued, non-blocking
-- **Windsurf:** ✅ DONE — WM-011 (Council Flash cloud gates verified, 2026-02-20)
+- **Claude:** ✅ DONE — CC-DEVKIT (DevKit spin-up suite); CC-015 (invoice surface) queued, non-blocking
+- **Windsurf:** 🟡 WM-012 OPEN (DevKit audit) → WM-013 READY (AgentSkillRouter worktree layer, starts after WM-012)
 
 ### 🏛️ Human Operator: Final Council Flash Gate
 
@@ -121,11 +121,184 @@ Run `/fix-x-api` or read `.agent/workflows/fix-x-api.md` for step-by-step guide.
 `just security-audit` fails on PowerShell due to bash `2>||` syntax in the recipe body.
 This is a pre-existing justfile syntax issue, not a regression from this sprint.
 All security checks that matter are covered by `no-fake-success-check` and `wiring-verify` (both ✅).
-**Windsurf follow-up (WM-012-optional):** fix the `security-audit` recipe for PowerShell compatibility.
+**Windsurf follow-up (WM-012):** DevKit audit + justfile hygiene review (see ticket below).
 
 ---
 
+## 🛰️ Windsurf Master — WM-012: DevKit Audit + Justfile Hygiene
 
+**Owner:** Windsurf Master
+**Status:** READY (2026-02-21) — CC-DEVKIT deployed by Claude Code, awaiting Windsurf review
+**Blocking:** No — HUMAN-GATE Council Flash is not blocked by this ticket
+
+### Background
+
+Claude Code delivered CC-DEVKIT on 2026-02-21: a full developer workstation spin-up + 5-layer health verification suite. The code is live in the worktree. This ticket is the Windsurf review pass to confirm justfile hygiene and library/asset cleanliness before the delivery is fully signed off.
+
+### What Windsurf Does
+
+**Read-First Gate** (per §Read-First Gate rule):
+> "I read CLAUDE.md + AGENT_ASSIGNMENTS.md and I am working ticket WM-012."
+
+#### Gate 1: Devkit File Audit
+
+Confirm the 4 delivered files exist:
+```powershell
+Get-ChildItem devkit-spinup.ps1           # PowerShell spin-up script
+Get-ChildItem scripts\verify-devkit.mjs   # Node.js 5-layer verifier
+```
+
+Run the devkit gates:
+```powershell
+just devkit-tools   # Layer 0 — tool version check, no network required
+just devkit-ci      # CI-safe: cloud auto-detect + lenient truth-serum
+```
+
+Expected outcomes:
+- `devkit-tools` → installed tools show `[PASS]`, missing tools show `[FAIL]` (honest, never fake)
+- `devkit-ci` → prints `DEVKIT VERIFIED` (exit 0) or clear per-gate failures (exit 1) or `BLOCKED` (exit 3 — external rate limit, not a code bug)
+
+#### Gate 2: Justfile Skill Directory Hygiene
+
+```powershell
+just --list | Select-String "devkit"
+```
+
+Verify the `devkit` section (justfile lines ~1305–1355):
+- [ ] Section is grouped under `# ============================================` header style
+- [ ] 8 recipes present: `devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci`
+- [ ] No duplicate recipe names anywhere in the justfile
+- [ ] `@echo` style consistent with rest of justfile
+- [ ] PowerShell shell (`set shell := ["powershell", "-NoProfile", "-Command"]`) respected in all recipes
+
+#### Gate 3: Library / Assets Cleanliness
+
+```powershell
+# After running devkit-ci, confirm council event was written:
+Get-ChildItem artifacts\council_events\ | Sort-Object LastWriteTime | Select-Object -Last 5
+
+# Confirm no orphaned stale reports:
+Get-ChildItem artifacts\reports\ | Sort-Object LastWriteTime | Select-Object -Last 5
+
+# Confirm no duplicate/shadow devkit scripts:
+Get-ChildItem scripts\ | Where-Object { $_.Name -like "*devkit*" }
+```
+
+Expected: exactly 1 devkit script (`verify-devkit.mjs`), council event JSON present after a run, no orphaned files.
+
+#### Done When
+
+Record verdict here and in the Completed table:
+
+> *"DevKit suite: [Gate 1: PASS/FAIL]. Justfile hygiene: [clean/issues found]. Library assets: [clean/issues]. CC-DEVKIT delivery [CONFIRMED / needs CC-016 fix]."*
+> — Windsurf Master, [date]
+
+Add to Completed table: `WM-012 | Windsurf Master | DevKit audit: [verdict] | [date]`
+
+### Master Command Sequence (Copy-Paste Ready)
+
+```powershell
+# WM-012 full run sequence
+Get-ChildItem devkit-spinup.ps1
+Get-ChildItem scripts\verify-devkit.mjs
+just devkit-tools
+just devkit-ci
+just --list | Select-String "devkit"
+Get-ChildItem artifacts\council_events\ | Sort-Object LastWriteTime | Select-Object -Last 5
+Get-ChildItem scripts\ | Where-Object { $_.Name -like "*devkit*" }
+```
+
+### Exit Conditions
+
+| Outcome | Action |
+|---------|--------|
+| All gates pass | WM-012 DONE — add to Completed table |
+| Gate fails (code bug) | Raise CC-016 ticket for Claude Code |
+| Gate fails (justfile syntax) | Raise WM-012b for Windsurf fix |
+| Exit code 3 (BLOCKED_EXTERNAL) | Not a failure — re-run after rate limit clears |
+
+---
+
+## 🛰️ Windsurf Master — WM-013: AgentSkillRouter + Worktree Layer
+
+**Owner:** Windsurf Master
+**Status:** READY (2026-02-21) — starts after WM-012 closes
+**Blocking:** No — HUMAN-GATE Council Flash not blocked by this ticket
+
+### Background
+
+The Commons Good multi-agent system lacked a concurrency-safe code editing pattern. CC-DEVKIT proved the gate structure works; now the worktree layer adds the missing piece: **one ticket = one worktree = one isolated agent run**. Lens/GitKraken stay on `main`; Claude sessions work in `.claude/worktrees/*` and are reviewed + merged by the human operator.
+
+### Deliverables (already implemented by Claude Code on 2026-02-21)
+
+| Deliverable | Path | Status |
+|-------------|------|--------|
+| justfile `🌿 AGENT SKILL ROUTER` section | `justfile` lines ~1357+ | ✅ DEPLOYED |
+| Worktree policy doc | `docs/AGENT_SKILL_ROUTER.md` | ✅ DEPLOYED |
+| Skills index | `AGENT_SKILLS_INDEX.md` (root) | ✅ DEPLOYED |
+| AGENT_ASSIGNMENTS.md update | `plans/AGENT_ASSIGNMENTS.md` | ✅ DEPLOYED |
+
+### What Windsurf Does (Audit + Sign-Off)
+
+**Read-First Gate:**
+> "I read CLAUDE.md + AGENT_ASSIGNMENTS.md and I am working ticket WM-013."
+
+#### Gate 1: Justfile Wiring
+
+```powershell
+just --list | Select-String "worktree"
+# Expect: agent-worktree, sirtrav-worktree, worktree-list, worktree-clean, worktree-status
+```
+
+#### Gate 2: Docs Present + Correct
+
+```powershell
+Get-ChildItem docs\AGENT_SKILL_ROUTER.md
+Get-ChildItem AGENT_SKILLS_INDEX.md
+# Read both and confirm they match the worktree layer spec
+```
+
+#### Gate 3: Worktree Plumbing Works
+
+```powershell
+just worktree-list   # Must show at least the current worktree — no errors
+just worktree-status # Must run without error
+```
+
+#### Gate 4: No Regressions
+
+```powershell
+just devkit-tools    # All pre-existing tools still [PASS]/[FAIL] honestly
+```
+
+#### Done When
+
+> *"AgentSkillRouter WM-013: 5 recipes wired and visible in just --list. AGENT_SKILL_ROUTER.md + AGENT_SKILLS_INDEX.md present and correct. worktree-list + worktree-status run clean. devkit-tools no regressions. One ticket = one worktree pattern confirmed live for SirTrav."*
+> — Windsurf Master, [date]
+
+Add to Completed table: `WM-013 | Windsurf Master | AgentSkillRouter + worktree layer | [date]`
+
+### Master Command Sequence (Copy-Paste Ready)
+
+```powershell
+# WM-013 full audit sequence
+just --list | Select-String "worktree"
+Get-ChildItem docs\AGENT_SKILL_ROUTER.md
+Get-ChildItem AGENT_SKILLS_INDEX.md
+just worktree-list
+just worktree-status
+just devkit-tools
+```
+
+### Extending to SeaTrace + SirJames (WM-013 follow-up, not blocking)
+
+The justfile stubs are commented out. When Windsurf or the human operator is ready to propagate the pattern:
+
+1. Copy `sirtrav-worktree` recipe to the target repo's justfile, renaming for SeaTrace/SirJames
+2. Copy `docs/AGENT_SKILL_ROUTER.md` and `AGENT_SKILLS_INDEX.md` skeletons (update project names)
+3. Add a ticket in that repo's `plans/AGENT_ASSIGNMENTS.md`
+
+---
 
 ### P0 — Core Infrastructure (Completed Sprint)
 
@@ -313,6 +486,8 @@ Then begin with this statement:
 | CC-014 | Claude Code | Memory Vault helpers: recordJobPacket + recordCouncilEvent, pipeline + Truth Serum wired | 2026-02-19 |
 | AG-013-VERDICT | Antigravity | Reviewer gate: `just verify-truth` green on cloud, tweetId=2024352070304669755 (real), 0 liars | 2026-02-19 |
 | WM-011 | Windsurf Master | Council Flash cloud gates: 5/5 green, vault-init + council-flash-cloud recipes added, emblem REAL | 2026-02-20 |
+| CC-DEVKIT | Claude Code | DevKit spin-up suite: `devkit-spinup.ps1` + `scripts/verify-devkit.mjs` + 8 justfile recipes (`devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci`) + 4 npm scripts (`verify:devkit`, `verify:devkit:tools`, `verify:devkit:quick`, `verify:devkit:ci`) | 2026-02-21 |
+| WM-013-deploy | Claude Code (on behalf of WM-013) | AgentSkillRouter worktree layer: 5 justfile recipes, `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` deployed — Windsurf sign-off pending | 2026-02-21 |
 
 ---
 
