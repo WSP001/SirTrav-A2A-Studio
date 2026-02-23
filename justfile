@@ -1372,6 +1372,83 @@ orient-windsurf:
     @echo "RUN YOUR GATE:"
     @echo "  just cycle-build"
 
+# ============================================
+# 🔄 REVERSE-CASE DRILLS (Practice Recovery)
+# ============================================
+
+# Drill: Verify healthcheck reports truth when cloud is live
+drill-healthcheck:
+    @echo "🔄 DRILL: Cloud Healthcheck Truth"
+    @echo "═══════════════════════════════════"
+    @echo "Scenario: Confirm healthcheck returns real status, not cached/stale"
+    @echo ""
+    @just healthcheck-cloud
+    @echo ""
+    @echo "✅ DRILL PASS if: status=healthy + disabled platforms listed truthfully"
+    @echo "❌ DRILL FAIL if: status=ok but known-missing platforms not listed"
+
+# Drill: Verify LinkedIn disabled state is truthful (No Fake Success)
+drill-linkedin-disabled:
+    @echo "🔄 DRILL: LinkedIn Disabled State"
+    @echo "═══════════════════════════════════"
+    @echo "Scenario: Confirm LinkedIn returns disabled:true when keys missing locally"
+    @echo ""
+    @node scripts/test-linkedin-publish.mjs
+    @echo ""
+    @echo "✅ DRILL PASS if: status=disabled + env shows missing keys"
+    @echo "❌ DRILL FAIL if: success=true with no keys (FAKE SUCCESS)"
+
+# Drill: Verify X/Twitter disabled state is truthful
+drill-x-disabled:
+    @echo "🔄 DRILL: X/Twitter Disabled State"
+    @echo "═══════════════════════════════════"
+    @echo "Scenario: Confirm X returns truthful status"
+    @echo ""
+    @node scripts/test-x-publish.mjs --dry-run
+    @echo ""
+    @echo "✅ DRILL PASS if: payload valid OR truthful disabled"
+    @echo "❌ DRILL FAIL if: success=true with no keys (FAKE SUCCESS)"
+
+# Drill: Verify YouTube disabled state is truthful
+drill-youtube-disabled:
+    @echo "🔄 DRILL: YouTube Disabled State"
+    @echo "═══════════════════════════════════"
+    @echo "Scenario: Confirm YouTube returns truthful disabled"
+    @echo ""
+    @node scripts/test-youtube-publish.mjs
+    @echo ""
+    @echo "✅ DRILL PASS if: status=disabled + env shows missing keys"
+    @echo "❌ DRILL FAIL if: success=true with no keys (FAKE SUCCESS)"
+
+# Drill: Verify No Fake Success pattern across ALL publishers
+drill-no-fake-success:
+    @echo "🔄 DRILL: No Fake Success (All Publishers)"
+    @echo "═══════════════════════════════════"
+    @just no-fake-success-check
+    @echo ""
+    @just drill-linkedin-disabled
+    @echo ""
+    @just drill-x-disabled
+    @echo ""
+    @just drill-youtube-disabled
+
+# Drill: Full cloud truth — healthcheck + truth-serum + dry-runs
+drill-cloud-truth:
+    @echo "🔄 DRILL: Full Cloud Truth Verification"
+    @echo "═══════════════════════════════════"
+    @echo "Scenario: Confirm cloud reports match local expectations"
+    @echo ""
+    @just healthcheck-cloud
+    @echo ""
+    @just truth-serum-lenient
+    @echo ""
+    @just x-dry
+    @just linkedin-dry
+    @just youtube-dry
+    @echo ""
+    @echo "═══════════════════════════════════"
+    @echo "✅ DRILL COMPLETE — compare cloud vs local truth"
+
 # Human/Scott orientation — ENV var checklist
 orient-human:
     @echo "👤 HUMAN (SCOTT) ORIENTATION"
