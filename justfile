@@ -1524,6 +1524,20 @@ devkit-ci:
     @node scripts/verify-devkit.mjs --cloud --allow-disabled
 
 # ============================================
+# 🧠 MACHINE HEALTH GATE (Windows Ryzen)
+# ============================================
+
+# Check machine health and continue (informational)
+machine-health:
+    @echo "🧠 Running machine health check..."
+    -@node scripts/machine-health-check.mjs
+
+# Check machine health and block if unsafe
+machine-gate:
+    @echo "🧠 Running machine gate (blocks on unsafe state)..."
+    @node scripts/machine-health-check.mjs
+
+# ============================================
 # 🌿 AGENT SKILL ROUTER — WORKTREE LAYER
 # ============================================
 # Pattern: One ticket = one worktree = one agent run
