@@ -71,7 +71,10 @@ SUNO_API_URL              = ???
 ### Tier 4: OPTIONAL (social publishing — skip if not ready)
 
 ```
+LINKEDIN_CLIENT_ID        = ???
+LINKEDIN_CLIENT_SECRET    = ???
 LINKEDIN_ACCESS_TOKEN     = ???
+LINKEDIN_PERSON_URN       = ???
 YOUTUBE_CLIENT_ID         = ???
 YOUTUBE_CLIENT_SECRET     = ???
 YOUTUBE_REFRESH_TOKEN     = ???

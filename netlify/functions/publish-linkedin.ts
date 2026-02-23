@@ -25,6 +25,7 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 
 interface LinkedInRequest {
   projectId: string;
+  runId?: string;
   videoUrl: string;           // URL to the video file (from Netlify Blobs)
   title: string;
   description: string;
@@ -37,6 +38,7 @@ interface LinkedInRequest {
 interface LinkedInResponse {
   success: boolean;
   projectId: string;
+  runId?: string;
   linkedinId?: string;
   linkedinUrl?: string;
   status: 'uploaded' | 'processing' | 'failed' | 'placeholder';
@@ -287,6 +289,7 @@ function disabledResponse(request: LinkedInRequest): object {
     disabled: true,
     platform: 'linkedin',
     projectId: request.projectId,
+    runId: request.runId || null,
     error: 'LinkedIn disabled (missing LINKEDIN_ACCESS_TOKEN)',
     note: 'Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN in Netlify.',
   };
@@ -324,7 +327,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const request = validation.data;
 
-    console.log(`🔗 LinkedIn publish request for project: ${request.projectId}`);
+    const runId = request.runId || `linkedin-${Date.now()}`;
+    console.log(`🔗 LinkedIn publish request for project: ${request.projectId} (runId: ${runId})`);
     
     // Check for LinkedIn credentials
     const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
@@ -340,8 +344,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     // Determine owner URN (organization or personal)
     let ownerUrn: string;
+    const personUrn = process.env.LINKEDIN_PERSON_URN;
     if (request.postType === 'organization' && organizationId) {
       ownerUrn = `urn:li:organization:${organizationId}`;
+    } else if (personUrn && personUrn.startsWith('urn:li:person:')) {
+      ownerUrn = personUrn;
     } else {
       const userUrn = await getUserUrn(accessToken);
       if (!userUrn) {
@@ -351,8 +358,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           body: JSON.stringify({
             success: false,
             projectId: request.projectId,
+            runId,
             status: 'failed',
-            error: 'Failed to get LinkedIn user profile',
+            error: 'Failed to get LinkedIn user profile. Set LINKEDIN_PERSON_URN or ensure token has openid scope.',
           } as LinkedInResponse),
         };
       }
@@ -368,6 +376,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: false,
           projectId: request.projectId,
+          runId,
           status: 'failed',
           error: 'Failed to fetch video from URL',
         } as LinkedInResponse),
@@ -386,6 +395,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: false,
           projectId: request.projectId,
+          runId,
           status: 'failed',
           error: 'Failed to register video upload with LinkedIn',
         } as LinkedInResponse),
@@ -401,6 +411,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: false,
           projectId: request.projectId,
+          runId,
           status: 'failed',
           error: 'Failed to upload video to LinkedIn',
         } as LinkedInResponse),
@@ -438,6 +449,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: false,
           projectId: request.projectId,
+          runId,
           status: 'failed',
           error: 'Failed to create LinkedIn post',
         } as LinkedInResponse),
@@ -458,6 +470,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       body: JSON.stringify({
         success: true,
         projectId: request.projectId,
+        runId,
         linkedinId: postId,
         linkedinUrl,
         status: 'uploaded',
@@ -472,6 +485,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       body: JSON.stringify({
         success: false,
         projectId: 'unknown',
+        runId: 'unknown',
         status: 'failed',
         error: error.message || 'Unknown error',
       } as LinkedInResponse),

@@ -1,10 +1,11 @@
 [build]
-  command = "npm install --include=dev && npm run build"
+  command = "npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
+  NPM_FLAGS = "--include=dev"
 
 [dev]
   command = "npx vite"
@@ -31,6 +32,12 @@
 # Background function for pipeline orchestration
 [functions."run-pipeline-background"]
   timeout = 900
+
+# LinkedIn OAuth callback → serverless function
+[[redirects]]
+  from = "/auth/linkedin/callback"
+  to = "/.netlify/functions/auth-linkedin-callback"
+  status = 200
 
 # SPA fallback redirect
 [[redirects]]

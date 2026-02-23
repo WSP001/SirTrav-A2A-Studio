@@ -70,3 +70,10 @@ artifacts/memory_vault.sqlite-shm
 
 # Stray null file from PowerShell redirects
 nul
+
+# Truth-serum + council event artifacts (ephemeral run output)
+artifacts/council_events/
+artifacts/reports/
+
+# Agent worktree sessions (isolated Claude Code worktrees — never commit)
+.claude/worktrees/
