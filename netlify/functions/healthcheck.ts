@@ -5,6 +5,7 @@
  * - Social keys: disabled if absent (not degraded)
  */
 import { getConfiguredBlobsStore } from './lib/storage';
+import { readLedger } from './lib/ledger';
 
 type ServiceState = 'ok' | 'degraded' | 'down' | 'disabled';
 
@@ -40,6 +41,12 @@ interface HealthResponse {
     suno: boolean;
     vault_path: string | null;
     url: string | null;
+  };
+  // 🎯 CLD-BE-OPS-002: Ledger status (informational only — never blocks health)
+  ledger: {
+    entries: number;
+    lastEntry: string | null;
+    status: 'ok';
   };
 }
 
@@ -150,6 +157,21 @@ export default async () => {
         vault_path: process.env.VAULT_PATH || null,
         url: process.env.URL || null,
       },
+      // 🎯 CLD-BE-OPS-002: Ledger status — informational, never blocks health
+      ledger: (() => {
+        try {
+          const recent = readLedger({ limit: 1 });
+          const all = recent.length > 0 ? readLedger() : [];
+          return {
+            entries: all.length,
+            lastEntry: recent[0]?.timestamp ?? null,
+            status: 'ok' as const,
+          };
+        } catch {
+          // Ledger read failure is informational — never blocks health
+          return { entries: 0, lastEntry: null, status: 'ok' as const };
+        }
+      })(),
     };
     return new Response(JSON.stringify(response, null, 2), {
       status: overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503,
