@@ -14,8 +14,8 @@
 ### ONE-TICKET RULE (Per Agent)
 - **Codex:** ✅ DONE — CX-014 (emblem wired to Council Flash truth state)
 - **Antigravity:** ✅ DONE — reviewer gate closed, all gates green (2026-02-19)
-- **Claude:** ✅ DONE — CC-DEVKIT (DevKit spin-up suite); CC-015 (invoice surface) queued, non-blocking
-- **Windsurf:** 🟡 WM-012 OPEN (DevKit audit) → WM-013 READY (AgentSkillRouter worktree layer, starts after WM-012)
+- **Claude Code:** 🟡 CLD-BE-OPS-002 QUEUED — Ledger Gate (token attribution + Linear branch sync); see `tasks/CLD-BE-OPS-002-ledger-gate.md`; branch: `feature/WSP-6-ledger-gate`
+- **Windsurf:** ✅ WSP-GOVERNANCE DEPLOYED (2026-02-23) — ticket-status + pre-merge-guard + guard-clean + guard-up-to-date live in main justfile; WM-012 + WM-013 still pending Windsurf sign-off
 
 ### 🏛️ Human Operator: Final Council Flash Gate
 
@@ -536,6 +536,7 @@ Then begin with this statement:
 | WM-011 | Windsurf Master | Council Flash cloud gates: 5/5 green, vault-init + council-flash-cloud recipes added, emblem REAL | 2026-02-20 |
 | CC-DEVKIT | Claude Code | DevKit spin-up suite: `devkit-spinup.ps1` + `scripts/verify-devkit.mjs` + 8 justfile recipes (`devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci`) + 4 npm scripts (`verify:devkit`, `verify:devkit:tools`, `verify:devkit:quick`, `verify:devkit:ci`) | 2026-02-21 |
 | WM-013-deploy | Claude Code (on behalf of WM-013) | AgentSkillRouter worktree layer: 5 justfile recipes, `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` deployed — Windsurf sign-off pending | 2026-02-21 |
+| WSP-GOVERNANCE | Claude Code (on behalf of Windsurf) | Branch discipline layer: `ticket-status` + `guard-clean` + `guard-up-to-date` + `pre-merge-guard` in main justfile; `flow` updated to enforce WSP ticket alignment; `tasks/CLD-BE-OPS-002-ledger-gate.md` created for Claude Code | 2026-02-23 |
 
 ---
 
