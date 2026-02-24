@@ -3,6 +3,7 @@ import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, 
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 import PipelineProgress from './components/PipelineProgress';
+import PersonaVault from './components/PersonaVault';
 
 // Version for deployment verification
 const APP_VERSION = "v2.1.0";
@@ -31,6 +32,7 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showResultsPreview, setShowResultsPreview] = useState(false);
   const [currentRunId, setCurrentRunId] = useState(null);
+  const [view, setView] = useState('studio'); // 'studio' or 'vault'
 
   // Click-to-Kick State
   const [targetPlatform, setTargetPlatform] = useState('tiktok'); // tiktok, instagram, youtube_shorts, linkedin, twitter
@@ -135,7 +137,6 @@ function App() {
             story: `Weekly recap for ${projectId}`,
             cta: 'Share your story',
             tone: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'professional' : 'casual',
-            // 🎯 MG-002: Pass U2A Preferences
             voiceStyle,
             videoLength
           },
@@ -146,7 +147,6 @@ function App() {
             outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
             musicMode,
             manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined,
-            // 🎯 MG-002: Pass U2A Preferences in payload too for explicit agent handling
             voiceStyle,
             videoLength
           },
@@ -158,7 +158,6 @@ function App() {
         throw new Error(errorData.error || 'Pipeline start failed');
       }
 
-      // NO POLLING HERE - PipelineProgress component handles SSE
       console.log('Pipeline started, listening via SSE...');
 
     } catch (error) {
@@ -171,7 +170,6 @@ function App() {
   const handlePipelineComplete = (data) => {
     setPipelineStatus('completed');
 
-    // Validate videoUrl
     const videoUrl = data.artifacts?.videoUrl;
     const isRealVideo = videoUrl && !videoUrl.startsWith('placeholder://') && !videoUrl.startsWith('error://');
 
@@ -186,7 +184,7 @@ function App() {
       generatedAt: new Date().toISOString(),
       pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
       isPlaceholder: !isRealVideo,
-      invoice: data.artifacts?.invoice, // Extract Invoice for display
+      invoice: data.artifacts?.invoice,
     });
   };
 
@@ -195,7 +193,6 @@ function App() {
     console.error('Pipeline failed:', err);
   };
 
-  // Submit feedback to backend
   const handleFeedback = async (rating) => {
     if (!currentRunId) return;
     try {
@@ -257,10 +254,14 @@ function App() {
           </div>
         </div>
       )}
-      {/* Enhanced Header with Live Status */}
+
+      {/* Enhanced Header */}
       <header className="header">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('studio')}
+            className="flex items-center gap-3 cursor-pointer"
+          >
             <div className="logo-icon logo-icon-animated" style={{ background: 'none', padding: 0, border: 'none', width: 36, height: 36 }}>
               <img
                 src="/sir-travis-emblem.png"
@@ -276,34 +277,36 @@ function App() {
               />
             </div>
             <span className="text-lg font-semibold text-white">SirTrav A2A Studio</span>
-            <span className="version-badge">{APP_VERSION}</span>
-            {/* Live System Health Indicator */}
-            {systemHealth && (
-              <div className={`health-dot ${systemHealth.status === 'ok' ? 'health-green' : systemHealth.status === 'degraded' ? 'health-amber' : 'health-red'}`}
-                title={`System: ${systemHealth.status || 'checking...'}`}
-              />
-            )}
-          </div>
+          </button>
 
           <nav className="flex items-center gap-4">
-            <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Docs</a>
-            <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault</a>
+            <button
+              onClick={() => setView('studio')}
+              className={`nav-link ${view === 'studio' ? 'text-amber-400' : ''}`}
+            >
+              <Code2 className="w-4 h-4" /> Studio
+            </button>
+            <button
+              onClick={() => { setView('vault'); setShowResultsPreview(false); }}
+              className={`nav-link ${view === 'vault' ? 'text-amber-400' : ''}`}
+            >
+              <Lock className="w-4 h-4" /> Vault
+            </button>
             <button
               onClick={() => setShowResultsPreview(true)}
               className="btn-secondary"
             >
               Preview
             </button>
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link">
-              <Github className="w-4 h-4" />
-            </a>
+            {systemHealth && (
+              <div className={`health-dot ${systemHealth.status === 'ok' ? 'health-green' : 'health-red'}`} title="System Health" />
+            )}
           </nav>
         </div>
       </header>
 
-      {/* ═══ PREMIUM HERO SECTION ═══ */}
+      {/* Hero Section */}
       <section className={`hero-section hero-premium ${heroVisible ? 'hero-visible' : ''}`}>
-        {/* Floating particle orbs */}
         <div className="hero-orbs">
           <div className="hero-orb hero-orb-1" />
           <div className="hero-orb hero-orb-2" />
@@ -320,17 +323,11 @@ function App() {
           One click. Seven AI agents. Real cinematic video — narrated, scored, credited, and published.
         </p>
 
-        {/* ═══ SirTrav SIGNATURE PLAQUE ═══ */}
+        {/* SirTrav signature plaque */}
         <div className="signature-plaque">
           <div className="signature-border">
             <div className="signature-inner">
-              {/* Active Emblem — the real gold seal */}
-              <div style={{
-                position: 'relative',
-                width: 64,
-                height: 64,
-                flexShrink: 0,
-              }}>
+              <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
                 <img
                   src="/sir-travis-emblem.png"
                   alt="Sir Travis Jennings Gold Seal"
@@ -343,7 +340,6 @@ function App() {
                     animation: 'emblem-shimmer 3s ease-in-out infinite, emblem-rotate 20s linear infinite',
                   }}
                 />
-                {/* Live pulse ring */}
                 <div style={{
                   position: 'absolute',
                   inset: -4,
@@ -364,7 +360,7 @@ function App() {
           </div>
         </div>
 
-        {/* ═══ AGENT ORBIT ROW ═══ */}
+        {/* AGENT ORBIT ROW */}
         <div className="agent-orbit-row">
           {AGENTS.map((agent, idx) => (
             <div
@@ -378,591 +374,254 @@ function App() {
             </div>
           ))}
         </div>
-
-        {/* Live Stats Bar */}
-        {systemHealth && (
-          <div className="hero-stats-bar">
-            <div className="hero-stat">
-              <span className="hero-stat-value">7</span>
-              <span className="hero-stat-label">AI Agents</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-value">~$0.38</span>
-              <span className="hero-stat-label">Per Video</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-value">{systemHealth.services?.find(s => s.name === 'storage')?.status === 'ok' ? '✓' : '—'}</span>
-              <span className="hero-stat-label">Storage</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-value">20%</span>
-              <span className="hero-stat-label">Commons Good</span>
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
+        {view === 'vault' ? (
+          <PersonaVault />
+        ) : (
+          <>
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Left Panel */}
+              <div className="space-y-6">
+                <div className="glass-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="section-title">
+                      <Upload className="w-5 h-5" /> Input Source
+                    </h2>
+                    {files.length > 0 && <span className="status-badge status-secured">✓ ASSET SECURED</span>}
+                  </div>
 
-          {/* Left Panel: Input Source */}
-          <div className="space-y-6">
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">
-                  <Upload className="w-5 h-5" /> Input Source
-                </h2>
-                {files.length > 0 && (
-                  <span className="status-badge status-secured">✓ ASSET SECURED</span>
-                )}
-              </div>
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">Project ID / Job Ticket</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-gray-500">#</span>
+                      <input
+                        type="text"
+                        value={projectId}
+                        onChange={(e) => setProjectId(e.target.value)}
+                        className="input-field flex-1"
+                      />
+                    </div>
+                  </div>
 
-              {/* Project ID */}
-              <div className="mb-4">
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Project ID / Job Ticket</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-gray-500">#</span>
-                  <input
-                    type="text"
-                    value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    className="input-field flex-1"
-                  />
+                  <div
+                    className="drop-zone"
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
+                    {files.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Upload className="w-8 h-8 text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-400">Drag & drop assets here or click to upload</p>
+                        <input type="file" multiple onChange={handleFileSelect} className="hidden" id="file-input" />
+                        <label htmlFor="file-input" className="btn-secondary mt-4 inline-block cursor-pointer">Browse Files</label>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {files.map((file, idx) => (
+                          <div key={idx} className="file-item">
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-4 h-4 text-amber-300" />
+                              <span className="text-sm text-white truncate max-w-[200px]">{file.name}</span>
+                            </div>
+                            <button onClick={() => removeFile(idx)} className="text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div><p className="text-[10px] text-gray-500 uppercase">Cost</p><p className="text-lg font-bold text-white">${metrics.cost.toFixed(2)}</p></div>
+                    <div><p className="text-[10px] text-gray-500 uppercase">Time</p><p className="text-lg font-bold text-white">{metrics.time.toFixed(1)}s</p></div>
+                    <div><p className="text-[10px] text-gray-500 uppercase">Health</p><div className="flex justify-center gap-0.5 mt-1">{[1, 2, 3, 4, 5].map(i => <div key={i} className="w-1 h-3 bg-amber-500 rounded-full" />)}</div></div>
+                  </div>
                 </div>
               </div>
 
-              {/* File Drop Zone */}
-              <div
-                className="drop-zone"
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-              >
-                {files.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Upload className="w-8 h-8 text-gray-500 mx-auto mb-3" />
-                    <p className="text-gray-400">Drag & drop assets here or click to upload</p>
-                    <p className="text-xs text-gray-600 mt-1">Supports: .txt, .mp3, .mp4, .jpg</p>
-                    <input type="file" multiple onChange={handleFileSelect} className="hidden" id="file-input" />
-                    <label htmlFor="file-input" className="btn-secondary mt-4 inline-block cursor-pointer">
-                      Browse Files
-                    </label>
-                  </div>
+              {/* Right Panel */}
+              <div className="glass-card p-6">
+                <h2 className="section-title mb-6">Agent Orchestration</h2>
+                {pipelineStatus === 'running' || pipelineStatus === 'completed' ? (
+                  <PipelineProgress
+                    projectId={projectId}
+                    runId={currentRunId}
+                    onComplete={handlePipelineComplete}
+                    onError={handlePipelineError}
+                  />
                 ) : (
-                  <div className="space-y-2">
-                    {files.map((file, idx) => (
-                      <div key={idx} className="file-item">
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-4 h-4 text-amber-300" />
-                          <div>
-                            <p className="text-sm text-white truncate max-w-[200px]">{file.name}</p>
-                            <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB • Ready for Agents</p>
-                          </div>
-                        </div>
-                        <button onClick={() => removeFile(idx)} className="text-gray-500 hover:text-red-400">
-                          <X className="w-4 h-4" />
-                        </button>
+                  <div className="space-y-3">
+                    {AGENTS.map(agent => (
+                      <div key={agent.id} className="agent-card pending p-3 rounded-lg border border-white/5 bg-white/5 flex items-center gap-3">
+                        <span className="text-xl">{agent.icon}</span>
+                        <div className="flex-1 text-sm font-medium text-gray-300">{agent.name}</div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
 
-              {/* Weekly Recap Template */}
-              <button
-                onClick={() => {
-                  setFiles([
-                    new File(["(dummy content)"], "journal_entry_day1.txt", { type: "text/plain" }),
-                    new File(["(dummy content)"], "voice_memo_day1.mp3", { type: "audio/mpeg" }),
-                    new File(["(dummy content)"], "photo_day1.jpg", { type: "image/jpeg" })
-                  ]);
-                  setProjectId(`week${new Date().getWeekNumber()}_recap_demo`);
-                }}
-                className="btn-template mt-4 w-full"
-              >
-                <span>📅</span> Use Weekly Recap Template
-              </button>
-            </div>
-
-            {/* Metrics Panel */}
-            <div className="glass-card p-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="metric-card">
-                  <DollarSign className="w-4 h-4 text-green-400" />
-                  <div>
-                    <p className="text-xs text-gray-500">Est. Cost</p>
-                    <p className="text-xl font-bold text-white">${metrics.cost.toFixed(2)}</p>
-                    <p className="text-xs text-gray-600">Target: &lt; $1.00</p>
+                <div className="mt-6 p-4 rounded-xl border border-gray-700 bg-gray-800/80 transition-all">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-brand-400" />
+                      Click-to-Kick Launchpad
+                    </h3>
                   </div>
-                </div>
-                <div className="metric-card">
-                  <Clock className="w-4 h-4 text-blue-400" />
-                  <div>
-                    <p className="text-xs text-gray-500">Total Time</p>
-                    <p className="text-xl font-bold text-white">{metrics.time.toFixed(1)}s</p>
-                    <p className="text-xs text-gray-600">P95: 180s</p>
-                  </div>
-                </div>
-                <div className="metric-card">
-                  <BarChart3 className="w-4 h-4 text-amber-300" />
-                  <div>
-                    <p className="text-xs text-gray-500">Cost Distrib</p>
-                    <div className="flex gap-0.5 mt-1">
-                      {[40, 60, 80, 50, 30, 20, 10].map((h, i) => (
-                        <div key={i} className="w-2 bg-amber-500 rounded-sm" style={{ height: `${h}%`, maxHeight: '24px' }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Right Panel: Agent Orchestration */}
-          <div className="glass-card p-6">
-            <h2 className="section-title mb-6">Agent Orchestration</h2>
+                  {/* Platform Grid */}
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { id: 'tiktok', label: 'TikTok', icon: '🎵', ratio: '9:16' },
+                      { id: 'instagram', label: 'Reels', icon: '📸', ratio: '9:16' },
+                      { id: 'youtube_shorts', label: 'Shorts', icon: '▶️', ratio: '9:16' },
+                      { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' },
+                      { id: 'twitter', label: 'X (Twitter)', icon: '🐦', ratio: '16:9' }
+                    ].map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setTargetPlatform(p.id)}
+                        disabled={files.length === 0 || pipelineStatus === 'running'}
+                        className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
+                          ? 'bg-amber-900/40 border-amber-500 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
+                          : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
+                          } ${files.length === 0 ? 'cursor-not-allowed grayscale opacity-50' : 'cursor-pointer'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-lg">{p.icon}</span>
+                          <span className="text-[10px] font-mono text-gray-400 bg-black/40 px-1 rounded">{p.ratio}</span>
+                        </div>
+                        <span className={`text-xs font-semibold block ${targetPlatform === p.id ? 'text-white' : 'text-gray-400'}`}>
+                          {p.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
 
-            {pipelineStatus === 'running' || pipelineStatus === 'completed' ? (
-              <PipelineProgress
-                projectId={projectId}
-                runId={currentRunId}
-                onComplete={handlePipelineComplete}
-                onError={handlePipelineError}
-              />
-            ) : (
-              /* Fallback / Idle State */
-              <div className="space-y-4">
-                {AGENTS.map((agent) => (
-                  <div key={agent.id} className="agent-card pending">
-                    <div className="flex items-start gap-4">
-                      <div className="agent-icon pending">
-                        <span className="text-xl">{agent.icon}</span>
+                  {/* Creative Direction */}
+                  <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
+                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">Creative Direction</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-400">Voice</label>
+                        <select
+                          value={voiceStyle}
+                          onChange={(e) => setVoiceStyle(e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
+                        >
+                          <option value="serious">🧐 Serious</option>
+                          <option value="friendly">😊 Friendly</option>
+                          <option value="hype">⚡ Hype</option>
+                        </select>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-white">{agent.name}</h3>
-                        <p className="text-sm text-gray-500">{agent.description}</p>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-400">Length</label>
+                        <select
+                          value={videoLength}
+                          onChange={(e) => setVideoLength(e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
+                        >
+                          <option value="short">Short (15s)</option>
+                          <option value="long">Long (60s)</option>
+                        </select>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {/* Click-to-Kick Dashboard (Launchpad) */}
-            <div className={`mt-6 p-4 rounded-xl border border-gray-700 transition-all ${files.length > 0 ? 'bg-gray-800/80' : 'bg-gray-800/40 opacity-75'
-              }`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                  <LayoutGrid className="w-4 h-4 text-brand-400" />
-                  Click-to-Kick Launchpad
-                </h3>
-                {files.length === 0 && (
-                  <span className="text-xs text-amber-500 animate-pulse">Upload assets to unlock</span>
-                )}
-              </div>
+                  {/* Audio Engine */}
+                  <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Audio Engine</label>
+                    </div>
+                    <div className="flex bg-gray-900 rounded p-0.5">
+                      <button
+                        onClick={() => setMusicMode('suno')}
+                        className={`flex-1 py-1 text-xs rounded transition-colors ${musicMode === 'suno' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                      >
+                        Suno AI
+                      </button>
+                      <button
+                        onClick={() => setMusicMode('manual')}
+                        className={`flex-1 py-1 text-xs rounded transition-colors ${musicMode === 'manual' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                      >
+                        Manual
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Platform Grid */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {[
-                  { id: 'tiktok', label: 'TikTok', icon: '🎵', ratio: '9:16' },
-                  { id: 'instagram', label: 'Reels', icon: '📸', ratio: '9:16' },
-                  { id: 'youtube_shorts', label: 'Shorts', icon: '▶️', ratio: '9:16' },
-                  { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' }
-                ].map(p => (
                   <button
-                    key={p.id}
-                    onClick={() => setTargetPlatform(p.id)}
+                    onClick={runPipeline}
                     disabled={files.length === 0 || pipelineStatus === 'running'}
-                    className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
-                      ? 'bg-amber-900/40 border-amber-500 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
-                      : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
-                      } ${files.length === 0 ? 'cursor-not-allowed grayscale opacity-50' : 'cursor-pointer'}`}
+                    className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
+                      ? 'bg-gray-700 cursor-wait'
+                      : files.length > 0
+                        ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-lg shadow-amber-900/40'
+                        : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                      }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-lg">{p.icon}</span>
-                      <span className="text-[10px] font-mono text-gray-400 bg-black/40 px-1 rounded">{p.ratio}</span>
-                    </div>
-                    <span className={`text-xs font-semibold block ${targetPlatform === p.id ? 'text-white' : 'text-gray-400'}`}>
-                      {p.label}
-                    </span>
-                    {targetPlatform === p.id && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
+                    {pipelineStatus === 'running' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        INITIALIZING AGENTS...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        LAUNCH {targetPlatform.replace('_', ' ').toUpperCase()} AGENT
+                      </>
                     )}
                   </button>
-                ))}
-
-                {/* 🐦 SPECIAL X AGENT TOGGLE (MG-008 Polish) */}
-                <button
-                  onClick={() => {
-                    if (targetPlatform !== 'twitter') {
-                      setTargetPlatform('twitter');
-                      if (files.length > 0) alert("🐦 X Mode Activated: Ready to post to @Sechols002!");
-                    }
-                  }}
-                  disabled={files.length === 0 || pipelineStatus === 'running'}
-                  className={`relative p-3 rounded-lg border text-left transition-all group overflow-hidden ${targetPlatform === 'twitter'
-                    ? 'bg-[#1DA1F2]/20 border-[#1DA1F2] shadow-[0_0_15px_rgba(29,161,242,0.4)]'
-                    : 'bg-gray-900/50 border-gray-700 hover:border-[#1DA1F2]/50'
-                    } ${files.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                >
-                  {/* Remotion Flare Effect */}
-                  <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-[#1DA1F2]/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
-
-                  <div className="flex items-center justify-between mb-1 relative z-10">
-                    <span className="text-lg text-[#1DA1F2]">🐦</span>
-                    <span className="text-[10px] font-mono text-[#1DA1F2]/70 bg-[#1DA1F2]/10 px-1 rounded">16:9</span>
-                  </div>
-                  <span className={`text-xs font-bold block relative z-10 ${targetPlatform === 'twitter' ? 'text-[#1DA1F2]' : 'text-gray-400 group-hover:text-[#1DA1F2]'}`}>
-                    X (Twitter)
-                  </span>
-                  {targetPlatform === 'twitter' && (
-                    <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#1DA1F2] rounded-full animate-pulse shadow-[0_0_8px_#1DA1F2]" />
-                  )}
-                </button>
-              </div>
-
-              {/* 🎯 MG-002: Creative Direction (U2A Preferences) */}
-              <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
-                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">Creative Direction</label>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Voice Style */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Voice Style</label>
-                    <select
-                      value={voiceStyle}
-                      onChange={(e) => setVoiceStyle(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
-                    >
-                      <option value="serious">🧐 Serious</option>
-                      <option value="friendly">😊 Friendly</option>
-                      <option value="hype">⚡ Hype</option>
-                    </select>
-                  </div>
-
-                  {/* Video Length */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Length</label>
-                    <select
-                      value={videoLength}
-                      onChange={(e) => setVideoLength(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
-                    >
-                      <option value="short">Short (15s)</option>
-                      <option value="long">Long (60s)</option>
-                    </select>
-                  </div>
                 </div>
-              </div>
-
-              {/* Music Mode Toggle */}
-              <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Audio Engine</label>
-                  <span className="text-[10px] text-gray-400">{musicMode === 'suno' ? 'AI Generated (Requires API)' : 'Local File Fallback'}</span>
-                </div>
-                <div className="flex bg-gray-900 rounded p-0.5">
-                  <button
-                    onClick={() => setMusicMode('suno')}
-                    disabled={files.length === 0}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'suno' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                  >
-                    Suno AI
-                  </button>
-                  <button
-                    onClick={() => setMusicMode('manual')}
-                    disabled={files.length === 0}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'manual' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                  >
-                    Manual Mode
-                  </button>
-                </div>
-              </div>
-
-              {/* Big Launch Button */}
-              <button
-                onClick={runPipeline}
-                disabled={files.length === 0 || pipelineStatus === 'running'}
-                className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
-                  ? 'bg-gray-700 cursor-wait'
-                  : files.length > 0
-                    ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-lg shadow-amber-900/40'
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
-                  }`}
-              >
-                {pipelineStatus === 'running' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    INITIALIZING AGENTS...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-current" />
-                    LAUNCH {targetPlatform.replace('_', ' ').toUpperCase()} AGENT
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Panel - Shows after pipeline completion */}
-        {pipelineStatus === 'completed' && videoResult && (
-          <div className="mt-8 glass-card p-6 animate-slide-up">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="section-title">
-                <Video className="w-5 h-5" /> Final Output
-              </h2>
-              <div className="flex items-center gap-3">
-                <span className={`px-2 py-1 text-xs font-bold rounded ${videoResult.pipelineMode === 'FULL' ? 'bg-green-500/20 text-green-400' :
-                  videoResult.pipelineMode === 'ENHANCED' ? 'bg-blue-500/20 text-blue-400' :
-                    videoResult.pipelineMode === 'SIMPLE' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-gray-500/20 text-gray-400'
-                  }`}>
-                  {videoResult.pipelineMode} MODE
-                </span>
-                <span className="text-xs text-gray-500">Generated: {new Date(videoResult.generatedAt).toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Placeholder Warning */}
-            {videoResult.isPlaceholder && (
-              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <p className="text-sm text-amber-400">
-                  <span className="font-bold">Demo Mode:</span> Showing test video. Configure API keys (ElevenLabs, Suno) for real video generation.
-                </p>
+            {/* Results Output */}
+            {pipelineStatus === 'completed' && videoResult && (
+              <div className="mt-8 glass-card p-6 animate-slide-up">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="section-title"><Video className="w-5 h-5" /> Final Output</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="px-2 py-1 text-[10px] font-bold bg-green-500/10 text-green-400 rounded border border-green-500/20">{videoResult.pipelineMode} MODE</span>
+                    <a href={videoResult.videoUrl} download className="btn-secondary text-xs"><Download className="w-3 h-3" /> Download</a>
+                  </div>
+                </div>
+                <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-white/5">
+                  <video src={videoResult.videoUrl} controls className="w-full h-full object-contain" />
+                </div>
               </div>
             )}
-
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Video Preview - Real playable video */}
-              <div className="space-y-4">
-                <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
-                  <video
-                    src={videoResult.videoUrl}
-                    controls
-                    poster={videoResult.thumbnailUrl}
-                    className="w-full h-full object-contain"
-                    preload="metadata"
-                  >
-                    Your browser does not support video playback.
-                  </video>
-                </div>
-
-                {/* Video Info */}
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-xs text-gray-500">Resolution</p>
-                    <p className="text-sm font-medium text-white">{videoResult.resolution}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-xs text-gray-500">Duration</p>
-                    <p className="text-sm font-medium text-white">{videoResult.duration}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-xs text-gray-500">File Size</p>
-                    <p className="text-sm font-medium text-white">{videoResult.fileSize}</p>
-                  </div>
-                </div>
-
-                {/* INVOICE MANIFEST DISPLAY (Task 5) */}
-                {videoResult.invoice && (
-                  <div className="invoice-card">
-                    <div className="invoice-header">
-                      <h4 className="invoice-title">
-                        <DollarSign className="w-4 h-4" /> Cost Plus Invoice
-                      </h4>
-                      <span className="invoice-id">{videoResult.invoice.jobId}</span>
-                    </div>
-                    <div className="invoice-grid">
-                      <div className="invoice-cell invoice-cell-sub">
-                        <p className="text-emerald-500/70">Subtotal</p>
-                        <p className="text-emerald-200 font-mono">${videoResult.invoice.subtotal.toFixed(3)}</p>
-                      </div>
-                      <div className="invoice-cell invoice-cell-sub">
-                        <p className="text-emerald-500/70">Markup (20%)</p>
-                        <p className="text-emerald-200 font-mono">${videoResult.invoice.markupTotal.toFixed(3)}</p>
-                      </div>
-                      <div className="invoice-cell invoice-cell-total">
-                        <p className="text-emerald-100 font-bold">TOTAL</p>
-                        <p className="text-white font-bold font-mono">${videoResult.invoice.totalDue.toFixed(3)}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Feedback */}
-                <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">
-                  <span className="text-sm text-gray-400">Rate this output:</span>
-                  <button
-                    onClick={() => handleFeedback('good')}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors"
-                  >
-                    <ThumbsUp className="w-4 h-4" /> Good
-                  </button>
-                  <button
-                    onClick={() => handleFeedback('bad')}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
-                  >
-                    <ThumbsDown className="w-4 h-4" /> Bad
-                  </button>
-                </div>
-              </div>
-
-              {/* Publishing Options */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-white">Publishing Options</h3>
-
-                {/* Privacy Mode */}
-                <div className="space-y-2">
-                  <label className="text-xs text-gray-500 uppercase tracking-wide">Visibility</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setPublishMode('private')}
-                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'private' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
-                    >
-                      <Lock className="w-4 h-4" />
-                      <span className="text-xs">Private</span>
-                    </button>
-                    <button
-                      onClick={() => setPublishMode('unlisted')}
-                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'unlisted' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span className="text-xs">Unlisted</span>
-                    </button>
-                    <button
-                      onClick={() => setPublishMode('public')}
-                      className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'public' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
-                    >
-                      <Globe className="w-4 h-4" />
-                      <span className="text-xs">Public</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Download Button */}
-                <a
-                  href={videoResult.videoUrl}
-                  download={`${projectId}-video.mp4`}
-                  className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-brand-500 to-accent-purple rounded-xl text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  <Download className="w-5 h-5" />
-                  Download Video ({videoResult.fileSize})
-                </a>
-
-                {/* Social Media Publishing */}
-                <div className="space-y-2">
-                  <label className="text-xs text-gray-500 uppercase tracking-wide">Publish to Social Media</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="social-btn youtube">
-                      <Youtube className="w-5 h-5" />
-                      <span>YouTube</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn tiktok">
-                      <span className="text-lg">📱</span>
-                      <span>TikTok</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn instagram">
-                      <Instagram className="w-5 h-5" />
-                      <span>Instagram</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn twitter">
-                      <Twitter className="w-5 h-5" />
-                      <span>X (Twitter)</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Copy Link */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`https://sirtrav.studio/v/${projectId}`}
-                    className="input-field flex-1 text-sm"
-                  />
-                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
-                    Copy
-                  </button>
-                </div>
-
-                {/* Credits Attribution */}
-                <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
-                  <div className="flex items-center gap-2 text-teal-400 text-sm">
-                    <span>📜</span>
-                    <span>Commons Good Attribution included</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">All media sources properly credited in video description</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          </>
         )}
       </main>
 
-      {/* Premium Footer */}
-      <footer className="premium-footer">
-        <div className="footer-inner">
-          <div className="footer-brand">
-            <Zap className="w-4 h-4 text-brand-400" />
-            <span>SirTrav A2A Studio</span>
-          </div>
-          <div className="footer-meta">
-            <span>Build {BUILD_DATE}</span>
-            <span className="footer-dot">·</span>
+      {/* Footer */}
+      <footer className="premium-footer mt-20 py-10 border-t border-white/5 bg-black/20">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-4 text-gray-500 text-xs">
+          <div className="flex items-center gap-2">
+            <Zap className="w-3 h-3" />
+            <span className="font-semibold text-gray-400">SirTrav A2A Studio</span>
+            <span>•</span>
             <span>{APP_VERSION}</span>
-            <span className="footer-dot">·</span>
-            <span className="footer-commons">For the Commons Good 🌍</span>
           </div>
-          <div className="footer-links">
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <span className="footer-dot">·</span>
-            <a href="#">Docs</a>
-          </div>
+          <p>© 2024–2026 For the Commons Good 🌍 Refined by Sir Travis Jennings</p>
         </div>
       </footer>
 
-      {/* Results Preview Modal */}
+      {/* Modals */}
       {showResultsPreview && (
         <ResultsPreview
           result={previewResult}
           onClose={() => setShowResultsPreview(false)}
-          onFeedback={async (projectId, rating, comments) => {
-            try {
-              const res = await fetch('/.netlify/functions/submit-evaluation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  projectId,
-                  runId: currentRunId || 'ui-demo',
-                  rating,
-                  feedback: comments,
-                }),
-              });
-              if (!res.ok) {
-                const detail = await res.text();
-                throw new Error(`submit-evaluation failed (${res.status}): ${detail}`);
-              }
-            } catch (err) {
-              console.error('Feedback submit failed', err);
-              alert('Failed to submit feedback. Please try again.');
-            }
-          }}
         />
       )}
     </div>
   );
 }
 
-// Helper to get week number
+// Global Week Number helper
 Date.prototype.getWeekNumber = function () {
   const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
   const dayNum = d.getUTCDay() || 7;
