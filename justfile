@@ -1045,10 +1045,12 @@ ops-release-pass-cloud:
 # 🌊 FLOW MODE (Default Team Entry)
 # ============================================
 
-# Flow Mode — local lane: gate -> preflight -> menu -> dev server
+# Flow Mode — local lane: ticket-status -> gate -> preflight -> menu -> dev server
+# WSP-GOVERNANCE: ticket-status runs first — flow fails if branch is not feature/WSP-*
 flow:
     @echo "🌊 FLOW MODE — Local Dev Lane"
     @echo "═══════════════════════════════════════════"
+    @just ticket-status
     @just machine-gate
     @just preflight
     @echo ""
@@ -1646,4 +1648,46 @@ worktree-status:
     @echo ""
     @echo "Branches NOT yet merged to main:"
     git branch --no-merged main 2>nul; echo ""
+
+# ============================================
+# 🏛️ WSP-GOVERNANCE (Branch Discipline Gate)
+# ============================================
+# Layer: Organizational Discipline
+# Independent of DevKit, PathGuard, Truth Serum layers
+# Enforces Linear ticket alignment at the justfile level
+# Owner: Windsurf Master
+
+# Validate current branch maps to a WSP Linear ticket
+# PASS: feature/WSP-5-recursive-directory-nesting
+# FAIL: main, claude/*, hotfix/*, or any non-WSP branch
+ticket-status:
+    @node -e "const b=require('child_process').execSync('git rev-parse --abbrev-ref HEAD',{encoding:'utf8'}).trim();const rx=/^feature\/WSP-[0-9]+-.+/;if(!rx.test(b)){console.log('LinearAlignment FAILED — branch must map to WSP ticket');console.log('  Current: '+b);console.log('  Expected: feature/WSP-<number>-<slug>');console.log('  Example:  feature/WSP-5-recursive-directory-nesting');process.exit(1)}else{const m=b.match(/WSP-(\d+)/);console.log('LinearAlignment PASS — '+b);console.log('  Ticket: WSP-'+m[1])}"
+
+# Guard: working tree must be clean before merge
+guard-clean:
+    @node -e "const r=require('child_process').execSync('git status --porcelain',{encoding:'utf8'}).trim();if(r){console.log('Working tree not clean:');console.log(r);process.exit(1)}else{console.log('Working tree clean')}"
+
+# Guard: must be up-to-date with origin before merge
+guard-up-to-date:
+    @node -e "const x=require('child_process').execSync;try{x('git fetch origin',{stdio:'ignore'})}catch(e){};const l=x('git rev-parse HEAD',{encoding:'utf8'}).trim();let r;try{r=x('git rev-parse @{u}',{encoding:'utf8'}).trim()}catch(e){r=null};if(r&&l!==r){console.log('Not up to date with upstream — run: git pull');process.exit(1)}else{console.log('Up-to-date with upstream')}"
+
+# Pre-merge guard — 4-point composite check (all must pass before merging to main)
+pre-merge-guard:
+    @echo "🛡️ Pre-Merge Guard — 4-point discipline check"
+    @echo "═══════════════════════════════════════════════"
+    @echo ""
+    @echo "CHECK 1: Working tree clean..."
+    @just guard-clean
+    @echo ""
+    @echo "CHECK 2: Up-to-date with origin..."
+    @just guard-up-to-date
+    @echo ""
+    @echo "CHECK 3: Machine health gate..."
+    @just machine-gate
+    @echo ""
+    @echo "CHECK 4: DevKit quick verify..."
+    @just devkit-quick
+    @echo ""
+    @echo "═══════════════════════════════════════════════"
+    @echo "✅ Pre-Merge Guard PASSED — safe to merge"
 
