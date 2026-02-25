@@ -1696,6 +1696,7 @@ pre-merge-guard:
 # ============================================
 
 # Full team health: PRs, branches, worktrees, security
+# Run this before any merge decision — shows all PRs, conflicts, stale branches
 team-health:
     @echo "📊 Running Team Health Dashboard..."
     node scripts/pr-health-dashboard.mjs
