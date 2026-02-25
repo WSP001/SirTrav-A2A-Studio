@@ -77,3 +77,6 @@ plansAGENT_ASSIGNMENTS.md
 ROBORTO/
 storage_backup.txt
 preflight_log.txt
+
+artifacts/metrics/
+
