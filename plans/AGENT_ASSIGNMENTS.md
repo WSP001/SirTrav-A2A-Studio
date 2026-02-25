@@ -6,6 +6,52 @@
 
 ---
 
+## 🧾 Attribution Credit Protocol (Added 2026-02-25)
+
+To increase fair attribution scores across all seats, every completion claim must include:
+
+1. `branch + commit SHA + PR URL`
+2. build/test evidence (at least one command with pass/fail result)
+3. changed-file list
+4. owner + reviewer names
+
+### Scoring Rubric (0-10 per ticket)
+
+| Category | Weight | Scoring Rule |
+|---|---:|---|
+| Delivery | 4 | 0 = not merged, 2 = pushed but open, 4 = merged with evidence |
+| Correctness | 3 | 0 = unverified, 2 = partial checks, 3 = required checks green |
+| Contract Integrity | 2 | 0 = breaks contract, 1 = partial, 2 = no-fake-success + runId threading preserved |
+| Handoff Quality | 1 | 0 = no handoff, 1 = clear next actions + rollback note |
+
+**Team policy:** no attribution points for narrative-only updates without branch-verified evidence.
+
+### Agent Context Names (Canonical)
+
+- `Codex #1 (Review/Repo Ops)`
+- `Codex #2 (UI/Integration)`
+- `Claude Code (Backend/PR split + SEC lane)`
+- `Windsurf Master (Infra/Governance)`
+- `Antigravity (QA/Truth gate)`
+- `Human Operator (Merge + Env authority)`
+
+---
+
+## 🔍 Missing Work Matrix (Added 2026-02-25)
+
+| Priority | Gap | Owner | Current Status | Required Evidence |
+|---|---|---|---|---|
+| P0 | Merge PR #13 (WSP-7) | Human Operator | OPEN | merge SHA on `main` |
+| P0 | De-risk PR #10 by split slices | Claude Code + Windsurf | OPEN | 4 child PR URLs (A/B/C/D) |
+| P1 | Security lane `SEC-001` (18 local audit findings baseline) | Claude Code | OPEN | before/after `npm audit --json` |
+| P1 | Evaluate PR #9 overlap after WSP-7 merge | Codex #1 | OPEN | keep/close decision + rationale |
+| P1 | Close or supersede stale PR #7 | Codex #1 + Human Operator | OPEN | closure note or replacement PR |
+| P2 | Run human council gate (`just council-flash-cloud`) post-merge | Human Operator | OPEN | command output + verdict note |
+
+**Execution order:** PR #13 -> PR #8 -> split PR #10 -> PR #9 disposition -> PR #7 disposition -> Council Flash human gate.
+
+---
+
 ## 🛰️ WM-011: Council Flash + UI Coherence Verification (2026-02-18)
 
 Council Flash v1.5.0 verified end-to-end on `claude/trusting-hamilton` after merging
