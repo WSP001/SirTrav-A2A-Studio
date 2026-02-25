@@ -69,3 +69,11 @@ artifacts/reports/
 
 # Agent worktree sessions (isolated Claude Code worktrees — never commit)
 .claude/worktrees/
+
+.archive/
+
+nul
+plansAGENT_ASSIGNMENTS.md
+ROBORTO/
+storage_backup.txt
+preflight_log.txt
