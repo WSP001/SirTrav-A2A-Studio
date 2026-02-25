@@ -1691,3 +1691,16 @@ pre-merge-guard:
     @echo "═══════════════════════════════════════════════"
     @echo "✅ Pre-Merge Guard PASSED — safe to merge"
 
+# ============================================
+# 📊 TEAM HEALTH DASHBOARD
+# ============================================
+
+# Full team health: PRs, branches, worktrees, security
+team-health:
+    @echo "📊 Running Team Health Dashboard..."
+    node scripts/pr-health-dashboard.mjs
+
+# Team health (JSON output for automation)
+team-health-json:
+    node scripts/pr-health-dashboard.mjs --json
+
