@@ -126,9 +126,9 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
 
     // 2. Trigger Backend Pipeline
     try {
-      // Step A: Upload files with REAL base64 data (not just names!)
-      console.log(`📤 Uploading ${files.length} files with base64 data...`);
-      for (const file of files) {
+      // Step A: Upload files in parallel with REAL base64 data
+      console.log(`📤 Uploading ${files.length} files in parallel with base64 data...`);
+      await Promise.all(files.map(async (file) => {
         const base64 = await fileToBase64(file);
         const intakeResponse = await fetch('/.netlify/functions/intake-upload', {
           method: 'POST',
@@ -145,7 +145,7 @@ export const CreativeHub: React.FC<CreativeHubProps> = ({
           throw new Error(`Failed to upload ${file.name}`);
         }
         console.log(`✅ Uploaded: ${file.name}`);
-      }
+      }));
 
       setStatus('running');
       onStatusChange('running');
