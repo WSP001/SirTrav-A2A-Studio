@@ -1,0 +1,137 @@
+# System State Snapshot — 2026-02-24
+
+> **Purpose:** Point-in-time capture of every layer's status for team visibility.
+> **Machine:** AMD Ryzen AI 9 HX 370 (24 cores, NPU active) — Windows 11
+> **Windsurf Master generating this snapshot at:** `claude/trusting-hamilton @ 850fdbaf`
+
+---
+
+## 1. Branch & PR State
+
+| Branch | HEAD | Remote | Status |
+|--------|------|--------|--------|
+| `main` | `d5fcff01` (local) | `961fa282` (origin) | **Behind** — origin/main has PR #12 merged |
+| `claude/trusting-hamilton` | `850fdbaf` | `850fdbaf` | In sync — PR #10 (OPEN, not merged) |
+| `feature/WSP-6-ledger-gate` | `f3c2db5e` | `f3c2db5e` | **Merged** to main via PR #12 |
+
+### Open PRs
+
+| PR | Branch | Status | Action Needed |
+|----|--------|--------|---------------|
+| **#10** | `claude/trusting-hamilton` | OPEN, MERGEABLE | Needs rebase on main (PR #12 merged ahead of it) |
+| **#12** | `feature/WSP-6-ledger-gate` | **MERGED** | Done — Ledger Gate is on main |
+
+### Action Required
+PR #10 must rebase or merge `origin/main` to incorporate PR #12's Ledger Gate changes before merging.
+
+---
+
+## 2. Gate Status (10/10 PASS)
+
+| Gate | Layer | Status | Last Checked | Owner |
+|------|-------|--------|-------------|-------|
+| `build` | L1 | PASS | 2026-02-14 | Claude Code |
+| `netlify_plugin` | L1 | PASS | 2026-02-14 | Claude Code |
+| `healthcheck` | L1 | PASS | 2026-02-14 | Claude Code |
+| `no_fake_success` | L1 | PASS | 2026-02-14 | Claude Code |
+| `wiring` | L2 | PASS | 2026-02-14 | Claude Code |
+| `contracts` | L2 | PASS | 2026-02-14 | Antigravity |
+| `golden_path` | L2 | PASS | 2026-02-14 | Antigravity |
+| `design_tokens` | L3 | PASS | 2026-02-14 | Codex |
+| `social_dry` | L4 | PASS | 2026-02-14 | Antigravity |
+| `motion_test` | L4 | PASS | 2026-02-14 | Antigravity |
+
+> **Note:** Gates were last checked 2026-02-14. A fresh `node scripts/cycle-check.mjs all` is recommended.
+
+---
+
+## 3. Machine Health
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| **CPU** | AMD Ryzen AI 9 HX 370 w/ Radeon 890M, 24 cores | OK |
+| **NPU** | AMD NPU driver active, optimized | OK |
+| **Memory** | 21.6 GB / 23.6 GB (92%) | WARNING — critical (>90%) |
+| **Docker** | Running | OK |
+| **Health Score** | **8/10 — Optimal** | PASS (gate threshold: 5) |
+| **Issues** | Memory critical (>90%) | Close Chrome tabs before heavy builds |
+
+---
+
+## 4. Layer Deployment Status
+
+| Layer | Version | Deployed | Location |
+|-------|---------|----------|----------|
+| **WSP-GOVERNANCE** | v1.0 | 2026-02-23 | `justfile` (ticket-status, flow, pre-merge-guard) |
+| **WM-012 Machine Safety** | v1.0 | 2026-02-23 | `scripts/verify-devkit.mjs`, `scripts/check-machine-health.mjs` |
+| **CLD-BE-OPS-002 Ledger Gate** | v1.0 | 2026-02-24 | `netlify/functions/lib/ledger.ts`, `netlify/functions/ledger.ts` |
+| **Cycle Gate v3** | v3.0 | 2026-02-14 | `scripts/cycle-check.mjs`, `agent-state.json` |
+| **Council Flash** | v1.5 | 2026-02-14 | `justfile` (council-flash, council-flash-cloud) |
+| **Operation Truth Serum** | v1.0 | 2026-02-14 | `scripts/truth-serum.mjs`, `justfile` (verify-truth) |
+
+---
+
+## 5. Social Platform Status
+
+| Platform | Status | Last Tested | Keys Set |
+|----------|--------|-------------|----------|
+| **X/Twitter** | LIVE | 2026-02-15 (3 verified tweets) | Yes — Netlify env |
+| **LinkedIn** | LIVE | 2026-02-15 (OAuth callback working) | Yes — Netlify env |
+| **YouTube** | Pending | — | No |
+| **TikTok** | Pending | — | No |
+| **Instagram** | Pending | — | No |
+
+---
+
+## 6. Ticket Status
+
+### Active
+| Ticket | Owner | Status | Description |
+|--------|-------|--------|-------------|
+| HUMAN-GATE | Human Operator | Active | Final Council Flash verification |
+
+### Recently Completed
+| Ticket | Owner | Completed |
+|--------|-------|-----------|
+| CLD-BE-OPS-002 | Claude Code | 2026-02-24 (PR #12 merged) |
+| WSP-GOVERNANCE | Windsurf | 2026-02-23 |
+| WM-012 | Windsurf | 2026-02-23 |
+| WM-013 | Windsurf | 2026-02-23 |
+
+### Queued
+| Ticket | Owner | Priority |
+|--------|-------|----------|
+| X verification E2E tests | Antigravity | P1 |
+| YouTube publisher | Claude Code | P2 |
+| TikTok publisher | Claude Code | P2 |
+| Instagram publisher | Claude Code | P2 |
+
+---
+
+## 7. Metrics Summary
+
+| Metric | Count |
+|--------|-------|
+| **Just recipes** | 180 |
+| **Docs files** | 40+ |
+| **Agent skill docs** | 5 |
+| **Council events recorded** | 4 |
+| **Agentic E2E runs** | 24 |
+| **Completed tickets** | 18+ |
+| **Active agents** | 5 (Claude Code, Codex, Windsurf, Antigravity, Human) |
+
+---
+
+## 8. Known Risks
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Memory at 92% | Medium | `just machine-gate` warns; close tabs before builds |
+| PR #10 behind main | High | Rebase on main before merge |
+| Gates last checked 10 days ago | Medium | Run `node scripts/cycle-check.mjs all` |
+| OneDrive recursive nesting | Low | `.path-guard.json` sentinel active |
+| Stale worktrees on disk | Low | `git worktree list` to audit |
+
+---
+
+*Snapshot generated by Windsurf Master — For the Commons Good.*
