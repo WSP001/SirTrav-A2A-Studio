@@ -1,18 +1,22 @@
-# AG-WEEKLY-SCHEMAS — Schema Enforcement Mission
+∩╗┐Antigravity: Weekly Schemas
+
+Deliverables: artifacts/contracts/weekly-harvest.schema.json + artifacts/contracts/social-post.schema.json
+DoD: just validate-schemas blocks on mismatch (no fake success)
+# AG-WEEKLY-SCHEMAS ΓÇö Schema Enforcement Mission
 
 > **Agent:** Antigravity (Test Ops + Design)
 > **Tickets:** AG-011 + AG-012
 > **Sprint:** The Pulse & The Plaque
-> **Status:** ✅ DONE (2026-02-17)
+> **Status:** Γ£à DONE (2026-02-17)
 
 ---
 
-## 🎯 Mission Objective
+## ≡ƒÄ» Mission Objective
 
 Create and enforce JSON Schema contracts for the Weekly Pulse pipeline outputs,
 and build integration tests for the Click2Kick issue-intake flow.
 
-## 📋 Truth Ritual
+## ≡ƒôï Truth Ritual
 
 Before starting, verify:
 
@@ -24,15 +28,15 @@ just validate-schemas              # Existing schemas valid
 
 ---
 
-## 📦 Deliverables
+## ≡ƒôª Deliverables
 
 ### AG-011: Schema Enforcement
 
 | # | Deliverable | File | Status |
 |---|-------------|------|--------|
-| 1 | Weekly Harvest Schema | `artifacts/contracts/weekly-harvest.schema.json` | ✅ DONE |
-| 2 | Weekly Pulse Analysis Schema | `artifacts/contracts/weekly-pulse-analysis.schema.json` | ✅ DONE |
-| 3 | Validation Script | `scripts/validate-weekly-pulse.mjs` | ✅ DONE |
+| 1 | Weekly Harvest Schema | `artifacts/contracts/weekly-harvest.schema.json` | Γ£à DONE |
+| 2 | Weekly Pulse Analysis Schema | `artifacts/contracts/weekly-pulse-analysis.schema.json` | Γ£à DONE |
+| 3 | Validation Script | `scripts/validate-weekly-pulse.mjs` | Γ£à DONE |
 
 **Weekly Harvest Schema** defines the output contract for `scripts/harvest-week.mjs`:
 - Harvest ID pattern: `harvest-YYYY-WNN`
@@ -61,18 +65,18 @@ just validate-schemas              # Existing schemas valid
 
 | # | Deliverable | File | Status |
 |---|-------------|------|--------|
-| 1 | Issue Intake Test | `scripts/test-issue-intake.mjs` | ✅ DONE |
+| 1 | Issue Intake Test | `scripts/test-issue-intake.mjs` | Γ£à DONE |
 
 **Integration Test** (`test-issue-intake.mjs`):
 - 5 test cases covering success + failure scenarios
-- Domain mapping validation (storage→Lion, network→Shield, build→Cross, pipeline→Phoenix)
+- Domain mapping validation (storageΓåÆLion, networkΓåÆShield, buildΓåÆCross, pipelineΓåÆPhoenix)
 - Supports `--dry-run` (default) and `--live --url <base-url>` modes
 - Validates response contract shapes
 - Click2Kick round-trip chain documented and tested
 
 ---
 
-## ✅ Verification Commands
+## Γ£à Verification Commands
 
 ```bash
 # AG-011: Schema validation
@@ -87,7 +91,7 @@ just validate-schemas
 just mvp-verify
 ```
 
-## 📁 File Boundaries
+## ≡ƒôü File Boundaries
 
 ### Antigravity OWNS (create/edit):
 - `artifacts/contracts/weekly-harvest.schema.json`
@@ -99,16 +103,16 @@ just mvp-verify
 ### Antigravity does NOT edit:
 - `netlify/functions/*` (Claude Code)
 - `src/components/*` (Codex)
-- `scripts/harvest-week.mjs` (Claude Code — writes to harvest schema)
-- `scripts/weekly-analyze.mjs` (Claude Code — writes to analysis schema)
+- `scripts/harvest-week.mjs` (Claude Code ΓÇö writes to harvest schema)
+- `scripts/weekly-analyze.mjs` (Claude Code ΓÇö writes to analysis schema)
 
 ---
 
-## 🏆 Mission Success Criteria
+## ≡ƒÅå Mission Success Criteria
 
 - [ ] `node scripts/validate-weekly-pulse.mjs --dry-run` exits 0
 - [ ] `node scripts/test-issue-intake.mjs` exits 0
-- [ ] `just cycle-gate contracts` shows ✅
-- [ ] `just validate-schemas` shows ✅
+- [ ] `just cycle-gate contracts` shows Γ£à
+- [ ] `just validate-schemas` shows Γ£à
 - [ ] `npm run build` passes
 - [ ] All schemas in `artifacts/contracts/` are valid JSON with examples
