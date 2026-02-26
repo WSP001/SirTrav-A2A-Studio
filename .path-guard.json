@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "created": "2026-02-23T03:12:21.583Z",
+  "rules": {
+    "maxDepthFromProjectRoot": 4,
+    "maxPathChars": 250,
+    "maxFolderNameRepeats": 2,
+    "bannedPatterns": [
+      "netlify_configs/netlify_configs",
+      "MASTER_RESEARCH_ARCHIVE/MASTER_RESEARCH_ARCHIVE"
+    ],
+    "namingRule": "Use DoubleWordCase timestamps. Never repeat parent folder name in child."
+  },
+  "enforcement": "Agents MUST check .path-guard.json before creating directories.",
+  "lastScan": "2026-02-23T03:12:21.584Z",
+  "lastResult": "CLEAN"
+}
