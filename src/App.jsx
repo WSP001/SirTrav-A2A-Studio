@@ -223,6 +223,26 @@ function App() {
     }
   };
 
+  const previewResult = (videoResult && pipelineStatus === 'completed')
+    ? {
+      videoUrl: videoResult.videoUrl,
+      projectId,
+      runId: videoResult.runId,
+      metadata: {
+        resolution: videoResult.resolution,
+        platform: targetPlatform,
+      },
+      credits: { platform: 'SirTrav A2A Studio' },
+      invoice: videoResult.invoice,
+    }
+    : {
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      projectId: 'test-project-123',
+      runId: 'ui-demo-run',
+      metadata: { duration: 154, resolution: '1080p', platform: 'TikTok', fileSize: 24500000 },
+      credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: 'SirTrav A2A Studio' },
+    };
+
   return (
     <div className="app min-h-screen relative">
       {/* Toast Notification */}
@@ -436,7 +456,7 @@ function App() {
                     {files.map((file, idx) => (
                       <div key={idx} className="file-item">
                         <div className="flex items-center gap-3">
-                          <FileText className="w-4 h-4 text-purple-400" />
+                          <FileText className="w-4 h-4 text-amber-300" />
                           <div>
                             <p className="text-sm text-white truncate max-w-[200px]">{file.name}</p>
                             <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB • Ready for Agents</p>
@@ -487,7 +507,7 @@ function App() {
                   </div>
                 </div>
                 <div className="metric-card">
-                  <BarChart3 className="w-4 h-4 text-purple-400" />
+                  <BarChart3 className="w-4 h-4 text-amber-300" />
                   <div>
                     <p className="text-xs text-gray-500">Cost Distrib</p>
                     <div className="flex gap-0.5 mt-1">
@@ -557,7 +577,7 @@ function App() {
                     onClick={() => setTargetPlatform(p.id)}
                     disabled={files.length === 0 || pipelineStatus === 'running'}
                     className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
-                      ? 'bg-purple-900/60 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                      ? 'bg-amber-900/40 border-amber-500 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
                       : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
                       } ${files.length === 0 ? 'cursor-not-allowed grayscale opacity-50' : 'cursor-pointer'}`}
                   >
@@ -569,7 +589,7 @@ function App() {
                       {p.label}
                     </span>
                     {targetPlatform === p.id && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-ping" />
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
                     )}
                   </button>
                 ))}
@@ -615,7 +635,7 @@ function App() {
                     <select
                       value={voiceStyle}
                       onChange={(e) => setVoiceStyle(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-purple-500 outline-none"
+                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
                     >
                       <option value="serious">🧐 Serious</option>
                       <option value="friendly">😊 Friendly</option>
@@ -629,7 +649,7 @@ function App() {
                     <select
                       value={videoLength}
                       onChange={(e) => setVideoLength(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-purple-500 outline-none"
+                      className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
                     >
                       <option value="short">Short (15s)</option>
                       <option value="long">Long (60s)</option>
@@ -669,7 +689,7 @@ function App() {
                 className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
                   ? 'bg-gray-700 cursor-wait'
                   : files.length > 0
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-900/40'
+                    ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-lg shadow-amber-900/40'
                     : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                   }`}
               >
@@ -913,22 +933,7 @@ function App() {
       {/* Results Preview Modal */}
       {showResultsPreview && (
         <ResultsPreview
-          result={{
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-            projectId: "test-project-123",
-            runId: "ui-demo-run",
-            metadata: {
-              duration: 154,
-              resolution: "1080p",
-              platform: "TikTok",
-              fileSize: 24500000
-            },
-            credits: {
-              music: "Suno AI",
-              voice: "ElevenLabs",
-              platform: "SirTrav A2A Studio"
-            }
-          }}
+          result={previewResult}
           onClose={() => setShowResultsPreview(false)}
           onFeedback={async (projectId, rating, comments) => {
             try {

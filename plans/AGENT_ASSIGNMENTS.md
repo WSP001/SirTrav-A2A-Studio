@@ -534,6 +534,8 @@ Then begin with this statement:
 | CC-014 | Claude Code | Memory Vault helpers: recordJobPacket + recordCouncilEvent, pipeline + Truth Serum wired | 2026-02-19 |
 | AG-013-VERDICT | Antigravity | Reviewer gate: `just verify-truth` green on cloud, tweetId=2024352070304669755 (real), 0 liars | 2026-02-19 |
 | WM-011 | Windsurf Master | Council Flash cloud gates: 5/5 green, vault-init + council-flash-cloud recipes added, emblem REAL | 2026-02-20 |
+| CX-015 | Codex / Antigravity | 24K gold palette applied to App.css (22 sites), App.jsx (7 cosmetic + previewResult wiring), ResultsPreview invoice UI | 2026-02-20 |
+| WM-012 | Windsurf Master | `src/tokens/brand.ts` gold token spec created; security-audit PS fix queued for Windsurf container justfile | 2026-02-20 |
 | CC-DEVKIT | Claude Code | DevKit spin-up suite: `devkit-spinup.ps1` + `scripts/verify-devkit.mjs` + 8 justfile recipes (`devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci`) + 4 npm scripts (`verify:devkit`, `verify:devkit:tools`, `verify:devkit:quick`, `verify:devkit:ci`) | 2026-02-21 |
 | WM-013-deploy | Claude Code (on behalf of WM-013) | AgentSkillRouter worktree layer: 5 justfile recipes, `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` deployed — Windsurf sign-off pending | 2026-02-21 |
 | WSP-GOVERNANCE | Claude Code (on behalf of Windsurf) | Branch discipline layer: `ticket-status` + `guard-clean` + `guard-up-to-date` + `pre-merge-guard` in main justfile; `flow` updated to enforce WSP ticket alignment; `tasks/CLD-BE-OPS-002-ledger-gate.md` created for Claude Code | 2026-02-23 |

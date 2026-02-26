@@ -986,6 +986,16 @@ verify-x-dry:
     @echo "🦅 North Star Dry-Run (key check only)..."
     node scripts/verify-x-real.mjs --dry-run
 
+# X Worktree Flow Verification (cloud E2E — contract + live tweet)
+x-flow-verify:
+    @echo "🦅 X Worktree Flow Verification (LIVE)..."
+    node scripts/verify-x-flow.mjs
+
+# X Worktree Flow dry-run (contract shapes only, no tweet)
+x-flow-dry:
+    @echo "🦅 X Worktree Flow Verification (dry-run)..."
+    node scripts/verify-x-flow.mjs --dry-run
+
 # Weekly Harvest (collect last 7 days of activity)
 harvest-week:
     @echo "📊 Harvesting weekly activity..."
