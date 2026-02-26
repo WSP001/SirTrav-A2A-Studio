@@ -21,7 +21,10 @@
       "Bash(node:*)",
       "Bash(just:*)",
       "Bash(git pull:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git restore:*)",
+      "Bash(git rebase:*)"
     ]
   }
 }

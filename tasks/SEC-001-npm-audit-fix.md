@@ -1,4 +1,4 @@
-# SEC-001 ΓÇö npm Audit Remediation Plan
+# SEC-001 — npm Audit Remediation Plan
 
 ## Ticket
 `SEC-001-npm-audit-fix`
@@ -28,14 +28,14 @@ Reduce dependency vulnerabilities from baseline (`18`: 1 critical, 8 high, 3 mod
 - Batch with regular maintenance unless exploited path is production-facing.
 
 ## Execution Phases
-### Phase 1 ΓÇö Fast Patch (direct + safe updates)
+### Phase 1 — Fast Patch (direct + safe updates)
 - Update direct dependencies with `fixAvailable: true` where semver-compatible.
 - Re-run:
   - `npm audit --json`
   - `npm run build`
   - smoke checks (`netlify dev`, pipeline start call, healthcheck call)
 
-### Phase 2 ΓÇö Controlled Transitive Upgrades
+### Phase 2 — Controlled Transitive Upgrades
 - Target chains: Remotion, Netlify CLI, AWS SDK XML parser chain.
 - Upgrade in small steps with regression checks after each group.
 - Preserve lockfile integrity and document changed dependency trees.
