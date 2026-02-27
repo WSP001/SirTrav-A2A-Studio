@@ -1715,3 +1715,34 @@ team-health:
 team-health-json:
     node scripts/pr-health-dashboard.mjs --json
 
+# ============================================
+# 🎛️ MASTER COCKPIT (Human Operator Entry Point)
+# ============================================
+
+# Master Cockpit — single command showing ALL system status
+# Git, Netlify config, env vars, cycle gates, PRs, Linear, human-ops
+cockpit:
+    @echo "🎛️ Launching Master Cockpit..."
+    node scripts/master-cockpit.mjs
+
+# Master Cockpit (JSON output for automation)
+cockpit-json:
+    node scripts/master-cockpit.mjs --json
+
+# Generate MASTER_CHECKLIST.md deliverable
+cockpit-checklist:
+    node scripts/master-cockpit.mjs --checklist
+
+# ============================================
+# 🔗 LINEAR INTEGRATION
+# ============================================
+
+# Show Linear board alignment status
+linear-status:
+    @node -e "const k=process.env.LINEAR_API_KEY;if(!k){console.log('❌ LINEAR_API_KEY not set');console.log('  1. Go to: https://linear.app/wsp2agent/settings/api');console.log('  2. Create Personal API Key');console.log('  3. Add to .env: LINEAR_API_KEY=lin_api_xxx');process.exit(1)}else{console.log('✅ LINEAR_API_KEY is set');console.log('  Project: https://linear.app/wsp2agent/project/sirtrava2a-studio-14857ab39d4b');console.log('  Intake:  wsp2agent-981d596ce626@intake.linear.app')}"
+
+# Open Linear project in browser
+linear-open:
+    @echo "Opening Linear project..."
+    @node -e "require('child_process').execSync('start https://linear.app/wsp2agent/project/sirtrava2a-studio-14857ab39d4b',{stdio:'inherit'})"
+
