@@ -40,7 +40,7 @@
     "@opentelemetry/instrumentation": "^0.208.0",
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-trace-node": "^2.2.0",
-    "@remotion/cli": "^4.0.409",
+    "@remotion/cli": "^4.0.429",
     "@traceloop/instrumentation-openai": "^0.22.0",
     "@types/crypto-js": "^4.2.2",
     "clsx": "^2.1.1",
