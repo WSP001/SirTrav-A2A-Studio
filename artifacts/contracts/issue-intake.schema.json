@@ -3,6 +3,7 @@
   "$id": "issue-intake.schema.json",
   "title": "Issue Intake (Click2Kick) Contract",
   "description": "Request/Response contract for POST /.netlify/functions/issue-intake",
+  "type": "object",
 
   "definitions": {
     "request": {
@@ -60,5 +61,32 @@
         "runId": { "type": "string" }
       }
     }
-  }
+  },
+  "examples": [
+    {
+      "request": {
+        "domain": "storage",
+        "action": "diagnose",
+        "timestamp": "2026-02-26T12:00:00.000Z"
+      },
+      "successResponse": {
+        "success": true,
+        "domain": "storage",
+        "diagnostics": {
+          "status": "healthy",
+          "detail": "Netlify Blobs responding within 120ms",
+          "lastChecked": "2026-02-26T12:00:01.000Z",
+          "metrics": { "latencyMs": 118, "blobCount": 42 }
+        },
+        "action_taken": "diagnose_complete",
+        "runId": "run-intake-abc123"
+      },
+      "errorResponse": {
+        "success": false,
+        "error": "Domain 'unknown' is not a valid intake domain",
+        "disabled": false,
+        "runId": "run-intake-abc123"
+      }
+    }
+  ]
 }

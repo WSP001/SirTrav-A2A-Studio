@@ -3,6 +3,7 @@
   "$id": "job-packet.schema.json",
   "title": "SirTrav Job Packet — SeaTrace Packet Switch Protocol",
   "description": "Separates Public Logic from Private Cost. Public layer stays in repo, Private layer goes to artifacts/costing/ (gitignored).",
+  "type": "object",
 
   "definitions": {
     "publicLayer": {
@@ -98,5 +99,42 @@
         "private": { "$ref": "#/definitions/privateLayer" }
       }
     }
-  }
+  },
+  "examples": [
+    {
+      "packet": "pkt-weekly-pulse-20260226",
+      "public": {
+        "jobType": "Weekly Pulse",
+        "logicVersion": "c7db6fe",
+        "agent": "antigravity",
+        "status": "success",
+        "timestamp": "2026-02-26T12:00:00.000Z",
+        "runId": "run-pulse-week08",
+        "publicResult": {
+          "weekNumber": 8,
+          "agentsReporting": 4,
+          "gatesGreen": 10
+        }
+      },
+      "private": {
+        "costBreakdown": {
+          "baseCost": 0.0045,
+          "markup": 0.0009,
+          "totalDue": 0.0054,
+          "apiCalls": 2,
+          "tokenUsage": { "input": 1200, "output": 800, "total": 2000 }
+        },
+        "variance": {
+          "budgeted": 0.01,
+          "actual": 0.0054,
+          "delta": -0.0046,
+          "withinBudget": true
+        },
+        "userFeedback": {
+          "rating": "none",
+          "comment": ""
+        }
+      }
+    }
+  ]
 }

@@ -24,7 +24,12 @@
       "Bash(npx tsc:*)",
       "Bash(git cherry-pick:*)",
       "Bash(git restore:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(gh pr view:*)",
+      "Bash(echo:*)",
+      "Bash(for f in artifacts/contracts/*.json)",
+      "Bash(done)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }
