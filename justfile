@@ -1746,3 +1746,64 @@ linear-open:
     @echo "Opening Linear project..."
     @node -e "require('child_process').execSync('start https://linear.app/wsp2agent/project/sirtrava2a-studio-14857ab39d4b',{stdio:'inherit'})"
 
+# ============================================
+# 🛡️ PATH FIX — Recursive Nesting Protection
+# ============================================
+
+# Scan for recursive directory nesting violations (read-only, no changes)
+path-fix-scan target="":
+    @echo "🔍 Scanning for recursive nesting violations..."
+    @if [ "{{target}}" = "" ]; then \
+        node scripts/fix-recursive-nest.mjs --scan; \
+    else \
+        node scripts/fix-recursive-nest.mjs --scan --target "{{target}}"; \
+    fi
+
+# Archive-first: copy non-recursive content to safe location outside OneDrive
+# Usage: just path-fix-archive "C:\path\to\recursive\folder" "archive-name"
+path-fix-archive source name="recursive-fix":
+    @echo "📦 Archive-first path fix (non-destructive)"
+    @echo "  Source: {{source}}"
+    @echo "  Dest:   C:\\WSP001\\archive-inspiration\\{{name}}"
+    @node -e " \
+        const fs=require('fs'),path=require('path'); \
+        const src='{{source}}',dest=path.join('C:\\\\WSP001\\\\archive-inspiration','{{name}}'); \
+        if(!fs.existsSync(src)){console.log('❌ Source not found:',src);process.exit(2)} \
+        fs.mkdirSync(dest,{recursive:true}); \
+        const entries=fs.readdirSync(src,{withFileTypes:true}); \
+        const parts=path.basename(src).split('_'); \
+        const selfName=path.basename(src); \
+        let copied=0,skipped=0; \
+        for(const e of entries){ \
+            const sp=path.join(src,e.name),dp=path.join(dest,e.name); \
+            if(e.isDirectory()&&e.name.startsWith(selfName)){skipped++;console.log('  ⚠️  SKIP recursive:',e.name);continue} \
+            try{fs.cpSync(sp,dp,{recursive:true});copied++;console.log('  ✅',e.name)}catch(err){console.log('  ❌',e.name,err.message)} \
+        } \
+        const manifest='Archive: '+new Date().toISOString()+'\\nSource: '+src+'\\nCopied: '+copied+'\\nSkipped recursive: '+skipped; \
+        fs.writeFileSync(path.join(dest,'ARCHIVE_MANIFEST.txt'),manifest); \
+        console.log('\\n📋 Manifest written. Copied:',copied,'Skipped:',skipped); \
+    "
+
+# Quarantine: rename recursive folder in-place (requires OneDrive paused)
+# Usage: just path-fix-quarantine "C:\path\to\parent" "recursive_child_name"
+path-fix-quarantine parent child:
+    @echo "🔒 Quarantine rename (non-destructive, requires OneDrive paused)"
+    @echo "  Parent: {{parent}}"
+    @echo "  Child:  {{child}}"
+    @echo "  Target: _QUARANTINE_{{child}}"
+    @node -e " \
+        const fs=require('fs'),path=require('path'); \
+        const src=path.join('{{parent}}','{{child}}'); \
+        const dst=path.join('{{parent}}','_QUARANTINE_{{child}}'); \
+        if(!fs.existsSync(src)){console.log('❌ Not found:',src);process.exit(2)} \
+        try{fs.renameSync(src,dst);console.log('✅ Quarantined:',dst)}catch(e){console.log('❌ LOCKED:',e.message);console.log('\\n  ⚠️  Pause OneDrive first:');console.log('  1. Right-click OneDrive tray icon');console.log('  2. Pause syncing → 2 hours');console.log('  3. Close all Explorer windows on this path');console.log('  4. Re-run this command');process.exit(1)} \
+    "
+
+# Auto-fix: scan + rescue files + flatten recursive dirs
+path-fix-auto target="":
+    @echo "🔧 Auto-fixing recursive nesting..."
+    @if [ "{{target}}" = "" ]; then \
+        node scripts/fix-recursive-nest.mjs --auto; \
+    else \
+        node scripts/fix-recursive-nest.mjs --auto --target "{{target}}"; \
+    fi
