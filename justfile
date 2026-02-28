@@ -1841,25 +1841,32 @@ gemini-test:
 # 🛡️ CONTROL PLANE GATE (CI/CD enforcer)
 # ============================================
 
-# CI gate: exits 0 if cloudVerdict=REAL, exits 1 otherwise
-# Use before `just deploy` or merging to main
+# CI gate: strict on release branches — fails if truth.verdict != REAL
+# Release branches: main, release/*, hotfix/*
+# Non-release branches: warns but does not hard-fail (for local iteration)
 control-plane-gate:
-    @echo "🛡️ Control Plane Gate — checking cloudVerdict..."
+    @echo "🛡️ Control Plane Gate — checking truth.verdict..."
     @node -e " \
         import { execSync } from 'child_process'; \
+        const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim(); \
+        const isRelease = /^(main|release\/.+|hotfix\/.+)$/.test(branch); \
         const raw = execSync('node scripts/master-cockpit.mjs --json', { encoding: 'utf8' }); \
         const j = JSON.parse(raw); \
-        const cv = j.truth?.cloudVerdict || 'UNKNOWN'; \
-        const lv = j.truth?.localVerdict || 'UNKNOWN'; \
-        console.log('  CloudVerdict: ' + cv); \
-        console.log('  LocalVerdict: ' + lv); \
-        if (cv === 'REAL') { \
-            console.log('  ✅ GATE PASSED — cloud is REAL. Safe to deploy/merge.'); \
+        const verdict = j.truth?.verdict || 'UNKNOWN'; \
+        console.log('  Branch: ' + branch + (isRelease ? ' (release)' : ' (feature/non-release)')); \
+        console.log('  Verdict: ' + verdict); \
+        if (verdict === 'REAL') { \
+            console.log('  ✅ GATE PASSED — truth.verdict=REAL'); \
             process.exit(0); \
         } else { \
-            console.log('  ❌ GATE FAILED — cloudVerdict=' + cv + '. Fix before deploy.'); \
-            if (j.truth?.localFails) j.truth.localFails.forEach(f => console.log('    ✗ ' + f)); \
-            process.exit(1); \
+            console.log('  ⚠️  Verdict not REAL: ' + verdict); \
+            if (Array.isArray(j.truth?.reasons)) j.truth.reasons.forEach(r => console.log('    - ' + r)); \
+            if (isRelease) { \
+                console.log('  ❌ GATE FAILED (release branch requires REAL)'); \
+                process.exit(1); \
+            } \
+            console.log('  🟡 NON-RELEASE BRANCH: warning only, continuing'); \
+            process.exit(0); \
         } \
     "
 
@@ -1868,6 +1875,7 @@ env-diff:
     @echo "🔑 Local vs Cloud env key comparison..."
     @node -e " \
         import { readFileSync, existsSync } from 'fs'; \
+        import { execSync } from 'child_process'; \
         const envPath = '.env'; \
         const local = {}; \
         if (existsSync(envPath)) { \
@@ -1876,6 +1884,9 @@ env-diff:
                 if (m) local[m[1]] = true; \
             }); \
         } \
+        let cockpit = {}; \
+        try { cockpit = JSON.parse(execSync('node scripts/master-cockpit.mjs --json', { encoding: 'utf8' })); } catch {} \
+        const cloud = cockpit.deployment?.env || {}; \
         const keys = [ \
             'OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'SUNO_API_KEY', 'GEMINI_API_KEY', \
             'TWITTER_API_KEY', 'TWITTER_ACCESS_TOKEN', \
@@ -1888,11 +1899,12 @@ env-diff:
         console.log('  ' + '-'.repeat(50)); \
         for (const k of keys) { \
             const inLocal = local[k] ? '✅' : '❌'; \
-            const inCloud = '?';  \
-            console.log('  ' + k.padEnd(28) + inLocal + '       ' + inCloud + ' (check Netlify Dashboard)'); \
+            const cv = cloud[k] || 'unknown'; \
+            const inCloud = (cv.includes('present') || cv === 'required-present') ? '✅' : (cv.includes('missing') ? '❌' : '❓'); \
+            console.log('  ' + k.padEnd(28) + inLocal + '       ' + inCloud + '  (' + cv + ')'); \
         } \
         console.log(''); \
-        console.log('  💡 Cloud keys: Netlify Dashboard > Site > Environment variables'); \
-        console.log('  💡 Run: just cockpit --json | to see cloud healthcheck env_snapshot'); \
+        console.log('  💡 Cloud values sourced from: node scripts/master-cockpit.mjs --json'); \
+        console.log('  💡 For authoritative key management: Netlify Dashboard > Site > Environment variables'); \
     "
 

@@ -27,7 +27,8 @@
     "verify:devkit": "node scripts/verify-devkit.mjs",
     "verify:devkit:tools": "node scripts/verify-devkit.mjs --tools-only",
     "verify:devkit:quick": "node scripts/verify-devkit.mjs --no-pipeline",
-    "verify:devkit:ci": "node scripts/verify-devkit.mjs --cloud --allow-disabled"
+    "verify:devkit:ci": "node scripts/verify-devkit.mjs --cloud --allow-disabled",
+    "verify:wiring:libs": "node scripts/verify-lib-wiring.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",

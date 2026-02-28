@@ -56,17 +56,68 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 # 1. Install dependencies
 npm install
 
-# 2. Copy environment template and add your keys
+# 2. Copy environment template
 cp .env.example .env
 
-# 3. Run preflight checks
+# 3. Add local keys (choose OpenAI + Gemini if available)
+printf "\nOPENAI_API_KEY=%s\n" "PASTE_YOUR_OPENAI_KEY_HERE" >> .env
+printf "\nGEMINI_API_KEY=%s\n" "PASTE_YOUR_GEMINI_KEY_HERE" >> .env
+
+# 4. Run preflight checks
 npm run preflight
 
-# 4. Start local Netlify dev server (functions + UI on port 8888)
+# 5. Start local Netlify dev server (functions + UI on port 8888)
 netlify dev
 
-# 5. Build production bundle
+# 6. Build production bundle
 npm run build
+```
+
+---
+
+## 🔑 Local Key Setup (Git Bash, Exact Commands)
+
+Use these exact commands from `C:\WSP001\SirTrav-A2A-Studio` in Git Bash.
+
+```bash
+# Session-only keys (quick test; lasts until terminal closes)
+export OPENAI_API_KEY="PASTE_YOUR_OPENAI_KEY_HERE"
+export GEMINI_API_KEY="PASTE_YOUR_GEMINI_KEY_HERE"
+
+# Prove cloud sanity checks work
+just sanity-test
+```
+
+If OpenAI is not available locally, keep `GEMINI_API_KEY` set and run fallback-safe checks:
+
+```bash
+# Keep Gemini set for local narration fallback paths
+export GEMINI_API_KEY="PASTE_YOUR_GEMINI_KEY_HERE"
+just validate-env
+```
+
+Persist keys for tomorrow:
+
+```bash
+printf "\nOPENAI_API_KEY=%s\n" "PASTE_YOUR_OPENAI_KEY_HERE" >> .env
+printf "\nGEMINI_API_KEY=%s\n" "PASTE_YOUR_GEMINI_KEY_HERE" >> .env
+```
+
+Local Gemini function test (requires Netlify Dev running):
+
+```bash
+# Terminal A
+netlify dev
+
+# Terminal B
+just gemini-test
+```
+
+To verify local and cloud parity:
+
+```bash
+just env-diff
+just cockpit
 ```
 
 ---
