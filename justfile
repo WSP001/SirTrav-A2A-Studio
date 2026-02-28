@@ -1753,11 +1753,7 @@ linear-open:
 # Scan for recursive directory nesting violations (read-only, no changes)
 path-fix-scan target="":
     @echo "🔍 Scanning for recursive nesting violations..."
-    @if [ "{{target}}" = "" ]; then \
-        node scripts/fix-recursive-nest.mjs --scan; \
-    else \
-        node scripts/fix-recursive-nest.mjs --scan --target "{{target}}"; \
-    fi
+    @powershell -NoProfile -Command "if ('{{target}}' -eq '') { node scripts/fix-recursive-nest.mjs --scan } else { node scripts/fix-recursive-nest.mjs --scan --target '{{target}}' }"
 
 # Archive-first: copy non-recursive content to safe location outside OneDrive
 # Usage: just path-fix-archive "C:\path\to\recursive\folder" "archive-name"
@@ -1802,8 +1798,42 @@ path-fix-quarantine parent child:
 # Auto-fix: scan + rescue files + flatten recursive dirs
 path-fix-auto target="":
     @echo "🔧 Auto-fixing recursive nesting..."
-    @if [ "{{target}}" = "" ]; then \
-        node scripts/fix-recursive-nest.mjs --auto; \
-    else \
-        node scripts/fix-recursive-nest.mjs --auto --target "{{target}}"; \
-    fi
+    @powershell -NoProfile -Command "if ('{{target}}' -eq '') { node scripts/fix-recursive-nest.mjs --auto } else { node scripts/fix-recursive-nest.mjs --auto --target '{{target}}' }"
+
+# ============================================
+# 🔍 SANITY TEST & ENV VALIDATION
+# ============================================
+
+# Comprehensive pipeline sanity test (cloud endpoints)
+sanity-test:
+    @echo "🔍 Running sanity test (cloud)..."
+    node scripts/sanity-test.mjs
+
+# Sanity test against localhost:8888 (requires netlify dev)
+sanity-test-local:
+    @echo "🔍 Running sanity test (local)..."
+    node scripts/sanity-test.mjs --local
+
+# Sanity test with report output to artifacts/reports/
+sanity-test-report:
+    @echo "🔍 Running sanity test + writing report..."
+    node scripts/sanity-test.mjs --report
+
+# Sanity test JSON output (for automation)
+sanity-test-json:
+    node scripts/sanity-test.mjs --json
+
+# Environment key audit — shows all 28 keys, required vs optional, masked previews
+validate-env:
+    @echo "🔑 Running env key audit..."
+    node scripts/validate-env.mjs
+
+# Env key audit (JSON output)
+validate-env-json:
+    node scripts/validate-env.mjs --json
+
+# Gemini narration smoke test (requires netlify dev on 8888)
+gemini-test:
+    @echo "🧪 Testing Gemini via narrate-project..."
+    @powershell -NoProfile -Command "Invoke-RestMethod -Uri 'http://localhost:8888/.netlify/functions/narrate-project' -Method POST -ContentType 'application/json' -Body '{\"projectId\":\"gemini-cli-smoke\",\"theme\":\"cinematic\",\"mood\":\"reflective\",\"sceneCount\":2}' | ConvertTo-Json -Depth 5"
+
