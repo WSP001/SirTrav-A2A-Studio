@@ -271,28 +271,92 @@ function getDeployment(netlifyChecks, healthProbe, envVars, git) {
   };
 }
 
-function getTruth(deployment, cycle, truthSerumLatest) {
+function getLocalVerdict(envVars) {
   const reasons = [];
-  if (deployment.lastDeployStatus === 'success') reasons.push('deploy.lastDeployStatus=success');
-  if (deployment.functions.healthcheck === 'ok') reasons.push('functions.healthcheck=ok');
-  if (cycle.gates.noFakeSuccess === 'pass') reasons.push('cycle.gates.noFakeSuccess=pass');
-  if (cycle.gates.wiring === 'pass') reasons.push('cycle.gates.wiring=pass');
-  if (cycle.gates.contracts === 'pass') reasons.push('cycle.gates.contracts=pass');
+  const fails = [];
 
-  const required = ['deploy.lastDeployStatus=success', 'functions.healthcheck=ok', 'cycle.gates.noFakeSuccess=pass', 'cycle.gates.wiring=pass'];
-  const real = required.every((r) => reasons.includes(r));
-  const anyFail = Object.values(cycle.gates).includes('fail') || deployment.functions.healthcheck === 'error';
+  // Check required local keys
+  const requiredKeys = ['OPENAI_API_KEY'];
+  const envPath = resolve(ROOT, '.env');
+  const localEnv = {};
+  if (existsSync(envPath)) {
+    const lines = readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.+)/);
+      if (m) localEnv[m[1]] = true;
+    }
+  }
+  // Also check process.env
+  for (const k of requiredKeys) {
+    if (localEnv[k] || process.env[k]) {
+      reasons.push(`local.env.${k}=present`);
+    } else {
+      fails.push(`local.env.${k}=MISSING`);
+    }
+  }
+
+  // Check if netlify dev is reachable
+  const devUp = run('node -e "fetch(\'http://localhost:8888/.netlify/functions/healthcheck\').then(r=>{process.stdout.write(r.ok?\'up\':\'down\')}).catch(()=>process.stdout.write(\'down\'))"');
+  if (devUp === 'up') {
+    reasons.push('local.netlifyDev=up');
+  } else {
+    fails.push('local.netlifyDev=down');
+  }
 
   let verdict = 'UNKNOWN';
-  if (real) verdict = 'REAL';
+  if (fails.length === 0) verdict = 'REAL';
+  else if (reasons.length > 0) verdict = 'CHECK_REQUIRED';
+  else verdict = 'DEGRADED';
+
+  const confidence = verdict === 'REAL' ? 0.95 : verdict === 'CHECK_REQUIRED' ? 0.55 : 0.25;
+  return { verdict, confidence, reasons, fails };
+}
+
+function getTruth(deployment, cycle, truthSerumLatest, envVars) {
+  // ── Cloud Verdict ──
+  const cloudReasons = [];
+  if (deployment.lastDeployStatus === 'success') cloudReasons.push('deploy.lastDeployStatus=success');
+  if (deployment.functions.healthcheck === 'ok') cloudReasons.push('functions.healthcheck=ok');
+  if (cycle.gates.noFakeSuccess === 'pass') cloudReasons.push('cycle.gates.noFakeSuccess=pass');
+  if (cycle.gates.wiring === 'pass') cloudReasons.push('cycle.gates.wiring=pass');
+  if (cycle.gates.contracts === 'pass') cloudReasons.push('cycle.gates.contracts=pass');
+
+  const required = ['deploy.lastDeployStatus=success', 'functions.healthcheck=ok', 'cycle.gates.noFakeSuccess=pass', 'cycle.gates.wiring=pass'];
+  const cloudReal = required.every((r) => cloudReasons.includes(r));
+  const anyFail = Object.values(cycle.gates).includes('fail') || deployment.functions.healthcheck === 'error';
+
+  let cloudVerdict = 'UNKNOWN';
+  if (cloudReal) cloudVerdict = 'REAL';
+  else if (anyFail) cloudVerdict = 'DEGRADED';
+  else cloudVerdict = 'CHECK_REQUIRED';
+
+  const cloudConfidence = cloudVerdict === 'REAL' ? 0.92 : cloudVerdict === 'CHECK_REQUIRED' ? 0.6 : 0.35;
+
+  // ── Local Verdict ──
+  const local = getLocalVerdict(envVars);
+
+  // ── Combined Verdict ──
+  let verdict = 'UNKNOWN';
+  if (cloudVerdict === 'REAL' && local.verdict === 'REAL') verdict = 'REAL';
+  else if (cloudVerdict === 'REAL') verdict = 'REAL';  // cloud is king for deploy gates
   else if (anyFail) verdict = 'DEGRADED';
   else verdict = 'CHECK_REQUIRED';
 
-  const confidence = verdict === 'REAL' ? 0.92 : verdict === 'CHECK_REQUIRED' ? 0.6 : 0.35;
+  const confidence = cloudVerdict === 'REAL' ? cloudConfidence : 0.45;
   const verifiedBy = truthSerumLatest ? 'AG-013' : 'cockpit';
   const lastVerifiedAt = truthSerumLatest?.data?.timestamp || new Date().toISOString();
 
-  return { verdict, confidence, reasons, lastVerifiedAt, verifiedBy };
+  return {
+    verdict,
+    confidence,
+    cloudVerdict,
+    cloudReasons,
+    localVerdict: local.verdict,
+    localReasons: local.reasons,
+    localFails: local.fails,
+    lastVerifiedAt,
+    verifiedBy,
+  };
 }
 
 function getStorage(healthProbe) {
@@ -380,7 +444,7 @@ const healthProbe = probeCloudHealthcheck();
 const truthSerumLatest = getLatestTruthSerum();
 const cycle = getCycleControl(gates, truthSerumLatest);
 const deployment = getDeployment(netlify, healthProbe, envVars, git);
-const truth = getTruth(deployment, cycle, truthSerumLatest);
+const truth = getTruth(deployment, cycle, truthSerumLatest, envVars);
 const governance = getGovernance(git, cycle);
 const machineHealth = getMachineHealth();
 machineHealth.gitStatus = git.dirty ? 'dirty' : 'clean';
@@ -426,6 +490,8 @@ if (CHECKLIST) {
     '',
     `## Truth`,
     `- Verdict: **${report.truth.verdict}**`,
+    `- Cloud: **${report.truth.cloudVerdict}**`,
+    `- Local: **${report.truth.localVerdict}**`,
     `- Confidence: ${(report.truth.confidence * 100).toFixed(0)}%`,
     `- Verified by: ${report.truth.verifiedBy} at ${report.truth.lastVerifiedAt}`,
     '',
@@ -455,8 +521,15 @@ console.log(`  📅  ${report.timestamp.split('T')[0]}  ⏰  ${report.timestamp.
 hr('TRUTH');
 const truthIcon = report.truth.verdict === 'REAL' ? '✅' : report.truth.verdict === 'DEGRADED' ? '🟡' : '🔴';
 console.log(`  ${truthIcon} Verdict: ${report.truth.verdict} (${(report.truth.confidence * 100).toFixed(0)}%)`);
-if (report.truth.reasons.length) {
-  for (const r of report.truth.reasons) console.log(`  - ${r}`);
+const cloudIcon = report.truth.cloudVerdict === 'REAL' ? '✅' : '🔴';
+const localIcon = report.truth.localVerdict === 'REAL' ? '✅' : report.truth.localVerdict === 'CHECK_REQUIRED' ? '🟡' : '🔴';
+console.log(`  ${cloudIcon} CloudVerdict:  ${report.truth.cloudVerdict}`);
+console.log(`  ${localIcon} LocalVerdict:  ${report.truth.localVerdict}`);
+if (report.truth.cloudReasons.length) {
+  for (const r of report.truth.cloudReasons) console.log(`    ✓ ${r}`);
+}
+if (report.truth.localFails && report.truth.localFails.length) {
+  for (const f of report.truth.localFails) console.log(`    ✗ ${f}`);
 }
 console.log(`  Verified: ${report.truth.verifiedBy} @ ${report.truth.lastVerifiedAt}`);
 

@@ -1837,3 +1837,62 @@ gemini-test:
     @echo "🧪 Testing Gemini via narrate-project..."
     @powershell -NoProfile -Command "Invoke-RestMethod -Uri 'http://localhost:8888/.netlify/functions/narrate-project' -Method POST -ContentType 'application/json' -Body '{\"projectId\":\"gemini-cli-smoke\",\"theme\":\"cinematic\",\"mood\":\"reflective\",\"sceneCount\":2}' | ConvertTo-Json -Depth 5"
 
+# ============================================
+# 🛡️ CONTROL PLANE GATE (CI/CD enforcer)
+# ============================================
+
+# CI gate: exits 0 if cloudVerdict=REAL, exits 1 otherwise
+# Use before `just deploy` or merging to main
+control-plane-gate:
+    @echo "🛡️ Control Plane Gate — checking cloudVerdict..."
+    @node -e " \
+        import { execSync } from 'child_process'; \
+        const raw = execSync('node scripts/master-cockpit.mjs --json', { encoding: 'utf8' }); \
+        const j = JSON.parse(raw); \
+        const cv = j.truth?.cloudVerdict || 'UNKNOWN'; \
+        const lv = j.truth?.localVerdict || 'UNKNOWN'; \
+        console.log('  CloudVerdict: ' + cv); \
+        console.log('  LocalVerdict: ' + lv); \
+        if (cv === 'REAL') { \
+            console.log('  ✅ GATE PASSED — cloud is REAL. Safe to deploy/merge.'); \
+            process.exit(0); \
+        } else { \
+            console.log('  ❌ GATE FAILED — cloudVerdict=' + cv + '. Fix before deploy.'); \
+            if (j.truth?.localFails) j.truth.localFails.forEach(f => console.log('    ✗ ' + f)); \
+            process.exit(1); \
+        } \
+    "
+
+# Env diff: shows which keys exist locally vs what Netlify healthcheck reports
+env-diff:
+    @echo "🔑 Local vs Cloud env key comparison..."
+    @node -e " \
+        import { readFileSync, existsSync } from 'fs'; \
+        const envPath = '.env'; \
+        const local = {}; \
+        if (existsSync(envPath)) { \
+            readFileSync(envPath, 'utf8').split('\\n').forEach(l => { \
+                const m = l.match(/^([A-Z_][A-Z0-9_]*)=(.+)/); \
+                if (m) local[m[1]] = true; \
+            }); \
+        } \
+        const keys = [ \
+            'OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'SUNO_API_KEY', 'GEMINI_API_KEY', \
+            'TWITTER_API_KEY', 'TWITTER_ACCESS_TOKEN', \
+            'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_ACCESS_TOKEN', \
+            'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', \
+            'REMOTION_SERVE_URL', 'REMOTION_AWS_REGION', \
+            'LINEAR_API_KEY', 'MCP_SECRET_TOKEN', \
+        ]; \
+        console.log('  KEY                         LOCAL   CLOUD'); \
+        console.log('  ' + '-'.repeat(50)); \
+        for (const k of keys) { \
+            const inLocal = local[k] ? '✅' : '❌'; \
+            const inCloud = '?';  \
+            console.log('  ' + k.padEnd(28) + inLocal + '       ' + inCloud + ' (check Netlify Dashboard)'); \
+        } \
+        console.log(''); \
+        console.log('  💡 Cloud keys: Netlify Dashboard > Site > Environment variables'); \
+        console.log('  💡 Run: just cockpit --json | to see cloud healthcheck env_snapshot'); \
+    "
+
