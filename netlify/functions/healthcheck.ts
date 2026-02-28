@@ -42,10 +42,11 @@ interface HealthResponse {
     vault_path: string | null;
     url: string | null;
   };
-  // 🎯 CLD-BE-OPS-002: Ledger status (informational only — never blocks health)
+  // 🎯 CLD-BE-OPS-002 + CC-016: Ledger status (informational only — never blocks health)
   ledger: {
     entries: number;
     lastEntry: string | null;
+    lastRunId: string | null;
     status: 'ok';
   };
 }
@@ -157,7 +158,7 @@ export default async () => {
         vault_path: process.env.VAULT_PATH || null,
         url: process.env.URL || null,
       },
-      // 🎯 CLD-BE-OPS-002: Ledger status — informational, never blocks health
+      // 🎯 CLD-BE-OPS-002 + CC-016: Ledger status — informational, never blocks health
       ledger: (() => {
         try {
           const recent = readLedger({ limit: 1 });
@@ -165,11 +166,12 @@ export default async () => {
           return {
             entries: all.length,
             lastEntry: recent[0]?.timestamp ?? null,
+            lastRunId: recent[0]?.ticket ?? null,
             status: 'ok' as const,
           };
         } catch {
           // Ledger read failure is informational — never blocks health
-          return { entries: 0, lastEntry: null, status: 'ok' as const };
+          return { entries: 0, lastEntry: null, lastRunId: null, status: 'ok' as const };
         }
       })(),
     };

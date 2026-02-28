@@ -539,6 +539,7 @@ Then begin with this statement:
 | CC-DEVKIT | Claude Code | DevKit spin-up suite: `devkit-spinup.ps1` + `scripts/verify-devkit.mjs` + 8 justfile recipes (`devkit`, `devkit-verify`, `devkit-tools`, `devkit-quick`, `devkit-local`, `devkit-cloud`, `devkit-lenient`, `devkit-ci`) + 4 npm scripts (`verify:devkit`, `verify:devkit:tools`, `verify:devkit:quick`, `verify:devkit:ci`) | 2026-02-21 |
 | WM-013-deploy | Claude Code (on behalf of WM-013) | AgentSkillRouter worktree layer: 5 justfile recipes, `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` deployed — Windsurf sign-off pending | 2026-02-21 |
 | WSP-GOVERNANCE | Claude Code (on behalf of Windsurf) | Branch discipline layer: `ticket-status` + `guard-clean` + `guard-up-to-date` + `pre-merge-guard` in main justfile; `flow` updated to enforce WSP ticket alignment; `tasks/CLD-BE-OPS-002-ledger-gate.md` created for Claude Code | 2026-02-23 |
+| CC-016 | Claude Code | Sanity test mode-awareness (`--mode cloud` skips local env fails) + healthcheck ledger `lastRunId` enrichment | 2026-02-28 |
 
 ---
 

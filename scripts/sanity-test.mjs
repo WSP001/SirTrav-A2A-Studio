@@ -7,11 +7,13 @@
  * and optionally social publishers (dry-run only by default).
  *
  * Usage:
- *   node scripts/sanity-test.mjs                  # Full sanity (cloud)
- *   node scripts/sanity-test.mjs --local           # Test localhost:8888
+ *   node scripts/sanity-test.mjs                  # Cloud mode (default) — skips local env checks
+ *   node scripts/sanity-test.mjs --mode cloud      # Explicit cloud mode
+ *   node scripts/sanity-test.mjs --local           # Local mode — tests local env keys + localhost
+ *   node scripts/sanity-test.mjs --mode local      # Explicit local mode
  *   node scripts/sanity-test.mjs --report          # Write artifacts/reports/sanity-YYYY-MM-DD.md
  *   node scripts/sanity-test.mjs --json            # Machine-readable JSON
- *   just sanity-test                                # via justfile
+ *   just sanity-test                                # via justfile (cloud mode)
  *
  * Exit codes:
  *   0 = all required checks passed (degraded optional services OK)
@@ -26,7 +28,10 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const args = process.argv.slice(2);
-const USE_LOCAL = args.includes('--local');
+const modeIdx = args.indexOf('--mode');
+const modeArg = modeIdx >= 0 ? args[modeIdx + 1] : null;
+const USE_LOCAL = args.includes('--local') || modeArg === 'local';
+const MODE = USE_LOCAL ? 'local' : 'cloud';
 const WRITE_REPORT = args.includes('--report');
 const JSON_OUT = args.includes('--json');
 
@@ -232,9 +237,16 @@ function testSchemas() {
   record('JSON schemas', 'schemas', exitOk ? 'pass' : 'fail', exitOk ? 'all schemas valid' : raw.slice(0, 100));
 }
 
-// 6. Env key audit (local)
+// 6. Env key audit — mode-aware (CC-016)
+//    Cloud mode: local env keys are informational (skip, not fail)
+//    Local mode: required keys fail honestly
 function testEnvKeys() {
-  section('6. LOCAL ENV KEYS');
+  section(`6. LOCAL ENV KEYS (mode: ${MODE})`);
+
+  if (MODE === 'cloud') {
+    log('⏭️', 'Cloud mode — local env keys are informational only (not blocking)');
+  }
+
   const envPath = resolve(ROOT, '.env');
   const localEnv = {};
   if (existsSync(envPath)) {
@@ -262,8 +274,20 @@ function testEnvKeys() {
 
   for (const k of keys) {
     const present = !!localEnv[k.key] || !!process.env[k.key];
-    const st = present ? 'pass' : (k.req ? 'fail' : 'degraded');
-    record(k.key, `env-${k.group}`, st, present ? 'present' : (k.req ? 'MISSING (required)' : 'missing (optional)'));
+    // In cloud mode: required-but-missing → skip (informational), not fail
+    // In local mode: required-but-missing → fail (honest)
+    let st;
+    if (present) {
+      st = 'pass';
+    } else if (k.req && MODE === 'local') {
+      st = 'fail';
+    } else if (k.req && MODE === 'cloud') {
+      st = 'skip';
+    } else {
+      st = 'degraded';
+    }
+    const detail = present ? 'present' : (k.req ? `MISSING (required${MODE === 'cloud' ? ' — skipped in cloud mode' : ''})` : 'missing (optional)');
+    record(k.key, `env-${k.group}`, st, detail);
   }
 }
 
@@ -313,6 +337,7 @@ async function main() {
     console.log('║  "What Actually Works Right Now"                        ║');
     console.log('╚══════════════════════════════════════════════════════════╝');
     console.log(`  Target: ${BASE_URL}`);
+    console.log(`  Mode:   ${MODE}`);
     console.log(`  Time:   ${new Date().toISOString()}`);
   }
 
