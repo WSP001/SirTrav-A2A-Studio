@@ -156,6 +156,30 @@ The sanity test checks:
 
 ---
 
+## ✅ SirTrav Sanity Script — Team Ready
+
+Use this as the minimum team gate:
+
+```bash
+# 1) Start local Netlify functions
+netlify dev
+
+# 2) Run full local sanity
+just sanity-test-local
+
+# 3) Prove DRY publisher contracts
+just x-dry-local
+just linkedin-dry-local
+```
+
+Generate a masked snapshot (names only, no values):
+
+```bash
+just env-snapshot out/sirtrav_env_snapshot.json
+```
+
+---
+
 ## 🔑 Environment Key Audit
 
 ```bash
@@ -330,6 +354,8 @@ just build                # Build for production
 - [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) — Setup & architecture guide
 - [docs/TESTING.md](docs/TESTING.md) — Testing guide
 - [docs/LINKEDIN_SETUP.md](docs/LINKEDIN_SETUP.md) — LinkedIn OAuth setup
+- [docs/POSTMAN-POSTBOT.md](docs/POSTMAN-POSTBOT.md) — Postman + Postbot SOP
+- [docs/postman/SirTrav-Functions.collection.json](docs/postman/SirTrav-Functions.collection.json) — Team collection
 - [NETLIFY_BUILD_RULES.md](NETLIFY_BUILD_RULES.md) — Build configuration guardrails
 
 ---

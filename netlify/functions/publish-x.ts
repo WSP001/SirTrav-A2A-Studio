@@ -9,6 +9,7 @@ interface XPublishRequest {
     text: string;
     mediaUrls?: string[];
     userId?: string;
+    dryRun?: boolean;
 }
 
 interface XManifestEntry {
@@ -49,6 +50,10 @@ function validateXPayload(body: unknown): { valid: true; data: XPublishRequest }
     if (payload.userId !== undefined && typeof payload.userId !== 'string') {
         errors.push("'userId' must be a string");
     }
+    // Optional: dryRun must be boolean if present
+    if (payload.dryRun !== undefined && typeof payload.dryRun !== 'boolean') {
+        errors.push("'dryRun' must be a boolean");
+    }
 
     if (errors.length > 0) {
         return { valid: false, errors };
@@ -60,6 +65,7 @@ function validateXPayload(body: unknown): { valid: true; data: XPublishRequest }
             text: payload.text as string,
             mediaUrls: payload.mediaUrls as string[] | undefined,
             userId: payload.userId as string | undefined,
+            dryRun: payload.dryRun as boolean | undefined,
         }
     };
 }
@@ -89,27 +95,6 @@ const handler: Handler = async (event) => {
 
     console.log("🐦 [X-AGENT] Received publish request");
 
-    // 3. Environment Check (TWITTER_ prefix per Netlify Agent findings)
-    const appKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
-    const appSecret = process.env.TWITTER_API_SECRET || process.env.X_API_SECRET;
-    const accessToken = process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN;
-    const accessSecret = process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_SECRET;
-
-    if (!appKey || !appSecret || !accessToken || !accessSecret) {
-        console.warn("⚠️ [DISABLED] Missing one or more Twitter/X API keys.");
-        return {
-            statusCode: 200, // Return 200 so UI can handle "disabled" state gracefully
-            headers,
-            body: JSON.stringify({
-                success: false,
-                disabled: true,
-                platform: 'x',
-                error: "X/Twitter disabled (missing keys)",
-                note: "Set TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET in Netlify."
-            })
-        };
-    }
-
     try {
         const parsed = JSON.parse(event.body || '{}');
         const validation = validateXPayload(parsed);
@@ -126,7 +111,47 @@ const handler: Handler = async (event) => {
             };
         }
 
-        const { text } = validation.data;
+        // 3. Environment Check (TWITTER_ prefix per Netlify Agent findings)
+        const appKey = process.env.TWITTER_API_KEY || process.env.X_API_KEY;
+        const appSecret = process.env.TWITTER_API_SECRET || process.env.X_API_SECRET;
+        const accessToken = process.env.TWITTER_ACCESS_TOKEN || process.env.X_ACCESS_TOKEN;
+        const accessSecret = process.env.TWITTER_ACCESS_SECRET || process.env.X_ACCESS_SECRET;
+        const configured = Boolean(appKey && appSecret && accessToken && accessSecret);
+
+        const { text, dryRun } = validation.data;
+
+        // DRY-RUN contract: validate payload and readiness only; never post live.
+        if (dryRun) {
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    dryRun: true,
+                    platform: 'x',
+                    validated: true,
+                    configured,
+                    disabled: !configured,
+                    reason: configured ? undefined : "X/Twitter disabled (missing keys)",
+                    note: configured ? "Dry-run validated. Live post not executed." : "Set TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET in Netlify."
+                })
+            };
+        }
+
+        if (!configured) {
+            console.warn("⚠️ [DISABLED] Missing one or more Twitter/X API keys.");
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    disabled: true,
+                    platform: 'x',
+                    error: "X/Twitter disabled (missing keys)",
+                    note: "Set TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET in Netlify."
+                })
+            };
+        }
 
         // 4. Initialize Twitter Client (OAuth 1.0a User Context)
         const userClient = new TwitterApi({

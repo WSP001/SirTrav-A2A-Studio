@@ -167,6 +167,16 @@ x-dry:
     @echo "🐦 Testing X/Twitter Publisher (dry-run, auto-detect)..."
     node scripts/test-x-publish.mjs --dry-run
 
+# Test X/Twitter publish (dry-run, local only)
+x-dry-local:
+    @echo "🐦 Testing X/Twitter Publisher (dry-run, LOCAL)..."
+    node scripts/test-publish-x.mjs --local --dry-run
+
+# Test X/Twitter publish (dry-run, cloud only)
+x-dry-cloud:
+    @echo "🐦 Testing X/Twitter Publisher (dry-run, CLOUD)..."
+    node scripts/test-publish-x.mjs --cloud --dry-run
+
 # Test X/Twitter publish (live)
 x-live:
     @echo "🐦 Testing X/Twitter Publisher (LIVE)..."
@@ -178,6 +188,16 @@ x-live:
 linkedin-dry:
     @echo "💼 Testing LinkedIn Publisher (dry-run)..."
     node scripts/test-linkedin-publish.mjs --dry-run
+
+# Test LinkedIn publish (dry-run, local only)
+linkedin-dry-local:
+    @echo "💼 Testing LinkedIn Publisher (dry-run, LOCAL)..."
+    node scripts/test-publish-linkedin.mjs --local --dry-run
+
+# Test LinkedIn publish (dry-run, cloud only)
+linkedin-dry-cloud:
+    @echo "💼 Testing LinkedIn Publisher (dry-run, CLOUD)..."
+    node scripts/test-publish-linkedin.mjs --cloud --dry-run
 
 # LinkedIn setup helper (interactive — test token, generate auth URL, exchange code)
 linkedin-setup:
@@ -1831,6 +1851,34 @@ validate-env:
 # Env key audit (JSON output)
 validate-env-json:
     node scripts/validate-env.mjs --json
+
+# Generate masked env snapshot (names only, no values)
+env-snapshot out="out/sirtrav_env_snapshot.json":
+    @echo "🧾 Generating masked env snapshot..."
+    node scripts/generate-masked-env-snapshot.mjs "{{out}}"
+
+# Safe Gemini API key setter (prompts securely, validates format, writes to .env)
+set-gemini-key:
+    @echo "🔑 Setting Gemini API key (safe prompt — key won't show on screen)..."
+    @powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-gemini-key.ps1
+
+# Repo hygiene gate — fails if build output or local configs are staged
+repo-hygiene:
+    @echo "🧹 Checking repo hygiene..."
+    @node -e " \
+        import { execSync } from 'child_process'; \
+        const staged = execSync('git diff --cached --name-only', { encoding: 'utf8' }); \
+        const bad = ['dist/', '.env', 'agent-state.json', '.claude/settings.local.json', '.path-guard.json', 'nul']; \
+        const found = []; \
+        for (const b of bad) { if (staged.includes(b)) found.push(b); } \
+        if (found.length) { \
+            console.log('  ❌ BLOCKED — these should NOT be staged:'); \
+            found.forEach(f => console.log('    ✗ ' + f)); \
+            console.log('  Fix: git reset HEAD ' + found.join(' ')); \
+            process.exit(1); \
+        } \
+        console.log('  ✅ Repo hygiene PASS — no build output or local configs staged'); \
+    "
 
 # Gemini narration smoke test (requires netlify dev on 8888)
 gemini-test:

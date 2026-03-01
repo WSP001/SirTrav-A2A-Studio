@@ -29,6 +29,7 @@ interface LinkedInRequest {
   videoUrl: string;           // URL to the video file (from Netlify Blobs)
   title: string;
   description: string;
+  dryRun?: boolean;
   visibility?: 'PUBLIC' | 'CONNECTIONS' | 'LOGGED_IN';
   postType?: 'personal' | 'organization';
   hashtags?: string[];
@@ -82,6 +83,9 @@ function validateLinkedInPayload(body: unknown): { valid: true; data: LinkedInRe
     if (!Array.isArray(p.hashtags) || !p.hashtags.every((h: unknown) => typeof h === 'string')) {
       errors.push("'hashtags' must be an array of strings");
     }
+  }
+  if (p.dryRun !== undefined && typeof p.dryRun !== 'boolean') {
+    errors.push("'dryRun' must be a boolean");
   }
 
   if (errors.length > 0) {
@@ -333,6 +337,27 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Check for LinkedIn credentials
     const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
     const organizationId = process.env.LINKEDIN_ORGANIZATION_ID;
+    const configured = Boolean(accessToken);
+
+    // DRY-RUN contract: validate payload + readiness only; never post.
+    if (request.dryRun) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          dryRun: true,
+          validated: true,
+          platform: 'linkedin',
+          projectId: request.projectId,
+          runId,
+          configured,
+          disabled: !configured,
+          reason: configured ? undefined : 'LinkedIn disabled (missing LINKEDIN_ACCESS_TOKEN)',
+          note: configured ? 'Dry-run validated. Live post not executed.' : 'Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN in Netlify.'
+        }),
+      };
+    }
     
     if (!accessToken) {
       return {

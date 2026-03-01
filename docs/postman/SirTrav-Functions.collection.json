@@ -1,0 +1,263 @@
+{
+  "info": {
+    "_postman_id": "f7af41f8-9ec1-4bba-b2fd-e81bd116117c",
+    "name": "SirTrav Functions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Contract-locked function checks for SirTrav A2A Studio."
+  },
+  "item": [
+    {
+      "name": "healthcheck",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/healthcheck",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "healthcheck"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "pm.test('json body', () => !!j);",
+              "pm.test('has status', () => typeof j.status === 'string');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "start-pipeline",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}",
+            "disabled": true
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"projectId\":\"{{projectId}}\",\"mode\":\"dry-run\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/start-pipeline",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "start-pipeline"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is expected', () => pm.expect([200,202,401]).to.include(pm.response.code));",
+              "pm.test('json parse', () => { pm.response.json(); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "progress POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"projectId\":\"{{projectId}}\",\"runId\":\"{{runId}}\",\"step\":\"smoke\",\"status\":\"running\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/progress",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "progress"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('json parse', () => { pm.response.json(); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "progress GET",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/progress?projectId={{projectId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "progress"
+          ],
+          "query": [
+            {
+              "key": "projectId",
+              "value": "{{projectId}}"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('json parse', () => { pm.response.json(); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "publish-x (dry)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"text\":\"SirTrav dry-run smoke\",\"projectId\":\"{{projectId}}\",\"runId\":\"{{runId}}\",\"dryRun\":{{dryRun}}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/publish-x",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "publish-x"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "pm.test('json body', () => !!j);",
+              "if (j.success === true) {",
+              "  pm.test('success requires tweet id', () => pm.expect(j.tweetId || j.id || j.xId).to.exist);",
+              "}",
+              "if (j.disabled === true) {",
+              "  pm.test('disabled requires reason', () => pm.expect(j.reason || j.error || j.note).to.exist);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "publish-linkedin (dry)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"projectId\":\"{{projectId}}\",\"runId\":\"{{runId}}\",\"videoUrl\":\"https://sirtrav-a2a-studio.netlify.app/test-assets/sample.mp4\",\"title\":\"SirTrav dry-run smoke\",\"description\":\"SirTrav dry-run smoke (LinkedIn)\",\"visibility\":\"PUBLIC\",\"dryRun\":{{dryRun}}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/publish-linkedin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "publish-linkedin"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "pm.test('json body', () => !!j);",
+              "if (j.success === true) {",
+              "  pm.test('success requires LinkedIn id', () => pm.expect(j.linkedinId || j.urn || j.ugcPostUrn || j.postId).to.exist);",
+              "}",
+              "if (j.disabled === true) {",
+              "  pm.test('disabled requires reason', () => pm.expect(j.reason || j.error || j.note).to.exist);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://sirtrav-a2a-studio.netlify.app/.netlify/functions"
+    },
+    {
+      "key": "projectId",
+      "value": "sirtrav-test"
+    },
+    {
+      "key": "runId",
+      "value": "manual-{{$timestamp}}"
+    },
+    {
+      "key": "dryRun",
+      "value": "true"
+    },
+    {
+      "key": "bearerToken",
+      "value": ""
+    }
+  ]
+}

@@ -71,4 +71,12 @@ ROBORTO/
 storage_backup.txt
 preflight_log.txt
 
+# Local machine configs (never commit)
+.claude/settings.local.json
+.path-guard.json
+nul
+
+# Generated output snapshots
+out/
+
 

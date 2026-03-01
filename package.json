@@ -28,7 +28,12 @@
     "verify:devkit:tools": "node scripts/verify-devkit.mjs --tools-only",
     "verify:devkit:quick": "node scripts/verify-devkit.mjs --no-pipeline",
     "verify:devkit:ci": "node scripts/verify-devkit.mjs --cloud --allow-disabled",
-    "verify:wiring:libs": "node scripts/verify-lib-wiring.mjs"
+    "verify:wiring:libs": "node scripts/verify-lib-wiring.mjs",
+    "snapshot:masked": "node scripts/generate-masked-env-snapshot.mjs",
+    "publish:x:dry:local": "node scripts/test-publish-x.mjs --local --dry-run",
+    "publish:x:dry:cloud": "node scripts/test-publish-x.mjs --cloud --dry-run",
+    "publish:linkedin:dry:local": "node scripts/test-publish-linkedin.mjs --local --dry-run",
+    "publish:linkedin:dry:cloud": "node scripts/test-publish-linkedin.mjs --cloud --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",
