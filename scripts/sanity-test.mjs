@@ -258,7 +258,8 @@ function testEnvKeys() {
   }
 
   const keys = [
-    { key: 'OPENAI_API_KEY',       req: true,  group: 'core-ai' },
+    // OPENAI is required in cloud, but optional locally when GEMINI is present (Writer has fallback)
+    { key: 'OPENAI_API_KEY',       req: MODE === 'cloud' || !(localEnv['GEMINI_API_KEY'] || process.env.GEMINI_API_KEY), group: 'core-ai' },
     { key: 'ELEVENLABS_API_KEY',   req: false, group: 'core-ai' },
     { key: 'SUNO_API_KEY',         req: false, group: 'core-ai' },
     { key: 'GEMINI_API_KEY',       req: false, group: 'core-ai' },

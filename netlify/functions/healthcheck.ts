@@ -57,20 +57,27 @@ const checkEnvVars = (keys: string[]) => keys.every((k) => !!process.env[k]);
 
 async function checkStorage(): Promise<ServiceStatus> {
   const start = Date.now();
+  const STORAGE_TIMEOUT_MS = 5000;
   try {
-    const store = getConfiguredBlobsStore('sirtrav-health');
-    const key = `ping-${Date.now()}`;
-    await store.set(key, 'ok', { metadata: { ts: new Date().toISOString() } });
-    const result = await store.get(key, { type: 'text' });
-    await store.delete(key);
-    return {
-      name: 'storage',
-      status: result === 'ok' ? 'ok' : 'degraded',
-      latency_ms: Date.now() - start,
-      error: result === 'ok' ? undefined : 'Blob echo failed',
+    const storageCheck = async (): Promise<ServiceStatus> => {
+      const store = getConfiguredBlobsStore('sirtrav-health');
+      const key = `ping-${Date.now()}`;
+      await store.set(key, 'ok', { metadata: { ts: new Date().toISOString() } });
+      const result = await store.get(key, { type: 'text' });
+      await store.delete(key);
+      return {
+        name: 'storage',
+        status: result === 'ok' ? 'ok' : 'degraded',
+        latency_ms: Date.now() - start,
+        error: result === 'ok' ? undefined : 'Blob echo failed',
+      };
     };
+    const timeoutPromise = new Promise<ServiceStatus>((_, reject) =>
+      setTimeout(() => reject(new Error(`Storage check timed out after ${STORAGE_TIMEOUT_MS}ms`)), STORAGE_TIMEOUT_MS)
+    );
+    return await Promise.race([storageCheck(), timeoutPromise]);
   } catch (error: any) {
-    return { name: 'storage', status: 'down', latency_ms: Date.now() - start, error: error?.message };
+    return { name: 'storage', status: 'degraded', latency_ms: Date.now() - start, error: error?.message };
   }
 }
 

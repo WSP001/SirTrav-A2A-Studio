@@ -1,346 +1,287 @@
-# MASTER.md - SirTrav A2A Studio Build Plan
+# MASTER.md — SirTrav A2A Studio Build Plan
 
-**Version:** 2.0.1  
-**Last Updated:** 2025-12-17  
-**Status:** Deployment Ready - Phase 8 Complete ✅
+**Version:** 3.0.0  
+**Last Updated:** 2026-02-28  
+**Signed by:** Windsurf/Cascade (Acting Master, WSP001)  
+**Status:** Control Plane Anchored — Cloud REAL, Local DEGRADED
 
-This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc‑to‑Agent) automated video production platform for the Commons Good.
+This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc-to-Agent) automated video production platform for the Commons Good.
 
 ## Mission Statement
-Build a production‑ready, user‑friendly video automation platform where users click a single **Click2Kick button** to trigger automated cinematic video production through sequential AI agent orchestration.
 
-**Core principle:** "Build the memory before the masterpiece."
+Build a production-ready, user-friendly video automation platform where users click a single **Click2Kick button** to trigger automated cinematic video production through sequential AI agent orchestration.
+
+**Core principle:** "Build the memory before the masterpiece."  
+**Operating law:** No Fake Success — `success: true` only with real confirmation.
 
 ---
 
-## 🎉 v2.0.1 Status Summary (December 17, 2025)
+## 📊 v3.0.0 Status Summary (February 28, 2026)
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| **7-Agent Pipeline** | ✅ 100% | All agents implemented |
-| **Storage** | ✅ Netlify Blobs | Durable, cross-instance |
-| **Learning Loop** | ✅ Closed | 👍/👎 → memory_index.json |
-| **Vision AI** | ✅ OpenAI | Director sees photos |
-| **Progress Tracking** | ✅ SSE + Blobs | Real-time updates |
+| Category | Status | Evidence |
+|----------|--------|----------|
+| **7-Agent Pipeline** | ✅ Wired | 7/7 agent files, 10/10 cycle gates GREEN |
+| **Storage** | ✅ Netlify Blobs | Durable, cross-instance, local FS fallback |
+| **Learning Loop** | ✅ Closed | 👍/👎 → memory_index.json → Director reads |
+| **Vision AI** | ✅ OpenAI | Director sees photos (privacy taxonomy) |
+| **Progress Tracking** | ✅ SSE + Blobs | Real-time updates, graceful local fallback |
 | **Voice Agent** | 🟡 Ready | Needs `ELEVENLABS_API_KEY` |
-| **Composer Agent** | 🟡 Ready | Needs `SUNO_API_KEY` |
-| **X/Twitter API** | 🔴 401 Error | Keys from different apps |
-| **LinkedIn API** | 🔴 No Keys | Backend ready, needs credentials |
-| **YouTube API** | ✅ Configured | Keys in Netlify |
+| **Composer Agent** | 🟡 Ready | Needs `SUNO_API_KEY` (manual Suno workflow) |
+| **Editor Agent** | ⚠️ In Progress | Remotion Lambda wired, needs AWS env vars |
+| **X/Twitter** | ✅ Verified Live | Past tweet IDs on record |
+| **LinkedIn** | ✅ Verified Live | `urn:li:ugcPost:7431201708828946432` |
+| **YouTube** | 🟡 Keys Present | Configured in Netlify, awaiting live test |
+| **Instagram / TikTok** | ❌ Missing Keys | Manual setup required |
+| **Control Plane** | ✅ Anchored | cloudVerdict=REAL, split verdicts, CI gate |
+| **Build** | ✅ Passes | Vite v7.3, 1351 modules, 3.2s |
+| **Sanity Test** | ✅ 37/0/8 | 37 pass, 0 fail, 8 degraded (all optional) |
+| **Repo Hygiene** | ✅ Clean | 1 branch (main), dist untracked, local configs ignored |
 
 ---
 
-## 🚀 EXECUTABLE MILESTONES (NOW) ⚡
+## ✅ Completed Milestones (Since v2.0.1)
 
-### M0: Social Platform Integration (NOW) 🐦
-**Target:** Get X + LinkedIn publishing working
-**KPI:** 2/5 social platforms GREEN in healthcheck
+### M0: Social Platform Integration ✅ DONE
+**Was:** "Fix X keys, Add LinkedIn" — **Result:** Both verified live.
+- X/Twitter: live posts confirmed (tweet IDs on record)
+- LinkedIn: live post `urn:li:ugcPost:7431201708828946432`
+- OAuth callback function (`auth-linkedin-callback.ts`) built
+- LinkedIn secrets rotated after exposure
+- All dry-run + live test recipes in justfile
 
-- [ ] Fix X API keys: Align all 4 keys from SAME X Developer App
-- [ ] Test X publish: `node scripts/test-x-publish.mjs --live`
-- [ ] Verify X post appears on timeline
-- [ ] Set up LinkedIn Developer App
-- [ ] Add LinkedIn keys to Netlify
-- [ ] Test LinkedIn publish
+### M0.5: Blank Page Fix ✅ DONE (not in original plan)
+- Root cause: `vite.config.js` outDir was `landing/` instead of `dist/`
+- Netlify Dashboard overrode build command to "no build"
+- Fixed: outDir → `dist/`, publish → `dist/`, build → `npm ci && npm run build`
+- Created `NETLIFY_BUILD_RULES.md` guardrails
 
-**Commands to Execute:**
+### M0.6: No Fake Success Enforcement ✅ DONE (not in original plan)
+- All 5 publishers return `{ success: false, disabled: true }` when keys absent
+- Payload validation added (validateXPayload, validateLinkedInPayload, etc.)
+- `just no-fake-success-check` gate: 8/8 checks PASS
+
+### M0.7: Control Plane ✅ DONE (not in original plan)
+- `master-cockpit.mjs`: split verdicts (cloudVerdict + localVerdict + combined)
+- `just control-plane-gate`: branch-aware CI gate (strict on main, warn on feature)
+- `just env-diff`: local vs cloud key parity comparison
+- `just repo-hygiene`: blocks staging build output or local configs
+- Sanity test mode-aware (`--mode cloud` / `--mode local`)
+- OPENAI_API_KEY optional locally when GEMINI_API_KEY present
+
+### M0.8: Repo Hygiene (CC-017) ✅ DONE
+- 11 stale remote branches deleted (archived in `docs/BRANCH_ARCHIVE_CC017.md`)
+- `.env.example` v3.0.0 with scope labels ([NETLIFY]/[LOCAL]/[AUTO])
+- `npm audit fix`: 269 packages updated
+- `.gitignore` updated: dist/, local configs, generated output ignored
+- Only `origin/main` remains
+
+---
+
+## 🚀 ACTIVE MILESTONES
+
+### M6: Local Dev Green Light (NOW) 🟢
+**Target:** `just sanity-test-local` exits 0 with `netlify dev` running  
+**KPI:** healthcheck ✅, progress POST ✅, gemini-test ✅
+
+- [x] Fix healthcheck timeout (5s timeout wrapper around Blobs check)
+- [x] Fix progress POST 500 (graceful try/catch fallback)
+- [x] Relax OPENAI to optional locally when GEMINI present
+- [ ] Verify with `netlify dev` running: `just sanity-test-local` exits 0
+- [ ] Verify `just gemini-test` returns scene data (not 500)
+
+**Commands:**
 ```bash
-# Step 1: Check current Netlify env vars
-netlify env:list | grep -E "(TWITTER|X_|LINKEDIN)"
-
-# Step 2: Clean up duplicate X_ variables (optional)
-netlify env:unset X_CONSUMER_KEY
-netlify env:unset X_CONSUMER_SECRET
-netlify env:unset X_ACCESS_TOKEN
-netlify env:unset X_ACCESS_TOKEN_SECRET
-
-# Step 3: After getting correct keys from X Developer Portal
-netlify env:set TWITTER_API_KEY "your_api_key_from_same_app"
-netlify env:set TWITTER_API_SECRET "your_api_secret_from_same_app"
-netlify env:set TWITTER_ACCESS_TOKEN "your_access_token_from_same_app"
-netlify env:set TWITTER_ACCESS_SECRET "your_access_secret_from_same_app"
-
-# Step 4: Restart dev server and test
-netlify dev  # (in terminal 1)
-node scripts/test-x-publish.mjs --live  # (in terminal 2)
-
-# Step 5: Add LinkedIn keys (after Developer Portal setup)
-netlify env:set LINKEDIN_CLIENT_ID "your_linkedin_client_id"
-netlify env:set LINKEDIN_CLIENT_SECRET "your_linkedin_client_secret"
-netlify env:set LINKEDIN_ACCESS_TOKEN "your_linkedin_access_token"
+netlify dev                    # Terminal A
+just sanity-test-local         # Terminal B
+just gemini-test               # Terminal B
 ```
 
 ---
 
-### M1: Platform Toggle UI (This Week) 🎛️
-**Target:** Users can select which platforms to publish to
-**KPI:** Toggle UI visible, respects healthcheck status
+### M7: Diagnostics Dashboard 📊
+**Target:** `/diagnostics` route in the UI showing split verdicts + gate status  
+**KPI:** One URL shows cloud/local health at a glance  
+**Owner:** Codex #2 (CX-016) + Master
+
+- [ ] Create `/.netlify/functions/control-plane` endpoint (returns truth JSON)
+- [ ] Create `/diagnostics` React route with tiles:
+  - CloudVerdict / LocalVerdict
+  - 10 cycle gates (pass/fail)
+  - Social platform readiness matrix
+  - AI service status
+  - LastRunId + timestamp
+  - "What's blocking right now" panel
+- [ ] Wire UI emblem to show combined verdict icon
+
+---
+
+### M8: Platform Toggle UI 🎛️
+**Target:** Users select which platforms to publish to  
+**KPI:** Toggle component visible, respects healthcheck
 
 - [ ] Create `src/components/PlatformToggle.tsx`
-- [ ] Wire to `/healthcheck` endpoint for platform status
+- [ ] Wire to `/healthcheck` for live platform status
+- [ ] Disable unavailable platforms (greyed out + tooltip)
+- [ ] Show cost estimate per platform (from cost-manifest)
 - [ ] Add to `ResultsPreview.tsx`
-- [ ] Disable unavailable platforms (greyed out)
-- [ ] Show cost estimate per platform
 
 ---
 
-### M2: Engagement Loop (Next Sprint) 🧠
-**Target:** X mentions feed into Memory Vault for regenerative content
-**KPI:** `check-x-engagement.ts` populates `data/vault/inbox.json`
+### M9: End-to-End Video Production 🎬
+**Target:** Click2Kick produces a real video with all 7 agents  
+**KPI:** One complete run from upload to published video
 
-- [ ] Verify `check-x-engagement.ts` works with valid keys
-- [ ] Create manual trigger in UI
-- [ ] Test sentiment parsing
-- [ ] Wire Director Agent to read inbox
-
----
-
-### 📋 Milestones Summary Table
-
-| Milestone | Target | Tasks | KPI |
-|-----------|--------|-------|-----|
-| **M0: Social Platforms** | NOW ⚡ | Fix X keys, Add LinkedIn | 2/5 platforms GREEN |
-| **M1: Platform Toggle** | This Week | Create UI component | Toggle visible in UI |
-| **M2: Engagement Loop** | Next Sprint | Wire mentions → vault | inbox.json populated |
-| **M3: Instagram API** | Feb 2026 | Meta Business Manager | 3/5 platforms GREEN |
-| **M4: TikTok API** | Feb 2026 | TikTok Developer Portal | 4/5 platforms GREEN |
-| **M5: Production Deploy** | Feb 2026 | Full pipeline live | All tests pass |
+- [ ] Set Remotion Lambda env vars (`REMOTION_SERVE_URL`, `REMOTION_FUNCTION_NAME`, AWS creds)
+- [ ] Test `render-dispatcher.ts` with a real composition
+- [ ] Wire `compile-video.ts` → Remotion Lambda (not local FFmpeg)
+- [ ] Add `ELEVENLABS_API_KEY` to Netlify (Voice agent goes real)
+- [ ] Full pipeline dry-run with placeholder assets
+- [ ] Full pipeline live run with real user photos
 
 ---
 
-## v2.0.0 Completion Checklist
+### M10: Engagement Loop + Instagram/TikTok 🧠📱
+**Target:** Social mentions feed back into Director memory + 2 more platforms  
+**KPI:** 4/5 platforms GREEN, inbox.json populated
 
-### Netlify Functions (All 7 Agents + Support)
-- [x] `curate-media.ts` - Director Agent ✅ (Vision AI enabled)
-- [x] `narrate-project.ts` - Writer Agent ✅
-- [x] `text-to-speech.ts` - Voice Agent 🟡 (placeholder until API key)
-- [x] `generate-music.ts` - Composer Agent 🟡 (placeholder until API key)
-- [x] `compile-video.ts` - Editor Agent ✅ (FFmpeg + ducking)
-- [x] `generate-attribution.ts` - Attribution Agent ✅
-- [x] `publish.ts` - Publisher Agent ✅
-- [x] `publish-youtube.ts` - YouTube API ✅
-- [x] `publish-tiktok.ts` - TikTok API ✅
-- [x] `publish-instagram.ts` - Instagram API ✅
-- [x] `share-link.ts` - Shareable links + QR codes ✅
-- [x] `progress.ts` - SSE streaming progress ✅ (Blobs-backed)
-- [x] `correlate.ts` - Trace correlation ✅
-- [x] `evals.ts` - Evaluation metrics ✅
-- [x] `healthcheck.ts` - System health monitor ✅
-- [x] `mcp.ts` - MCP gateway ✅
-- [x] `intake-upload.ts` - File upload ✅
-- [x] `submit-evaluation.ts` - User feedback ✅ (Blobs-backed)
-- [x] `generate-video.ts` - Pipeline orchestrator ✅
-- [x] `start-pipeline.ts` - Pipeline trigger ✅
-
-### Storage (Netlify Blobs) ✅ UPGRADED
-- [x] `lib/storage.ts` - NetlifyBlobsStorage class (456 lines)
-- [x] `lib/progress-store.ts` - Progress persistence ✅ NEW
-- [x] Video store (`sirtrav-videos`)
-- [x] Audio store (`sirtrav-audio`)
-- [x] Media store (`sirtrav-media`)
-- [x] Runs store (`sirtrav-runs`)
-- [x] Evals store (`sirtrav-evals`)
-- [x] Progress store (`sirtrav-progress`) ✅ NEW
-
-### Lib Modules
-- [x] `lib/vision.ts` - OpenAI Vision API (458 lines) ✅
-- [x] `lib/tracing.ts` - OpenTelemetry ✅
-- [x] `lib/ducking.ts` - Audio sidechain/keyframe ✅
-- [x] `lib/alignment.ts` - Beat alignment ✅
-- [x] `lib/runIndex.ts` - Run management ✅
-
-### Pipeline Scripts
-- [x] `run-manifest.mjs` - Manifest executor with fallback logic ✅
-- [x] `audio_mix.mjs` - Audio mixing with LUFS normalization ✅
-- [x] `ffmpeg_compile.mjs` - Video compilation with Ken Burns ✅
-- [x] `lufs_check.mjs` - Loudness verification ✅
-- [x] `test-7-agents.mjs` - Agent smoke test ✅
-- [x] `smoke-test.sh` - Endpoint smoke test ✅ NEW
-
-### UI Components
-- [x] `App.jsx` - Enterprise landing page ✅
-- [x] `CreativeHub.tsx` - File upload + pipeline trigger + feedback ✅
-- [x] `VideoGenerator.jsx` - Video generation UI ✅
-- [x] `PipelineProgress.tsx` - SSE progress dashboard ✅
-- [x] `ResultsPreview.tsx` - Video preview + feedback ✅
-- [x] `Click2KickButton.tsx` - Pipeline trigger button ✅
-- [x] `Upload.tsx` - Drag & drop file upload ✅
-- [x] `Dashboard.tsx` - Metrics visualization ✅
-- [x] Theme attachment toggle (v1.9.0-THEME) ✅
+- [ ] Wire `check-x-engagement.ts` with valid X keys
+- [ ] Instagram: Meta Business Manager setup + keys
+- [ ] TikTok: Developer Portal setup + keys
+- [ ] Director Agent reads engagement inbox for content ideas
 
 ---
 
-## v1.4.0 Changelog (Since v1.3.0)
-The goal of v1.4.0 was to turn the plan into a working Studio: real Click2Kick UI, a closed learning loop, and basic tracing/evaluation.
+### 📋 Milestones Summary
 
-- **New Click2Kick Studio UI:** Refactored `App.jsx` into a two-panel Studio (CreativeHub + VideoGenerator) with header navigation and Project ID flow.
-- **CreativeHub → VideoGenerator wiring:** `App` now owns `projectId` state; `CreativeHub` emits it, `VideoGenerator` auto-seeds prompts from it.
-- **API key manager:** `VideoGenerator` now manages multiple API keys in localStorage with labels, masking, and a simple selector.
-- **Closed learning loop:** Director reads `memory_index.json` preferences; `submit-evaluation.ts` updates `video_history` and `user_preferences` on 👍/👎.
-- **Tracing added:** Introduced `tracing.ts`, instrumented `narrate-project` with OpenTelemetry + Traceloop, and wired in OpenAI SDK.
-- **Evaluation harness:** Added `evaluate.py`, `evaluation_dataset.jsonl`, and `npm run evaluate` for relevance/coherence checks.
-- **UI refactor and cleanup:** `VideoGenerator` fully rewritten with Tailwind + Lucide icons; legacy `VideoGenerator.css` removed.
-
----
-
-## 🚦 Current Sprint Focus (v1.4.0)
-**Goal:** First test video from Netlify preview + basic traces + one evaluation run.
-
-**Deliverables:**
-1. **Netlify preview build matches local Click2Kick behavior.**
-   - Studio layout works.
-   - Project ID and prompt entry works.
-2. **One end-to-end run (from UI) generates a real video.**
-   - Even if using placeholder assets.
-3. **Traces visible in collector for at least `narrate-project`.**
-4. **`npm run evaluate` runs successfully and produces a simple report artifact.**
+| Milestone | Target | Status | KPI |
+|-----------|--------|--------|-----|
+| **M0: Social Platforms** | Dec 2025 | ✅ DONE | X + LinkedIn verified live |
+| **M0.5: Blank Page Fix** | Feb 2026 | ✅ DONE | Site renders correctly |
+| **M0.6: No Fake Success** | Feb 2026 | ✅ DONE | 8/8 NFS checks pass |
+| **M0.7: Control Plane** | Feb 2026 | ✅ DONE | cloudVerdict=REAL, CI gate passes |
+| **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
+| **M6: Local Dev Green** | NOW ⚡ | 🔧 In Progress | sanity-test-local exits 0 |
+| **M7: Diagnostics UI** | Next | 📋 Planned | /diagnostics route live |
+| **M8: Platform Toggle** | Next | 📋 Planned | Toggle visible in UI |
+| **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
+| **M10: Engagement Loop** | April 2026 | 📋 Planned | 4/5 platforms GREEN |
 
 ---
 
-## ��️ Public vs Private Responsibilities
+## 🤖 Agent Team Directory
 
-| Repository | Purpose | Contents | Privacy |
-|-----------|---------|----------|---------|
-| **SirTrav-A2A-Studio** | Engine + UI + Architecture | `App.jsx`, `CreativeHub.tsx`, `VideoGenerator.jsx`<br>Netlify functions (`curate-media`, `narrate-project`, etc.)<br>Tracing setup (`tracing.ts`)<br>Evaluation harness (`evaluate.py`) | **PUBLIC** |
-| **Sir-TRAV-scott** | Memory + Raw Media + Secrets | `memory_index.json`, `user_preferences.json`<br>Raw media files<br>Vault scripts<br>`.env` with API keys | **PRIVATE** |
+| Agent | Platform | Role | Last Task | Status |
+|-------|----------|------|-----------|--------|
+| **Windsurf/Cascade** | Windsurf IDE | Acting Master — orchestration, justfile, cockpit, gates | Control plane + local fixes | ✅ Active |
+| **Claude Code** | Terminal | Backend fixes, sanity-test mode-awareness, repo hygiene | CC-017 repo hygiene | ✅ Active |
+| **Codex #2** | CLI | UI wiring, /diagnostics panel, dist guard | CX-016 (pending pickup) | 📋 Queued |
+| **Antigravity** | CI/Testing | 5-gate verification receipts, QA proofs | AG-014 (pending after CX-016) | 📋 Queued |
+| **GitHub Copilot** | VS Code | Inline autocomplete | Original pipeline scaffold | 💤 Passive |
 
----
-
-## 🧠 Learning Loop Interface
-
-### Memory Read Path
-- **Director Agent** (`curate-media.ts`) reads `memory_index.json`.
-- **Logic:** Uses `favorite_moods` and `video_history` (items with rating "good") to prioritize content.
-- **Guarantee:** Director must never crash if memory is missing or empty (fallback defaults).
-
-### Feedback Write Path
-- **Feedback Agent** (`submit-evaluation.ts`).
-- **Input:** `{ project_id, rating }`.
-- **Behavior:** Updates `video_history` entry and `user_preferences.favorite_moods` / `disliked_music_styles`.
-- **Guarantee:** Feedback writes must be append‑only and resilient (no data loss on partial write).
+### Agent Handoff Protocol
+- Task cards live in `plans/HANDOFF_<AGENT>_<ID>.md`
+- Agent logs completion in `plans/AGENT_ASSIGNMENTS.md`
+- All agents read `AGENTS.md` before starting work
+- runId threading: every call includes `{ projectId, runId }`
 
 ---
 
-## 🖥️ UI Contracts
+## 🛡️ Control Plane (DevOps Operating System)
 
-### CreativeHub
-- **Must always:**
-  - Generate a default `projectId` (timestamp-based).
-  - Allow manual override.
-  - Call `onProjectIdChange(projectId)` whenever it changes.
-
-### App
-- **Must:**
-  - Hold `projectId` as the single source of truth.
-  - Pass `projectId` into `VideoGenerator` and display it as “Active: {projectId}”.
-
-### VideoGenerator
-- **Must:**
-  - Auto-seed prompt from `projectId` if prompt is empty.
-  - Never send a request without both a selected API key and non-empty prompt.
-  - Manage API keys purely in `localStorage` (never send/store them server-side).
-  - Expose a single Click2Kick control: “Generate Video”.
-
----
-
-## 🔍 Observability & Evaluation
-
-### Tracing
-- **Setup:** `tracing.ts` initializes OpenTelemetry + Traceloop for OpenAI operations.
-- **Reference:** `narrate-project.ts` (Writer agent) is the reference implementation.
-- **Goal:** Eventually all Netlify functions that talk to AI (Director, Voice, Composer) call through a traced client.
-
-### Evaluation
-- **Baseline:** `evaluate.py` + `evaluation_dataset.jsonl` define baseline metrics: **Relevance**, **Coherence**.
-- **Usage:** `npm run evaluate` should be part of:
-  - CI (optional) OR
-  - A pre-release checklist (“run before cutting a new version”).
-
----
-
-## 🚀 Deployment Environments
-
-### Local Dev
-- `npm run dev` → `http://localhost:5173`
-
-### Netlify Preview
-- Used for PR validation (e.g., `https://deploy-preview-X--sirtrav-a2a-studio.netlify.app/`).
-- **MUST:**
-  - Show the Studio layout (CreativeHub + VideoGenerator).
-  - Allow entering a `projectId` and prompt.
-  - Show mocked or real result cards.
-
-### Netlify Production
-- **Only after:**
-  - One successful preview test.
-  - Evaluation suite run.
-
----
-
-## 🛡️ Safe Git Commands
-For agents and developers:
-```bash
-git status
-git diff
-git add -p
-git commit -m "feat: description of change"
-git push origin <branch>
+### Truth Verdicts
 ```
-*Avoid reset/force push unless absolutely necessary.*
-
----
-
-## v2.0.1 Changelog (December 17, 2025)
-
-### ✅ Completed This Session
-1. **Netlify Blobs Migration** - All ephemeral `/tmp` storage replaced with durable Blobs
-   - `progress.ts` → `lib/progress-store.ts` → `sirtrav-progress` store
-   - `submit-evaluation.ts` → Blobs-backed with memory mirror
-   - 200 event cap with automatic truncation
-
-2. **Smoke Test Script** - `scripts/smoke-test.sh`
-   - 7 automated endpoint tests (healthcheck, progress, evaluation, attribution, CORS)
-   - Exit code 0 = all pass, non-zero = failures
-
-3. **Vision AI Integration** - Director Agent now sees uploaded photos
-   - Privacy taxonomy (FACE/CROWD/STRUCTURE/NATURE)
-   - Quality scoring (blur, lighting, composition)
-   - Content classification (MOOD/ACTION/SETTING)
-
-4. **Learning Loop Closed** - EGO-Prompt architecture complete
-   - 👍/👎 feedback persists to `memory_index.json`
-   - Director reads preferences for future runs
-
-5. **All 7 Agents Implemented**
-   - Director → Writer → Voice → Composer → Editor → Attribution → Publisher
-   - Async calls, fallback logic, progress tracking
-
-### 🟡 Known Placeholders (API Keys Required)
-- `text-to-speech.ts` - Returns mock audio URL until `ELEVENLABS_API_KEY` set
-- `generate-music.ts` - Returns mock music URL until `SUNO_API_KEY` set
-
-### 🔧 Production Checklist Before Merge
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Run build
-npm run build
-
-# 3. Run smoke tests (local)
-bash scripts/smoke-test.sh http://localhost:8888/.netlify/functions
-
-# 4. Run smoke tests (production)
-bash scripts/smoke-test.sh https://sirtrav-a2a-studio.netlify.app/.netlify/functions
+truth.verdict      = REAL | CHECK_REQUIRED | DEGRADED | UNKNOWN
+truth.cloudVerdict = REAL (deploy + healthcheck + gates)
+truth.localVerdict = DEGRADED (OPENAI missing locally, netlify dev not always running)
 ```
 
-### 📋 Next Steps (Post-Merge)
-1. [ ] Enable Dependabot for security updates
-2. [ ] Add `ELEVENLABS_API_KEY` to Netlify env vars
-3. [ ] Add `SUNO_API_KEY` to Netlify env vars  
-4. [ ] Configure Netlify Blobs persistence (already default)
-5. [ ] Test full pipeline with real user photos
-6. [ ] Monitor OpenTelemetry traces in production
+### Gate Commands
+```bash
+just cockpit              # Full dashboard (human-readable)
+just cockpit-json         # Machine-readable JSON
+just control-plane-gate   # CI gate (strict on main, warn on feature)
+just sanity-test          # 45-check pipeline test (cloud)
+just sanity-test-local    # Same but against localhost:8888
+just env-diff             # Local vs cloud key parity
+just repo-hygiene         # Block staging build output or local configs
+just cycle-status         # 10-point quality gates summary
+just validate-env         # 28-key env audit with masked previews
+```
+
+### Core Principles
+1. **No Fake Success** — `success: true` ONLY with real confirmation. Disabled → `{ disabled: true }`.
+2. **Cost Plus Transparency** — All API costs in `lib/cost-manifest.ts`, 20% markup (Commons Good).
+3. **Dry-Run First** — Every publisher has `--dry-run`. Test free before spending credits.
+4. **Click2Kick** — Read before execute. Prereq check → verification → output.
+5. **runId Threading** — Every agent call traced with `{ projectId, runId }`.
+
+---
+
+## 👤 Human-Ops Queue
+
+| ID | Priority | Task | Status |
+|----|----------|------|--------|
+| HO-001 | ✅ Done | Rotate LinkedIn secrets | Rotated by Scott |
+| HO-002 | 🟡 HIGH | Add GEMINI_API_KEY to local .env (use `just set-gemini-key`) | Pending — needs real AIza... key |
+| HO-003 | 🟡 MEDIUM | Set LINEAR_API_KEY + enable Linear↔GitHub | Pending |
+| HO-004 | 🟡 MEDIUM | Verify Netlify Dashboard build settings match `netlify.toml` | Pending |
+| HO-005 | 🟢 LOW | Set NETLIFY_AUTH_TOKEN in GitHub Actions secrets (for CI) | When CI is set up |
+| HO-006 | 🟢 LOW | Add ELEVENLABS_API_KEY to Netlify (Voice agent) | When ready for real narration |
+| HO-007 | 🟢 LOW | Add Remotion Lambda AWS env vars | When ready for video rendering |
+
+---
+
+## 🏗️ Architecture
+
+| Layer | Description | Components |
+|-------|-------------|------------|
+| **UI** | React + Vite + Tailwind | `/src/components/`, `CreativeHub.tsx` |
+| **Pipeline** | Netlify Functions + background orchestration | `/netlify/functions/`, `run-pipeline-background.ts` |
+| **Storage** | Netlify Blobs (durable) + local FS fallback | `lib/storage.ts`, `lib/progress-store.ts` |
+| **Memory** | EGO-Prompt learning from feedback | `memory_index.json`, `lib/memory.ts` |
+| **Quality** | LUFS audio gates, cost manifest, quality gate | `lib/quality-gate.ts`, `lib/cost-manifest.ts` |
+| **Observability** | OpenTelemetry tracing + SSE progress | `lib/tracing.ts`, `progress.ts` |
+| **Rendering** | Remotion Lambda (replaces local FFmpeg) | `render-dispatcher.ts`, `lib/remotion-client.ts` |
+| **Control Plane** | Split verdicts, CI gate, sanity test, cockpit | `scripts/master-cockpit.mjs`, `justfile` |
+| **Ledger** | Token attribution per WSP ticket (NDJSON) | `lib/ledger.ts`, `artifacts/LEDGER.ndjson` |
+
+---
+
+## 📁 Project Structure
+
+```
+├── netlify/functions/          # 7 Agent serverless functions + infrastructure
+│   ├── curate-media.ts         # Agent 1: Director (Vision AI)
+│   ├── narrate-project.ts      # Agent 2: Writer (GPT-4 + Gemini fallback)
+│   ├── text-to-speech.ts       # Agent 3: Voice (ElevenLabs)
+│   ├── generate-music.ts       # Agent 4: Composer (Suno)
+│   ├── compile-video.ts        # Agent 5: Editor → render-dispatcher.ts
+│   ├── generate-attribution.ts # Agent 6: Attribution
+│   ├── publish.ts              # Agent 7: Publisher
+│   ├── publish-x.ts            # X/Twitter publisher (No Fake Success)
+│   ├── publish-linkedin.ts     # LinkedIn publisher (No Fake Success)
+│   ├── publish-youtube.ts      # YouTube publisher (No Fake Success)
+│   ├── healthcheck.ts          # System health (5s storage timeout)
+│   ├── progress.ts             # SSE progress (Blobs + graceful fallback)
+│   └── lib/                    # Shared: storage, ledger, cost-manifest, quality-gate
+├── scripts/                    # CLI tools + test scripts
+│   ├── master-cockpit.mjs      # System dashboard (split verdicts)
+│   ├── sanity-test.mjs         # 45-check pipeline test (mode-aware)
+│   ├── validate-env.mjs        # 28-key env audit
+│   ├── cycle-check.mjs         # 10-point quality gates
+│   ├── set-gemini-key.ps1      # Safe prompted key setter
+│   └── test-*.mjs              # Publisher test scripts (dry-run + live)
+├── artifacts/                  # Pipeline outputs + contracts
+│   └── contracts/              # JSON schemas (job-packet, social-post, etc.)
+├── src/components/             # React UI (Vite + Tailwind)
+├── docs/                       # Team documentation
+├── plans/                      # Agent task plans + handoffs
+├── runbooks/                   # Operator evidence + SOPs
+├── justfile                    # 60+ CLI recipes (the operating system)
+├── MASTER.md                   # THIS FILE — the plan
+├── AGENTS.md                   # Agent registry + team patterns
+└── README.md                   # Public-facing project docs
+```
 
 ---
 
@@ -348,13 +289,31 @@ bash scripts/smoke-test.sh https://sirtrav-a2a-studio.netlify.app/.netlify/funct
 
 | File | Purpose |
 |------|---------|
+| `README.md` | Public-facing project docs + quick start |
+| `AGENTS.md` | AI agent registry + team patterns |
 | `DEVELOPER_GUIDE.md` | Setup, architecture, troubleshooting |
-| `docs/MEMORY_SCHEMA.md` | Memory index structure |
-| `docs/LOCAL_DEV.md` | Local development setup |
-| `docs/DEPLOYMENT_CHECKLIST.md` | Pre-deploy verification |
-| `docs/agents/DIRECTOR_SPEC.md` | Director Agent spec |
-| `ATTRIBUTION_SPEC.md` | Attribution format spec |
+| `NETLIFY_BUILD_RULES.md` | Build configuration guardrails |
+| `docs/TESTING.md` | Testing guide |
+| `docs/LINKEDIN_SETUP.md` | LinkedIn OAuth setup |
+| `docs/POSTMAN-POSTBOT.md` | Postman + Postbot SOP |
+| `docs/BRANCH_ARCHIVE_CC017.md` | Archived branch metadata |
+| `plans/AGENT_ASSIGNMENTS.md` | Completed task log |
+| `.env.example` | v3.0.0 env template with scope labels |
+
+---
+
+## 📜 Version History
+
+| Version | Date | Signed By | Summary |
+|---------|------|-----------|---------|
+| v1.0.0 | 2025-08 | Copilot | Original pipeline scaffold |
+| v1.4.0 | 2025-10 | Copilot | Click2Kick UI + learning loop |
+| v2.0.0 | 2025-12 | Copilot | 7 agents + Blobs + Vision AI |
+| v2.0.1 | 2025-12-17 | Copilot | Blobs migration + smoke tests |
+| v3.0.0 | 2026-02-28 | Windsurf/Cascade (Acting Master) | Control plane, split verdicts, repo hygiene, local fixes |
 
 ---
 
 *This file is the source of truth. Agents must read it before making changes.*
+
+**For the Commons Good** 🎬
