@@ -540,6 +540,7 @@ Then begin with this statement:
 | WM-013-deploy | Claude Code (on behalf of WM-013) | AgentSkillRouter worktree layer: 5 justfile recipes, `docs/AGENT_SKILL_ROUTER.md`, `AGENT_SKILLS_INDEX.md` deployed — Windsurf sign-off pending | 2026-02-21 |
 | WSP-GOVERNANCE | Claude Code (on behalf of Windsurf) | Branch discipline layer: `ticket-status` + `guard-clean` + `guard-up-to-date` + `pre-merge-guard` in main justfile; `flow` updated to enforce WSP ticket alignment; `tasks/CLD-BE-OPS-002-ledger-gate.md` created for Claude Code | 2026-02-23 |
 | CC-016 | Claude Code | Sanity test mode-awareness (`--mode cloud` skips local env fails) + healthcheck ledger `lastRunId` enrichment | 2026-02-28 |
+| CC-017 | Claude Code | Repo hygiene: deleted 11 stale remote branches (archived in `docs/BRANCH_ARCHIVE_CC017.md`), updated `.env.example` v3.0.0 with scope labels, `npm audit fix` (269 packages updated) | 2026-02-28 |
 
 ---
 
