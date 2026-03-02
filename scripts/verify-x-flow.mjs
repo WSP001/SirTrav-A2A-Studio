@@ -10,8 +10,11 @@
  *   5. Healthcheck → Publish round-trip timing
  *
  * Usage:
- *   node scripts/verify-x-flow.mjs                    # Full flow + LIVE tweet
- *   node scripts/verify-x-flow.mjs --dry-run          # Steps 1-2 only (no tweet)
+ *   node scripts/verify-x-flow.mjs                    # Cloud contract check (no tweet)
+ *   node scripts/verify-x-flow.mjs --cloud             # Explicit cloud target
+ *   node scripts/verify-x-flow.mjs --local             # Target localhost:8888
+ *   node scripts/verify-x-flow.mjs --live              # Contract check + LIVE tweet
+ *   node scripts/verify-x-flow.mjs --dry-run           # Dry-run only (no tweet)
  *   node scripts/verify-x-flow.mjs --base URL          # Custom base URL
  *
  * Outputs:
@@ -24,12 +27,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
 const isDryRun = args.has('--dry-run');
-const baseIdx = process.argv.indexOf('--base');
-const baseArg = baseIdx !== -1 ? process.argv[baseIdx + 1] : null;
+const isLive = args.has('--live');
+const isLocal = args.has('--local');
+const isCloud = args.has('--cloud');
+const baseIdx = argv.indexOf('--base');
+const baseArg = baseIdx !== -1 ? argv[baseIdx + 1] : null;
 
-const BASE_URL = process.env.BASE_URL || baseArg || 'https://sirtrav-a2a-studio.netlify.app';
+const LOCAL_URL = 'http://localhost:8888';
+const CLOUD_URL = 'https://sirtrav-a2a-studio.netlify.app';
+const BASE_URL = process.env.BASE_URL || baseArg || (isLocal ? LOCAL_URL : CLOUD_URL);
 const FN = `${BASE_URL}/.netlify/functions`;
 const OUT_DIR = path.join(process.cwd(), 'artifacts', 'public', 'metrics');
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -172,9 +181,10 @@ async function step3_noFakeSuccess() {
 //  STEP 4: LIVE Tweet (the real proof)
 // ═══════════════════════════════════════════════════════════════════
 async function step4_liveTweet() {
-  if (isDryRun) {
-    console.log('\n[4/5] Live Tweet — SKIPPED (dry-run mode)');
-    return record('liveTweet', null, { skipped: true, reason: 'dry-run' });
+  if (!isLive) {
+    const reason = isDryRun ? 'dry-run' : 'use --live to enable';
+    console.log(`\n[4/5] Live Tweet — SKIPPED (${reason})`);
+    return record('liveTweet', null, { skipped: true, reason });
   }
 
   console.log('\n[4/5] Live Tweet (REAL — posting to X)');
@@ -259,7 +269,8 @@ async function main() {
   console.log('='.repeat(60));
   console.log('  SIRTRAV X/TWITTER WORKTREE FLOW VERIFICATION');
   console.log(`  Base: ${BASE_URL}`);
-  console.log(`  Mode: ${isDryRun ? 'DRY-RUN (no tweet)' : 'LIVE (will post tweet)'}`);
+  const modeLabel = isDryRun ? 'DRY-RUN (no tweet)' : isLive ? 'LIVE (will post tweet)' : 'CONTRACT (no tweet unless --live)';
+  console.log(`  Mode: ${modeLabel}`);
   console.log(`  Time: ${startedAt}`);
   console.log('='.repeat(60));
 
@@ -285,7 +296,7 @@ async function main() {
     harness: 'verify-x-flow v1',
     startedAt,
     baseUrl: BASE_URL,
-    mode: isDryRun ? 'dry-run' : 'live',
+    mode: isDryRun ? 'dry-run' : isLive ? 'live' : 'contract',
     totalMs,
     overallPass,
     steps: results,

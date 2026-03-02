@@ -1006,10 +1006,25 @@ verify-x-dry:
     @echo "🦅 North Star Dry-Run (key check only)..."
     node scripts/verify-x-real.mjs --dry-run
 
-# X Worktree Flow Verification (cloud E2E — contract + live tweet)
+# X Worktree Flow Verification (cloud contract check — no tweet)
 x-flow-verify:
-    @echo "🦅 X Worktree Flow Verification (LIVE)..."
-    node scripts/verify-x-flow.mjs
+    @echo "🦅 X Worktree Flow Verification (cloud contract)..."
+    node scripts/verify-x-flow.mjs --cloud
+
+# X Worktree Flow — explicit cloud target
+x-flow-verify-cloud:
+    @echo "🦅 X Worktree Flow Verification (cloud)..."
+    node scripts/verify-x-flow.mjs --cloud
+
+# X Worktree Flow — local target (localhost:8888)
+x-flow-verify-local:
+    @echo "🦅 X Worktree Flow Verification (local)..."
+    node scripts/verify-x-flow.mjs --local
+
+# X Worktree Flow — LIVE mode (will post a real tweet)
+x-flow-verify-live:
+    @echo "🦅 X Worktree Flow Verification (LIVE — will post tweet)..."
+    node scripts/verify-x-flow.mjs --cloud --live
 
 # X Worktree Flow dry-run (contract shapes only, no tweet)
 x-flow-dry:

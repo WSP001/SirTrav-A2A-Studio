@@ -132,11 +132,19 @@ export default async (req: Request) => {
     // ------------------------------------------------------------------------
     // POLLING MODE (Legacy)
     // ------------------------------------------------------------------------
-    const events = await readEvents(projectId, runId || undefined);
-    return new Response(JSON.stringify({ projectId, runId, events, count: events.length }), {
-      status: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    try {
+      const events = await readEvents(projectId, runId || undefined);
+      return new Response(JSON.stringify({ projectId, runId, events, count: events.length }), {
+        status: 200,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    } catch (storageErr: any) {
+      console.warn('progress storage unavailable (GET):', storageErr?.message);
+      return new Response(JSON.stringify({ projectId, runId, events: [], count: 0, warning: 'Storage unavailable' }), {
+        status: 200,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   if (req.method === 'POST') {
@@ -161,12 +169,20 @@ export default async (req: Request) => {
         metadata: body.metadata,
       };
 
-      const trimmed = await appendProgress(projectId, runId, event);
-
-      return new Response(
-        JSON.stringify({ received: true, eventCount: trimmed.length, latest: event }),
-        { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
-      );
+      try {
+        const trimmed = await appendProgress(projectId, runId, event);
+        return new Response(
+          JSON.stringify({ received: true, eventCount: trimmed.length, latest: event }),
+          { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
+        );
+      } catch (storageErr: any) {
+        // Storage unavailable (no NETLIFY_BLOBS_CONTEXT locally) — accept event but warn
+        console.warn('progress storage unavailable:', storageErr?.message);
+        return new Response(
+          JSON.stringify({ received: true, persisted: false, latest: event, warning: 'Storage unavailable — event accepted but not persisted' }),
+          { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
+        );
+      }
     } catch (e: any) {
       console.error('progress error', e);
       return new Response(JSON.stringify({ error: e?.message || 'unknown_error' }), {
