@@ -79,22 +79,18 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ## 🚀 ACTIVE MILESTONES
 
-### M6: Local Dev Green Light (NOW) 🟢
+### M6: Local Dev Green Light ✅ DONE
 **Target:** `just sanity-test-local` exits 0 with `netlify dev` running  
-**KPI:** healthcheck ✅, progress POST ✅, gemini-test ✅
+**KPI:** healthcheck ✅, progress POST ✅, gemini-test ✅ — **ALL MET (33 pass, 0 fail, 12 degraded)**
 
 - [x] Fix healthcheck timeout (5s timeout wrapper around Blobs check)
-- [x] Fix progress POST 500 (graceful try/catch fallback)
+- [x] Fix progress POST 500 (3s timeout wrapper in progress-store)
 - [x] Relax OPENAI to optional locally when GEMINI present
-- [ ] Verify with `netlify dev` running: `just sanity-test-local` exits 0
-- [ ] Verify `just gemini-test` returns scene data (not 500)
-
-**Commands:**
-```bash
-netlify dev                    # Terminal A
-just sanity-test-local         # Terminal B
-just gemini-test               # Terminal B
-```
+- [x] Wire Gemini 2.5 Flash into Writer Agent (Flash First rule)
+- [x] Fix curate-media v2 graceful degradation (not 500)
+- [x] Fix .env duplicate GEMINI_API_KEY (invalid entry removed)
+- [x] Verify `just sanity-test-local` exits 0 ✅ (commit `65c63649`)
+- [x] Verify `just gemini-test` returns `generatedBy: "gemini"` with real scenes ✅
 
 ---
 
@@ -160,7 +156,7 @@ just gemini-test               # Terminal B
 | **M0.6: No Fake Success** | Feb 2026 | ✅ DONE | 8/8 NFS checks pass |
 | **M0.7: Control Plane** | Feb 2026 | ✅ DONE | cloudVerdict=REAL, CI gate passes |
 | **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
-| **M6: Local Dev Green** | NOW ⚡ | 🔧 In Progress | sanity-test-local exits 0 |
+| **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
 | **M7: Diagnostics UI** | Next | 📋 Planned | /diagnostics route live |
 | **M8: Platform Toggle** | Next | 📋 Planned | Toggle visible in UI |
 | **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
