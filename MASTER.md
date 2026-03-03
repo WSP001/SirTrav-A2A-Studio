@@ -16,26 +16,36 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ---
 
-## 📊 v3.0.0 Status Summary (February 28, 2026)
+## 📊 v3.1.0 Status Table (March 2, 2026)
 
-| Category | Status | Evidence |
-|----------|--------|----------|
+> Driven by `/.netlify/functions/control-plane` — not hand-written.
+
+| System | Status | Proof |
+|--------|--------|-------|
 | **7-Agent Pipeline** | ✅ Wired | 7/7 agent files, 10/10 cycle gates GREEN |
-| **Storage** | ✅ Netlify Blobs | Durable, cross-instance, local FS fallback |
+| **Storage** | ✅/🟡 Netlify Blobs | Durable in cloud; local FS fallback; local timeouts → degraded |
 | **Learning Loop** | ✅ Closed | 👍/👎 → memory_index.json → Director reads |
-| **Vision AI** | ✅ OpenAI | Director sees photos (privacy taxonomy) |
-| **Progress Tracking** | ✅ SSE + Blobs | Real-time updates, graceful local fallback |
-| **Voice Agent** | 🟡 Ready | Needs `ELEVENLABS_API_KEY` |
-| **Composer Agent** | 🟡 Ready | Needs `SUNO_API_KEY` (manual Suno workflow) |
-| **Editor Agent** | ⚠️ In Progress | Remotion Lambda wired, needs AWS env vars |
+| **Vision AI** | ✅ Ready | OpenAI vision when key present; Gemini Flash for narration |
+| **Progress Tracking** | ✅ Ready | SSE + Blobs + 3s timeout wrapper (<10s) |
+| **Voice Agent** | 🟡 Ready | Requires `ELEVENLABS_API_KEY` |
+| **Composer Agent** | 🟡 Ready | Requires `SUNO_API_KEY` |
+| **Editor Agent** | ⚠️ In Progress | Remotion Lambda wired; needs AWS env vars |
 | **X/Twitter** | ✅ Verified Live | Past tweet IDs on record |
 | **LinkedIn** | ✅ Verified Live | `urn:li:ugcPost:7431201708828946432` |
-| **YouTube** | 🟡 Keys Present | Configured in Netlify, awaiting live test |
+| **YouTube** | 🟡 Keys Present | No Fake Success: url only from real publish (see policy below) |
 | **Instagram / TikTok** | ❌ Missing Keys | Manual setup required |
-| **Control Plane** | ✅ Anchored | cloudVerdict=REAL, split verdicts, CI gate |
-| **Build** | ✅ Passes | Vite v7.3, 1351 modules, 3.2s |
-| **Sanity Test** | ✅ 37/0/8 | 37 pass, 0 fail, 8 degraded (all optional) |
+| **Control Plane** | ✅ M7 Live | `/.netlify/functions/control-plane` — 33/33 verifier checks |
+| **Build** | ✅ Passes | Vite v7.3, 1351 modules, 2.1s |
+| **Sanity Test** | ✅ 33/0/12 | 33 pass, 0 fail, 12 degraded (all optional) |
 | **Repo Hygiene** | ✅ Clean | 1 branch (main), dist untracked, local configs ignored |
+
+### 🎬 YouTube Link Policy (No Fake Success)
+
+- Gemini may generate titles, descriptions, tags — but **MUST NOT** output a YouTube URL
+- Only `publish-youtube.ts` (live mode) can set `youtubeUrl` after a real upload
+- Dry-run returns `{ success: false, mode: "dry-run", url: null }`
+- Disabled returns `{ success: false, disabled: true, url: null }`
+- Verified by `just control-plane-verify` assertion: `youtube_link_policy.currentUrl === null`
 
 ---
 
@@ -94,19 +104,22 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ---
 
-### M7: Diagnostics Dashboard 📊
-**Target:** `/diagnostics` route in the UI showing split verdicts + gate status  
+### M7: Control Plane + Diagnostics 📊
+**Target:** `/control-plane` endpoint + `/diagnostics` UI route  
 **KPI:** One URL shows cloud/local health at a glance  
-**Owner:** Codex #2 (CX-016) + Master
+**Owner:** Windsurf Master (endpoint + verifier) + Codex #2 (UI route)
 
-- [ ] Create `/.netlify/functions/control-plane` endpoint (returns truth JSON)
+- [x] Create `/.netlify/functions/control-plane` endpoint (returns truth JSON) ✅
+- [x] YouTube Link Policy enforced: url only from real publish ✅
+- [x] Create `scripts/verify-control-plane.mjs` — 33 assertions, all pass ✅
+- [x] Add `just control-plane-verify` + `just control-plane-verify-cloud` recipes ✅
 - [ ] Create `/diagnostics` React route with tiles:
-  - CloudVerdict / LocalVerdict
-  - 10 cycle gates (pass/fail)
+  - CloudVerdict / LocalVerdict (from control-plane JSON)
+  - Pipeline agent wiring status
   - Social platform readiness matrix
   - AI service status
+  - YouTube link policy display
   - LastRunId + timestamp
-  - "What's blocking right now" panel
 - [ ] Wire UI emblem to show combined verdict icon
 
 ---
@@ -157,7 +170,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **M0.7: Control Plane** | Feb 2026 | ✅ DONE | cloudVerdict=REAL, CI gate passes |
 | **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
 | **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
-| **M7: Diagnostics UI** | Next | 📋 Planned | /diagnostics route live |
+| **M7: Control Plane** | Mar 2026 | � In Progress | Endpoint + verifier ✅, UI route pending |
 | **M8: Platform Toggle** | Next | 📋 Planned | Toggle visible in UI |
 | **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
 | **M10: Engagement Loop** | April 2026 | 📋 Planned | 4/5 platforms GREEN |

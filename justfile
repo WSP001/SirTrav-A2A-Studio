@@ -1898,11 +1898,21 @@ repo-hygiene:
 # Gemini narration smoke test (requires netlify dev on 8888)
 gemini-test:
     @echo "🧪 Testing Gemini via narrate-project..."
-    @powershell -NoProfile -Command "Invoke-RestMethod -Uri 'http://localhost:8888/.netlify/functions/narrate-project' -Method POST -ContentType 'application/json' -Body '{\"projectId\":\"gemini-cli-smoke\",\"theme\":\"cinematic\",\"mood\":\"reflective\",\"sceneCount\":2}' | ConvertTo-Json -Depth 5"
+    @powershell -NoProfile -Command "Invoke-RestMethod -Uri 'http://localhost:8888/.netlify/functions/narrate-project' -Method POST -ContentType 'application/json' -Body (@{ projectId='gemini-cli-smoke'; theme='cinematic'; mood='reflective'; sceneCount=2 } | ConvertTo-Json -Compress) | ConvertTo-Json -Depth 5"
 
 # ============================================
-# 🛡️ CONTROL PLANE GATE (CI/CD enforcer)
+# 🛡️ CONTROL PLANE (M7)
 # ============================================
+
+# M7: Verify control-plane endpoint — asserts all fields, YouTube No Fake Success invariant
+control-plane-verify:
+    @echo "🔍 M7 Control Plane Verifier..."
+    @node scripts/verify-control-plane.mjs
+
+# M7: Verify control-plane against cloud deployment
+control-plane-verify-cloud:
+    @echo "🔍 M7 Control Plane Verifier (cloud)..."
+    @node scripts/verify-control-plane.mjs --base-url https://sirtrav-a2a-studio.netlify.app/.netlify/functions
 
 # CI gate: strict on release branches — fails if truth.verdict != REAL
 # Release branches: main, release/*, hotfix/*
