@@ -492,6 +492,8 @@ export const handler: Handler = async (event) => {
     const projectId: string | undefined = body.projectId;
     const runId: string | undefined = body.runId;
     const payloadKey: string | undefined = body.payloadKey;
+    // 🎯 CC-019 M8: Selective publish targets from UI toggle
+    const publishTargets: string[] | undefined = body.publishTargets;
 
     if (!projectId || !runId) {
       return { statusCode: 400, body: 'projectId and runId are required' };
@@ -715,7 +717,9 @@ export const handler: Handler = async (event) => {
       agentResults,
       pipelineMode: determinePipelineMode(agentResults),
       invoice: manifest.generate(runId),
-      exchangeMode: secureVideo.mode
+      exchangeMode: secureVideo.mode,
+      // 🎯 CC-019 M8: Platforms the user toggled on for publishing
+      publishTargets: publishTargets || ['x', 'youtube', 'linkedin', 'tiktok', 'instagram'],
     };
 
     await updateRun(projectId, runId, {
@@ -747,6 +751,7 @@ export const handler: Handler = async (event) => {
         creditsUrl: finalArtifacts.creditsUrl,
         invoice: finalArtifacts.invoice, // 💰 Cost Plus Manifest
         pipelineMode: finalArtifacts.pipelineMode,
+        publishTargets: finalArtifacts.publishTargets, // 🎯 CC-019 M8
         commonsGood: true,
       })
     };

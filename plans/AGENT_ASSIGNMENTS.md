@@ -541,6 +541,8 @@ Then begin with this statement:
 | WSP-GOVERNANCE | Claude Code (on behalf of Windsurf) | Branch discipline layer: `ticket-status` + `guard-clean` + `guard-up-to-date` + `pre-merge-guard` in main justfile; `flow` updated to enforce WSP ticket alignment; `tasks/CLD-BE-OPS-002-ledger-gate.md` created for Claude Code | 2026-02-23 |
 | CC-016 | Claude Code | Sanity test mode-awareness (`--mode cloud` skips local env fails) + healthcheck ledger `lastRunId` enrichment | 2026-02-28 |
 | CC-017 | Claude Code | Repo hygiene: deleted 11 stale remote branches (archived in `docs/BRANCH_ARCHIVE_CC017.md`), updated `.env.example` v3.0.0 with scope labels, `npm audit fix` (269 packages updated) | 2026-02-28 |
+| CC-018 | Claude Code | X-flow verification tightening (`--local`/`--cloud`/`--live` flags) + healthcheck timeout guard + progress graceful degradation | 2026-03-02 |
+| CC-019 | Claude Code | M8 platform targeting (`publishTargets` array through pipeline) + M9 editor graceful degradation (missing Remotion AWS keys return `status: "degraded"` not crash) | 2026-03-02 |
 
 ---
 

@@ -61,6 +61,11 @@ export const handler: Handler = async (event) => {
       tone?: string;
     } = body.brief || payload.creativeBrief || {};
 
+    // 🎯 CC-019 M8: Parse publish targets (e.g. ['x', 'youtube'])
+    // If provided, only these platforms will be published to after pipeline completes.
+    // If omitted, defaults to all configured platforms.
+    const publishTargets: string[] | undefined = body.publishTargets || payload.publishTargets;
+
     // 🔒 SECURE HANDSHAKE: Verify user before allocating resources
     const isAuthorized = await validateUser(userToken);
 
@@ -123,6 +128,8 @@ export const handler: Handler = async (event) => {
       // 🎯 Platform + Brief for downstream agents
       platform,
       brief,
+      // 🎯 CC-019 M8: Publish targets for selective social publishing
+      publishTargets,
     };
 
     await store.setJSON(key, runRecord, {
@@ -135,9 +142,10 @@ export const handler: Handler = async (event) => {
       status: 'running',
       createdAt: now,
       payloadKey,
-      // @ts-ignore - extending RunArtifacts with platform/brief
+      // @ts-ignore - extending RunArtifacts with platform/brief/publishTargets
       platform,
       brief,
+      publishTargets,
     });
 
     // Persist payload separately to avoid background payload limits
@@ -156,9 +164,10 @@ export const handler: Handler = async (event) => {
         projectId,
         runId,
         payloadKey,
-        // 🎯 Pass platform + brief to background worker for agent context
+        // 🎯 Pass platform + brief + publishTargets to background worker
         platform,
         brief,
+        publishTargets,
       }),
     });
 
@@ -171,9 +180,10 @@ export const handler: Handler = async (event) => {
         projectId,
         status: 'queued',
         payloadKey,
-        // 🎯 Echo platform + brief for UI confirmation
+        // 🎯 Echo platform + brief + publishTargets for UI confirmation
         platform,
         brief: Object.keys(brief).length > 0 ? brief : undefined,
+        publishTargets,
       }),
     };
   } catch (error) {

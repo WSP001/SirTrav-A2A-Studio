@@ -287,6 +287,39 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       console.log(`🔊 Audio ducking enabled: -${Math.round(-20 * Math.log10(duckingConfig.narrationVolume))}dB cut`);
     }
 
+    // 🎯 CC-019 M9: Check Remotion AWS env vars before attempting render dispatch
+    const remotionServeUrl = process.env.REMOTION_SERVE_URL;
+    const remotionFunctionName = process.env.REMOTION_FUNCTION_NAME;
+    const hasRemotionKeys = Boolean(remotionServeUrl && remotionFunctionName);
+    const hasFFmpegService = Boolean(process.env.FFMPEG_SERVICE_URL);
+
+    if (!hasRemotionKeys && !hasFFmpegService) {
+      // Graceful degradation: return placeholder video, don't crash
+      console.warn('⚠️ [CC-019] Editor Agent: REMOTION_SERVE_URL / REMOTION_FUNCTION_NAME not set. Returning degraded placeholder.');
+      const cost = estimateCost(duration, request.resolution);
+      const response: CompileResponse = {
+        success: true,
+        projectId: request.projectId,
+        videoUrl: `/test-assets/test-video.mp4`,
+        duration,
+        resolution: request.resolution,
+        stored: false,
+        placeholder: true,
+        cost,
+        duckingApplied,
+        ffmpegCommand: generateFFmpegCommand(request, duration),
+      };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ...response,
+          status: 'degraded',
+          degradedReason: 'Missing REMOTION_SERVE_URL and FFMPEG_SERVICE_URL — set AWS keys for real rendering',
+        }),
+      };
+    }
+
     // Try Render Dispatcher, fallback to placeholder
     const dispatchResult = await compileWithFFmpeg(request, duration);
 
