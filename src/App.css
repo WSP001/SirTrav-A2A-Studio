@@ -1460,6 +1460,98 @@ body {
   color: rgba(255, 255, 255, 0.15);
 }
 
+/* CX-016: Control-plane emblem */
+.packet-emblem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.packet-status {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.packet-reason {
+  color: rgba(229, 231, 235, 0.8);
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* CX-016: Diagnostics dashboard */
+.diag-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.diag-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.diag-tile {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.diag-label {
+  color: #a1a1aa;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.diag-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.diag-meta {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.diag-green {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.diag-yellow {
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.diag-red {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.diag-gray {
+  color: #d1d5db;
+  border-color: rgba(156, 163, 175, 0.5);
+  background: rgba(156, 163, 175, 0.15);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hero-title-premium {
@@ -1492,5 +1584,20 @@ body {
 
   .signature-plaque {
     max-width: 280px;
+  }
+
+  .diag-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .diag-grid-3,
+  .diag-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .packet-reason {
+    display: none;
   }
 }

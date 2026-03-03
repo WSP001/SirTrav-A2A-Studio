@@ -3,6 +3,7 @@ import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, 
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 import PipelineProgress from './components/PipelineProgress';
+import SystemStatusEmblem from "./components/SystemStatusEmblem";
 
 // Version for deployment verification
 const APP_VERSION = "v2.1.0";
@@ -286,6 +287,8 @@ function App() {
           </div>
 
           <nav className="flex items-center gap-4">
+            <SystemStatusEmblem />
+            <a href="/diagnostics" className="nav-link">Diagnostics</a>
             <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Docs</a>
             <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault</a>
             <button
