@@ -1,9 +1,9 @@
 # MASTER.md — SirTrav A2A Studio Build Plan
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-02-28  
+**Version:** 3.2.0  
+**Last Updated:** 2026-03-02  
 **Signed by:** Windsurf/Cascade (Acting Master, WSP001)  
-**Status:** Control Plane Anchored — Cloud REAL, Local DEGRADED
+**Status:** M7 Complete — Control Plane + Diagnostics Dashboard Live
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc-to-Agent) automated video production platform for the Commons Good.
 
@@ -113,14 +113,12 @@ Build a production-ready, user-friendly video automation platform where users cl
 - [x] YouTube Link Policy enforced: url only from real publish ✅
 - [x] Create `scripts/verify-control-plane.mjs` — 33 assertions, all pass ✅
 - [x] Add `just control-plane-verify` + `just control-plane-verify-cloud` recipes ✅
-- [ ] Create `/diagnostics` React route with tiles:
-  - CloudVerdict / LocalVerdict (from control-plane JSON)
-  - Pipeline agent wiring status
-  - Social platform readiness matrix
-  - AI service status
-  - YouTube link policy display
-  - LastRunId + timestamp
-- [ ] Wire UI emblem to show combined verdict icon
+- [x] Create `/diagnostics` React route with tiles ✅ (Codex #2, CX-016, commit `21728664`):
+  - CloudVerdict / LocalVerdict / Combined (from control-plane JSON)
+  - 7-Agent pipeline wiring status grid
+  - Service health tiles (storage, AI, progress, social)
+  - Auto-refresh every 15s
+- [x] Wire UI emblem to show combined verdict icon ✅ (SystemStatusEmblem → control-plane)
 
 ---
 
@@ -170,7 +168,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **M0.7: Control Plane** | Feb 2026 | ✅ DONE | cloudVerdict=REAL, CI gate passes |
 | **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
 | **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
-| **M7: Control Plane** | Mar 2026 | � In Progress | Endpoint + verifier ✅, UI route pending |
+| **M7: Control Plane** | Mar 2026 | ✅ DONE | Endpoint + verifier + /diagnostics UI live |
 | **M8: Platform Toggle** | Next | 📋 Planned | Toggle visible in UI |
 | **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
 | **M10: Engagement Loop** | April 2026 | 📋 Planned | 4/5 platforms GREEN |
@@ -183,8 +181,8 @@ Build a production-ready, user-friendly video automation platform where users cl
 |-------|----------|------|-----------|--------|
 | **Windsurf/Cascade** | Windsurf IDE | Acting Master — orchestration, justfile, cockpit, gates | Control plane + local fixes | ✅ Active |
 | **Claude Code** | Terminal | Backend fixes, sanity-test mode-awareness, repo hygiene | CC-017 repo hygiene | ✅ Active |
-| **Codex #2** | CLI | UI wiring, /diagnostics panel, dist guard | CX-016 (pending pickup) | 📋 Queued |
-| **Antigravity** | CI/Testing | 5-gate verification receipts, QA proofs | AG-014 (pending after CX-016) | 📋 Queued |
+| **Codex #2** | CLI | UI wiring, /diagnostics panel, dist guard | CX-016 diagnostics dashboard (merged `21728664`) | ✅ Delivered |
+| **Antigravity** | CI/Testing | 5-gate verification receipts, QA proofs | AG-014 signed, CX-016 fast-merge approved | ✅ Delivered |
 | **GitHub Copilot** | VS Code | Inline autocomplete | Original pipeline scaffold | 💤 Passive |
 
 ### Agent Handoff Protocol
@@ -320,6 +318,8 @@ just validate-env         # 28-key env audit with masked previews
 | v2.0.0 | 2025-12 | Copilot | 7 agents + Blobs + Vision AI |
 | v2.0.1 | 2025-12-17 | Copilot | Blobs migration + smoke tests |
 | v3.0.0 | 2026-02-28 | Windsurf/Cascade (Acting Master) | Control plane, split verdicts, repo hygiene, local fixes |
+| v3.1.0 | 2026-03-02 | Windsurf/Cascade (Acting Master) | M7 backend: control-plane.ts + AG-014 receipt + YouTube policy |
+| v3.2.0 | 2026-03-02 | Windsurf/Cascade + Codex #2 | M7 complete: /diagnostics UI + SystemStatusEmblem + fast merge |
 
 ---
 
