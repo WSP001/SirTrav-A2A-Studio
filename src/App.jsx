@@ -20,6 +20,8 @@ const AGENTS = [
   { id: 'publisher', name: 'Publisher Agent', icon: '🚀', description: 'Uploads artifacts, updates memory vault.' },
 ];
 
+const ALL_PUBLISH_TARGETS = ['x', 'linkedin', 'youtube', 'instagram', 'tiktok'];
+
 function App() {
   const [projectId, setProjectId] = useState(`week${new Date().getWeekNumber()}_recap`);
   const [files, setFiles] = useState([]);
@@ -43,6 +45,7 @@ function App() {
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
   const [systemHealth, setSystemHealth] = useState(null); // live health status
   const [heroVisible, setHeroVisible] = useState(false);
+  const [selectedPublishTargets, setSelectedPublishTargets] = useState(ALL_PUBLISH_TARGETS);
 
   // Fetch live system health on mount
   useEffect(() => {
@@ -130,6 +133,7 @@ function App() {
           projectId,
           runId: newRunId,
           platform: targetPlatform,
+          publishTargets: selectedPublishTargets,
           brief: {
             mood: 'reflective',
             pace: videoLength === 'short' ? 'fast' : 'medium',
@@ -145,6 +149,7 @@ function App() {
             projectMode: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'business_public' : 'commons_public',
             socialPlatform: targetPlatform,
             outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
+            publishTargets: selectedPublishTargets,
             musicMode,
             manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined,
             // 🎯 MG-002: Pass U2A Preferences in payload too for explicit agent handling
@@ -188,6 +193,9 @@ function App() {
       pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
       isPlaceholder: !isRealVideo,
       invoice: data.artifacts?.invoice, // Extract Invoice for display
+      publishTargets: Array.isArray(data.artifacts?.publishTargets) && data.artifacts.publishTargets.length > 0
+        ? data.artifacts.publishTargets
+        : selectedPublishTargets,
     });
   };
 
@@ -235,6 +243,7 @@ function App() {
       },
       credits: { platform: 'SirTrav A2A Studio' },
       invoice: videoResult.invoice,
+      publishTargets: videoResult.publishTargets,
     }
     : {
       videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -242,7 +251,12 @@ function App() {
       runId: 'ui-demo-run',
       metadata: { duration: 154, resolution: '1080p', platform: 'TikTok', fileSize: 24500000 },
       credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: 'SirTrav A2A Studio' },
+      publishTargets: selectedPublishTargets,
     };
+
+  const activePublishTargets = Array.isArray(videoResult?.publishTargets) && videoResult.publishTargets.length > 0
+    ? videoResult.publishTargets
+    : selectedPublishTargets;
 
   return (
     <div className="app min-h-screen relative">
@@ -685,6 +699,40 @@ function App() {
                 </div>
               </div>
 
+              {/* M8: Publish Targets */}
+              <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Publish Targets</label>
+                  <span className="text-[10px] text-gray-400">{selectedPublishTargets.length} selected</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {ALL_PUBLISH_TARGETS.map((target) => {
+                    const selected = selectedPublishTargets.includes(target);
+                    return (
+                      <button
+                        key={target}
+                        onClick={() => {
+                          setSelectedPublishTargets(prev => {
+                            if (prev.includes(target)) {
+                              const next = prev.filter(x => x !== target);
+                              return next.length > 0 ? next : prev;
+                            }
+                            return [...prev, target];
+                          });
+                        }}
+                        disabled={files.length === 0 || pipelineStatus === 'running'}
+                        className={`px-2 py-1.5 rounded text-xs border transition-colors ${selected
+                          ? 'bg-amber-600/30 border-amber-500 text-amber-200'
+                          : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200'
+                          } ${files.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {target}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Big Launch Button */}
               <button
                 onClick={runPipeline}
@@ -861,26 +909,34 @@ function App() {
                 <div className="space-y-2">
                   <label className="text-xs text-gray-500 uppercase tracking-wide">Publish to Social Media</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <button className="social-btn youtube">
-                      <Youtube className="w-5 h-5" />
-                      <span>YouTube</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn tiktok">
-                      <span className="text-lg">📱</span>
-                      <span>TikTok</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn instagram">
-                      <Instagram className="w-5 h-5" />
-                      <span>Instagram</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
-                    <button className="social-btn twitter">
-                      <Twitter className="w-5 h-5" />
-                      <span>X (Twitter)</span>
-                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                    </button>
+                    {activePublishTargets.includes('youtube') && (
+                      <button className="social-btn youtube">
+                        <Youtube className="w-5 h-5" />
+                        <span>YouTube</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </button>
+                    )}
+                    {activePublishTargets.includes('tiktok') && (
+                      <button className="social-btn tiktok">
+                        <span className="text-lg">📱</span>
+                        <span>TikTok</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </button>
+                    )}
+                    {activePublishTargets.includes('instagram') && (
+                      <button className="social-btn instagram">
+                        <Instagram className="w-5 h-5" />
+                        <span>Instagram</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </button>
+                    )}
+                    {activePublishTargets.includes('x') && (
+                      <button className="social-btn twitter">
+                        <Twitter className="w-5 h-5" />
+                        <span>X (Twitter)</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
