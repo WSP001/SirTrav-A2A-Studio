@@ -252,7 +252,7 @@ just validate-env         # 28-key env audit with masked previews
 ```
 ├── netlify/functions/          # 7 Agent serverless functions + infrastructure
 │   ├── curate-media.ts         # Agent 1: Director (Vision AI)
-│   ├── narrate-project.ts      # Agent 2: Writer (GPT-4 + Gemini fallback)
+│   ├── narrate-project.ts      # Agent 2: Writer (Flash First: Gemini → GPT-4 → templates)
 │   ├── text-to-speech.ts       # Agent 3: Voice (ElevenLabs)
 │   ├── generate-music.ts       # Agent 4: Composer (Suno)
 │   ├── compile-video.ts        # Agent 5: Editor → render-dispatcher.ts

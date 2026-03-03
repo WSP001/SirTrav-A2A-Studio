@@ -422,15 +422,36 @@ export const handler: Handler = async (event: HandlerEvent) => {
     console.log(`🎬 Director Agent v2: Analyzing ${images.length} images for ${project_id}`);
     console.log(`📋 Project mode: ${project_mode}`);
 
-    // Check for OpenAI API key
+    // Check for OpenAI API key — graceful degradation, not hard crash
     if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ OPENAI_API_KEY not configured');
+      console.warn('⚠️ OPENAI_API_KEY not configured — returning degraded Director response');
+      const degradedScenes: Scene[] = [{
+        scene_id: 'scene_001',
+        title: 'Scene 1: Opening',
+        story_role: 'opening',
+        dominant_mood: 'calm',
+        tempo: 'slow',
+        intended_audience: 'public_commons',
+        summary_for_writer: 'Vision analysis unavailable — OPENAI_API_KEY not configured.',
+        assets: [],
+      }];
       return {
-        statusCode: 500,
+        statusCode: 200,
         body: JSON.stringify({
           ok: false,
+          disabled: true,
           error: 'vision_not_configured',
-          detail: 'OPENAI_API_KEY environment variable not set',
+          detail: 'OPENAI_API_KEY not set — Director running in degraded mode',
+          project_id,
+          project_mode,
+          scenes: degradedScenes,
+          metadata: {
+            agent: 'director',
+            version: '2.0',
+            vision_enabled: false,
+            processing_time_ms: Date.now() - startTime,
+            timestamp: new Date().toISOString(),
+          },
         }),
       };
     }

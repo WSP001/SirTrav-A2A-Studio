@@ -2,13 +2,17 @@
  * WRITER AGENT - Narrate Project
  * Agent 2 of 7 in the D2A Pipeline
  * 
- * PURPOSE: Generates narrative script using GPT-4 with fallback stubs
+ * PURPOSE: Generates narrative script using Flash First rule:
+ *   1. Gemini Flash (primary — fast, cheap, 1M+ context)
+ *   2. OpenAI GPT-4 (fallback — if Gemini unavailable)
+ *   3. Template stubs (last resort — always works, no API needed)
  * 
  * INPUT: { projectId, theme, mood, sceneCount }
  * OUTPUT: { narrative, scenes[], wordCount, estimatedDuration }
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { readMemoryIndex, learnFromHistory } from './lib/memory';
 
 interface NarrateRequest {
@@ -32,11 +36,81 @@ interface NarrateResponse {
   scenes: Scene[];
   wordCount: number;
   estimatedDuration: number;
-  generatedBy: 'openai' | 'fallback';
+  generatedBy: 'gemini' | 'openai' | 'fallback';
+}
+
+function buildFallbackResponse(projectId: string, note: string, error?: string): NarrateResponse & { note: string; error?: string } {
+  const fallback = generateFallbackNarrative({
+    projectId,
+    theme: 'cinematic',
+    mood: 'reflective',
+    sceneCount: 3,
+  });
+
+  return {
+    success: true,
+    projectId,
+    narrative: fallback.narrative,
+    scenes: fallback.scenes,
+    wordCount: fallback.narrative.split(/\s+/).filter(Boolean).length,
+    estimatedDuration: fallback.scenes.reduce((sum, s) => sum + s.duration, 0),
+    generatedBy: 'fallback',
+    note,
+    error,
+  };
 }
 
 /**
- * Generate narrative using OpenAI (if API key available)
+ * Generate narrative using Gemini Flash (primary — Flash First rule)
+ */
+async function generateWithGemini(request: NarrateRequest): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.log('⚠️ No Gemini API key, trying OpenAI...');
+    return null;
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // gemini-2.5-flash: latest Flash model, fast, cheap, 1M+ context
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `You are a cinematic narrator for travel documentaries. Create compelling, visual narratives.
+
+Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}".
+
+Return ONLY valid JSON in this exact format (no markdown, no code fences):
+{
+  "scenes": [
+    { "id": 1, "text": "Scene narration text (2-3 sentences)", "duration": 10, "visualCue": "Visual direction" }
+  ]
+}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    // Try to parse structured JSON from Gemini
+    try {
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.scenes && Array.isArray(parsed.scenes)) {
+        // Return the raw text for the narrative, scenes will be parsed in handler
+        return JSON.stringify(parsed);
+      }
+    } catch {
+      // If JSON parsing fails, return raw text (handler will split into scenes)
+    }
+
+    return text || null;
+  } catch (error) {
+    console.error('Gemini request failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate narrative using OpenAI GPT-4 (fallback when Gemini unavailable)
  */
 async function generateWithOpenAI(request: NarrateRequest): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -148,7 +222,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
 
   try {
-    const request: NarrateRequest = JSON.parse(event.body || '{}');
+    // Netlify Dev may base64-encode the body or pass it as-is
+    let rawBody = event.body || '{}';
+    if (event.isBase64Encoded && typeof rawBody === 'string') {
+      rawBody = Buffer.from(rawBody, 'base64').toString('utf-8');
+    }
+    const request: NarrateRequest = typeof rawBody === 'object' ? rawBody as any : JSON.parse(rawBody);
 
     if (!request.projectId) {
       return {
@@ -158,37 +237,73 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    // Load memory for context
-    const memory = readMemoryIndex('./Sir-TRAV-scott'); // Default vault path
-    const learnedMood = learnFromHistory(memory);
+    // Load memory for context (safe fallback if memory store is unavailable)
+    let learnedMood = 'cinematic';
+    try {
+      const memory = readMemoryIndex('./Sir-TRAV-scott'); // Default vault path
+      learnedMood = learnFromHistory(memory);
+    } catch (memoryError) {
+      console.warn('⚠️ Memory load failed, using cinematic defaults:', memoryError);
+    }
 
     // Set defaults with memory persistence
     request.theme = request.theme || learnedMood;
     request.mood = request.mood || (learnedMood === 'energetic' ? 'inspiring' : 'reflective');
     request.sceneCount = request.sceneCount || 4;
 
-    // Try OpenAI first, fallback to templates
+    // Flash First: Gemini → OpenAI → templates
     let narrative: string;
     let scenes: Scene[];
-    let generatedBy: 'openai' | 'fallback' = 'fallback';
+    let generatedBy: 'gemini' | 'openai' | 'fallback' = 'fallback';
 
-    const openaiNarrative = await generateWithOpenAI(request);
-
-    if (openaiNarrative) {
-      narrative = openaiNarrative;
-      generatedBy = 'openai';
-      // Parse scenes from OpenAI response (simplified)
-      const sentencePairs = narrative.match(/[^.!?]+[.!?]+\s*[^.!?]+[.!?]+/g) || [narrative];
-      scenes = sentencePairs.slice(0, request.sceneCount).map((text, i) => ({
-        id: i + 1,
-        text: text.trim(),
-        duration: 10,
-        visualCue: `Scene ${i + 1}`,
-      }));
+    // 1. Try Gemini Flash (primary)
+    const geminiResult = await generateWithGemini(request);
+    if (geminiResult) {
+      generatedBy = 'gemini';
+      // Try to parse structured JSON from Gemini
+      try {
+        const parsed = JSON.parse(geminiResult);
+        if (parsed.scenes && Array.isArray(parsed.scenes)) {
+          scenes = parsed.scenes.slice(0, request.sceneCount).map((s: any, i: number) => ({
+            id: s.id || i + 1,
+            text: String(s.text || ''),
+            duration: Number(s.duration) || 10,
+            visualCue: String(s.visualCue || `Scene ${i + 1}`),
+          }));
+          narrative = scenes.map(s => s.text).join(' ');
+        } else {
+          throw new Error('No scenes array in parsed JSON');
+        }
+      } catch {
+        // Gemini returned raw text, split into scenes
+        narrative = geminiResult;
+        const sentencePairs = narrative.match(/[^.!?]+[.!?]+\s*[^.!?]+[.!?]+/g) || [narrative];
+        scenes = sentencePairs.slice(0, request.sceneCount).map((text, i) => ({
+          id: i + 1,
+          text: text.trim(),
+          duration: 10,
+          visualCue: `Scene ${i + 1}`,
+        }));
+      }
     } else {
-      const fallback = generateFallbackNarrative(request);
-      narrative = fallback.narrative;
-      scenes = fallback.scenes;
+      // 2. Try OpenAI (fallback)
+      const openaiNarrative = await generateWithOpenAI(request);
+      if (openaiNarrative) {
+        narrative = openaiNarrative;
+        generatedBy = 'openai';
+        const sentencePairs = narrative.match(/[^.!?]+[.!?]+\s*[^.!?]+[.!?]+/g) || [narrative];
+        scenes = sentencePairs.slice(0, request.sceneCount).map((text, i) => ({
+          id: i + 1,
+          text: text.trim(),
+          duration: 10,
+          visualCue: `Scene ${i + 1}`,
+        }));
+      } else {
+        // 3. Template fallback (always works)
+        const fallback = generateFallbackNarrative(request);
+        narrative = fallback.narrative;
+        scenes = fallback.scenes;
+      }
     }
 
     const wordCount = narrative.split(/\s+/).length;
@@ -212,15 +327,27 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       body: JSON.stringify(response),
     };
 
-  } catch (error) {
-    console.error('❌ Writer Agent error:', error);
+  } catch (error: any) {
+    console.error('❌ Writer Agent error (graceful fallback):', error);
+    const projectId = (() => {
+      try {
+        if (!event.body) return 'unknown';
+        const raw = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf-8') : event.body;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return parsed?.projectId || 'unknown';
+      } catch {
+        return 'unknown';
+      }
+    })();
+    const fallbackResponse = buildFallbackResponse(
+      projectId,
+      'Generated via fallback due to API/provider or runtime unavailability.',
+      error?.message || 'Unknown error'
+    );
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers,
-      body: JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }),
+      body: JSON.stringify(fallbackResponse),
     };
   }
 };

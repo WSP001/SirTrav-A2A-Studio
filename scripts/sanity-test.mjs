@@ -128,7 +128,7 @@ async function testFunctionEndpoints() {
     // Report service breakdown
     if (hc.json.services) {
       for (const s of hc.json.services) {
-        const st = s.status === 'ok' ? 'pass' : s.status === 'disabled' ? 'degraded' : 'fail';
+        const st = s.status === 'ok' ? 'pass' : (s.status === 'disabled' || s.status === 'degraded') ? 'degraded' : 'fail';
         record(`  └ ${s.name}`, 'functions', st, s.error || s.status);
       }
     }
