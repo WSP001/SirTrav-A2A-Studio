@@ -29,7 +29,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **Progress Tracking** | ✅ Ready | SSE + Blobs + 3s timeout wrapper (<10s) |
 | **Voice Agent** | 🟡 Ready | Requires `ELEVENLABS_API_KEY` |
 | **Composer Agent** | 🟡 Ready | Requires `SUNO_API_KEY` |
-| **Editor Agent** | ⚠️ In Progress | Remotion Lambda wired; needs AWS env vars |
+| **Editor Agent** | 🟡 Graceful Degradation | Remotion Lambda wired; returns placeholder when AWS keys missing (CC-019) |
 | **X/Twitter** | ✅ Verified Live | Past tweet IDs on record |
 | **LinkedIn** | ✅ Verified Live | `urn:li:ugcPost:7431201708828946432` |
 | **YouTube** | 🟡 Keys Present | No Fake Success: url only from real publish (see policy below) |
@@ -125,7 +125,14 @@ Build a production-ready, user-friendly video automation platform where users cl
 ### M8: Platform Toggle UI 🎛️
 **Target:** Users select which platforms to publish to  
 **KPI:** Toggle component visible, respects healthcheck
+**Owner:** Codex #2 (UI) + Claude Code (backend)
 
+**Backend (CC-019, commit `9f07633`) ✅:**
+- [x] `publishTargets` array in start-pipeline.ts — selective platform publishing ✅
+- [x] `publishTargets` threaded to run-pipeline-background.ts ✅
+- [x] Editor graceful degradation: returns `status: 'degraded'` placeholder when Remotion keys missing ✅
+
+**UI (not started):**
 - [ ] Create `src/components/PlatformToggle.tsx`
 - [ ] Wire to `/healthcheck` for live platform status
 - [ ] Disable unavailable platforms (greyed out + tooltip)
@@ -169,7 +176,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
 | **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
 | **M7: Control Plane** | Mar 2026 | ✅ DONE | Endpoint + verifier + /diagnostics UI live |
-| **M8: Platform Toggle** | Next | 📋 Planned | Toggle visible in UI |
+| **M8: Platform Toggle** | Mar 2026 | � In Progress | Backend done (CC-019), UI component pending |
 | **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
 | **M10: Engagement Loop** | April 2026 | 📋 Planned | 4/5 platforms GREEN |
 
