@@ -1,49 +1,63 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Shield } from 'lucide-react';
 import { THEME } from '../remotion/branding';
 
-type PacketMode = 'off' | 'real' | 'error';
-type ServiceStatus = 'ok' | 'degraded' | 'down' | 'disabled';
+type PacketMode = 'off' | 'real' | 'degraded' | 'error';
+type VerdictColor = 'GREEN' | 'YELLOW' | 'RED';
 
-type HealthService = {
-  name: string;
-  status: ServiceStatus;
-  error?: string;
-};
-
-type HealthPayload = {
-  status?: 'healthy' | 'degraded' | 'unhealthy' | 'offline';
-  services?: HealthService[];
+type ControlPlanePayload = {
+  verdict?: {
+    local?: VerdictColor;
+    cloud?: VerdictColor;
+    combined?: VerdictColor;
+    reasons?: string[];
+  };
 };
 
 const EMBLEM_COLORS = {
   off: THEME.colors.textSecondary,
   real: '#D4AF37',
+  degraded: '#F59E0B',
   error: THEME.colors.error,
 };
 
-function socialServiceOf(payload: HealthPayload | null) {
-  if (!payload?.services) return null;
-  return payload.services.find((s) => s.name === 'social_publishing') || null;
-}
-
 export default function SystemStatusEmblem() {
-  const [health, setHealth] = useState<HealthPayload | null>(null);
+  const [controlPlane, setControlPlane] = useState<ControlPlanePayload | null>(null);
   const [packetMode, setPacketMode] = useState<PacketMode>('off');
-  const [packetLabel, setPacketLabel] = useState('Simulation Mode (Free)');
+  const [packetLabel, setPacketLabel] = useState('Control Plane: loading');
+  const [reasonLabel, setReasonLabel] = useState('Awaiting verdict...');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    fetch('/.netlify/functions/healthcheck')
+    fetch('/.netlify/functions/control-plane')
       .then((r) => r.json())
       .then((payload) => {
         if (!mounted) return;
-        setHealth(payload);
+        setControlPlane(payload);
+        const combined = payload?.verdict?.combined;
+        if (combined === 'GREEN') {
+          setPacketMode('real');
+          setPacketLabel('Control Plane: GREEN');
+        } else if (combined === 'YELLOW') {
+          setPacketMode('degraded');
+          setPacketLabel('Control Plane: YELLOW');
+        } else if (combined === 'RED') {
+          setPacketMode('error');
+          setPacketLabel('Control Plane: RED');
+        } else {
+          setPacketMode('off');
+          setPacketLabel('Control Plane: unknown');
+        }
+        const reasons = Array.isArray(payload?.verdict?.reasons) ? payload.verdict.reasons : [];
+        setReasonLabel(reasons.length ? reasons.join(' | ') : 'No reasons provided');
       })
       .catch(() => {
         if (!mounted) return;
-        setHealth({ status: 'offline' });
+        setControlPlane(null);
+        setPacketMode('error');
+        setPacketLabel('Control Plane: unavailable');
+        setReasonLabel('Failed to fetch /.netlify/functions/control-plane');
       })
       .finally(() => {
         if (!mounted) return;
@@ -54,43 +68,21 @@ export default function SystemStatusEmblem() {
     };
   }, []);
 
-  const socialService = useMemo(() => socialServiceOf(health), [health]);
-  const realModeReady = socialService?.status === 'ok';
-
-  const togglePacketMode = (next: boolean) => {
-    if (!next) {
-      setPacketMode('off');
-      setPacketLabel('Simulation Mode (Free)');
-      return;
-    }
-    if (loading || !realModeReady) {
-      setPacketMode('error');
-      setPacketLabel('Real Mode Blocked (Auth/Config Required)');
-      return;
-    }
-    setPacketMode('real');
-    setPacketLabel('Real Packet Mode (Cost Incurred)');
-  };
-
   return (
     <div
       className="packet-emblem"
-      title={socialService?.error || packetLabel}
+      title={reasonLabel}
       style={{ borderColor: `${THEME.colors.textMuted}66`, background: `${THEME.colors.background}cc` }}
     >
       <Shield className="w-4 h-4" />
       <span className={`packet-status packet-status-${packetMode}`} style={{ color: EMBLEM_COLORS[packetMode] }}>
         {packetLabel}
       </span>
-      <label className={`packet-toggle packet-toggle-${packetMode}`}>
-        <input
-          type="checkbox"
-          checked={packetMode === 'real'}
-          onChange={(e) => togglePacketMode(e.target.checked)}
-          aria-label="Toggle Real Packet Mode"
-        />
-        <span className="packet-slider" />
-      </label>
+      {!loading && controlPlane?.verdict && (
+        <span className="packet-reason">
+          L:{controlPlane.verdict.local || '?'} C:{controlPlane.verdict.cloud || '?'}
+        </span>
+      )}
     </div>
   );
 }
