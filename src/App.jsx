@@ -4,6 +4,7 @@ import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
 import PipelineProgress from './components/PipelineProgress';
 import SystemStatusEmblem from "./components/SystemStatusEmblem";
+import PlatformToggle from "./components/PlatformToggle";
 
 // Version for deployment verification
 const APP_VERSION = "v2.1.0";
@@ -19,8 +20,6 @@ const AGENTS = [
   { id: 'attribution', name: 'Attribution Agent', icon: '📜', description: 'Compiles credits for Commons Good.' },
   { id: 'publisher', name: 'Publisher Agent', icon: '🚀', description: 'Uploads artifacts, updates memory vault.' },
 ];
-
-const ALL_PUBLISH_TARGETS = ['x', 'linkedin', 'youtube', 'instagram', 'tiktok'];
 
 function App() {
   const [projectId, setProjectId] = useState(`week${new Date().getWeekNumber()}_recap`);
@@ -45,7 +44,7 @@ function App() {
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
   const [systemHealth, setSystemHealth] = useState(null); // live health status
   const [heroVisible, setHeroVisible] = useState(false);
-  const [selectedPublishTargets, setSelectedPublishTargets] = useState(ALL_PUBLISH_TARGETS);
+  const [selectedPublishTargets, setSelectedPublishTargets] = useState(['x', 'linkedin', 'youtube', 'instagram', 'tiktok']);
   const [publishTargetAvailability, setPublishTargetAvailability] = useState({
     x: true,
     linkedin: true,
@@ -61,29 +60,6 @@ function App() {
       .then(r => r.json())
       .then(data => setSystemHealth(data))
       .catch(() => setSystemHealth({ status: 'offline' }));
-
-    fetch('/.netlify/functions/control-plane')
-      .then(r => r.json())
-      .then(data => {
-        const publishers = Array.isArray(data?.publishers) ? data.publishers : [];
-        const next = {
-          x: false,
-          linkedin: false,
-          youtube: false,
-          instagram: false,
-          tiktok: false,
-        };
-        for (const p of publishers) {
-          if (p?.platform === 'x') next.x = !!p.enabled;
-          if (p?.platform === 'linkedin') next.linkedin = !!p.enabled;
-          if (p?.platform === 'youtube') next.youtube = !!p.enabled;
-        }
-        setPublishTargetAvailability(next);
-        setSelectedPublishTargets(prev => prev.filter(t => next[t] !== false));
-      })
-      .catch(() => {
-        // Keep permissive defaults if control-plane isn't reachable in local mode.
-      });
   }, []);
 
   // File drop handler
@@ -736,48 +712,21 @@ function App() {
                 </div>
               </div>
 
-              {/* M8: Publish Targets */}
-              <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Publish Targets</label>
-                  <span className="text-[10px] text-gray-400">{selectedPublishTargets.length} selected</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {ALL_PUBLISH_TARGETS.map((target) => {
-                    const selected = selectedPublishTargets.includes(target);
-                    const configured = publishTargetAvailability[target] !== false;
-                    return (
-                      <button
-                        key={target}
-                        onClick={() => {
-                          if (!configured) {
-                            setToast({ message: `${target} is not configured. Add platform credentials first.`, type: 'error' });
-                            setTimeout(() => setToast(null), 3000);
-                            return;
-                          }
-                          setSelectedPublishTargets(prev => {
-                            if (prev.includes(target)) {
-                              const next = prev.filter(x => x !== target);
-                              return next.length > 0 ? next : prev;
-                            }
-                            return [...prev, target];
-                          });
-                        }}
-                        disabled={files.length === 0 || pipelineStatus === 'running' || !configured}
-                        title={configured ? `Publish to ${target}` : `${target} disabled: missing configuration`}
-                        className={`px-2 py-1.5 rounded text-xs border transition-colors ${!configured
-                          ? 'bg-gray-900/50 border-gray-700 text-gray-500 cursor-not-allowed'
-                          : selected
-                          ? 'bg-amber-600/30 border-amber-500 text-amber-200'
-                          : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200'
-                          } ${files.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {target} {!configured ? '🔒' : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <PlatformToggle
+                value={selectedPublishTargets}
+                onChange={setSelectedPublishTargets}
+                disabled={files.length === 0 || pipelineStatus === 'running'}
+                onAvailabilityChange={(availability) => {
+                  const next = {
+                    x: availability.x.enabled,
+                    linkedin: availability.linkedin.enabled,
+                    youtube: availability.youtube.enabled,
+                    instagram: availability.instagram.enabled,
+                    tiktok: availability.tiktok.enabled,
+                  };
+                  setPublishTargetAvailability(next);
+                }}
+              />
 
               {/* Big Launch Button */}
               <button

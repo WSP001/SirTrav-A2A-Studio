@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import './ResultsPreview.css';
+import PlatformToggle, { PublishPlatform } from './PlatformToggle';
 
 export interface VideoResult {
   videoUrl: string;
@@ -32,6 +33,7 @@ export interface VideoResult {
     markupTotal: number;
     totalDue: number;
   };
+  publishTargets?: PublishPlatform[];
 }
 
 export interface ResultsPreviewProps {
@@ -54,6 +56,11 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
   // X Posting State
   const [isPostingX, setIsPostingX] = useState(false);
   const [xPostResult, setXPostResult] = useState<{ success: boolean; message?: string } | null>(null);
+  const [publishTargets, setPublishTargets] = useState<PublishPlatform[]>(
+    Array.isArray(result.publishTargets) && result.publishTargets.length > 0
+      ? result.publishTargets
+      : ['x', 'linkedin', 'youtube', 'instagram', 'tiktok']
+  );
 
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -230,6 +237,14 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
               </>
             )}
           </button>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <PlatformToggle
+            value={publishTargets}
+            onChange={setPublishTargets}
+            disabled={submittingFeedback}
+          />
         </div>
 
         {/* Feedback Section */}
