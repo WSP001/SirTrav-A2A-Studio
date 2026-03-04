@@ -1,9 +1,9 @@
 # MASTER.md — SirTrav A2A Studio Build Plan
 
-**Version:** 3.2.0  
-**Last Updated:** 2026-03-02  
+**Version:** 3.4.0  
+**Last Updated:** 2026-03-04  
 **Signed by:** Windsurf/Cascade (Acting Master, WSP001)  
-**Status:** M7 Complete — Control Plane + Diagnostics Dashboard Live
+**Status:** M8 FROZEN at `0d220f72` — Next: M9 (Remotion E2E) + M10 (X + YouTube)
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc-to-Agent) automated video production platform for the Commons Good.
 
@@ -16,7 +16,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ---
 
-## 📊 v3.1.0 Status Table (March 2, 2026)
+## 📊 v3.4.0 Status Table (March 4, 2026)
 
 > Driven by `/.netlify/functions/control-plane` — not hand-written.
 
@@ -29,11 +29,11 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **Progress Tracking** | ✅ Ready | SSE + Blobs + 3s timeout wrapper (<10s) |
 | **Voice Agent** | 🟡 Ready | Requires `ELEVENLABS_API_KEY` |
 | **Composer Agent** | 🟡 Ready | Requires `SUNO_API_KEY` |
-| **Editor Agent** | 🟡 Graceful Degradation | Remotion Lambda wired; returns placeholder when AWS keys missing (CC-019) |
+| **Editor Agent** | 🟡 Graceful Degradation | Remotion Lambda wired; returns placeholder when AWS keys missing (CC-019). **M9 blocker: HO-007** |
 | **X/Twitter** | ✅ Verified Live | Past tweet IDs on record |
 | **LinkedIn** | ✅ Verified Live | `urn:li:ugcPost:7431201708828946432` |
 | **YouTube** | 🟡 Keys Present | No Fake Success: url only from real publish (see policy below) |
-| **Instagram / TikTok** | ❌ Missing Keys | Manual setup required |
+| **Instagram / TikTok** | ⏸️ Parked | Not in M10 scope — X + YouTube only for now |
 | **Control Plane** | ✅ M7 Live | `/.netlify/functions/control-plane` — 33/33 verifier checks |
 | **Build** | ✅ Passes | Vite v7.3, 1351 modules, 2.1s |
 | **Sanity Test** | ✅ 33/0/12 | 33 pass, 0 fail, 12 degraded (all optional) |
@@ -122,46 +122,65 @@ Build a production-ready, user-friendly video automation platform where users cl
 
 ---
 
-### M8: Platform Toggle UI 🎛️
+### M8: Platform Toggle UI 🎛️ ✅ DONE — FROZEN at `0d220f72`
 **Target:** Users select which platforms to publish to  
-**KPI:** Toggle component visible, respects healthcheck
-**Owner:** Codex #2 (UI) + Claude Code (backend)
+**KPI:** Toggle component visible, respects healthcheck  
+**Owner:** Codex #2 (UI, CX-017) + Claude Code (backend, CC-019)
 
-**Backend (CC-019, commit `9f07633`) ✅:**
+> **⛔ M8 is CLOSED.** Nobody touches `PlatformToggle.tsx` or `ResultsPreview.tsx` without a bug ticket.  
+> All new work is M9 (Remotion) or M10 (Engagement Loop), both blocked on real keys from Human-Ops.
+
+**Backend (CC-019, commit `9f076332`) ✅:**
 - [x] `publishTargets` array in start-pipeline.ts — selective platform publishing ✅
 - [x] `publishTargets` threaded to run-pipeline-background.ts ✅
 - [x] Editor graceful degradation: returns `status: 'degraded'` placeholder when Remotion keys missing ✅
 
-**UI (not started):**
-- [ ] Create `src/components/PlatformToggle.tsx`
-- [ ] Wire to `/healthcheck` for live platform status
-- [ ] Disable unavailable platforms (greyed out + tooltip)
-- [ ] Show cost estimate per platform (from cost-manifest)
-- [ ] Add to `ResultsPreview.tsx`
+**UI (CX-017, commit `16cf32c9`) ✅:**
+- [x] Create `src/components/PlatformToggle.tsx` — 153-line reusable component ✅
+- [x] Wire to `/healthcheck` + `/control-plane` for live platform status ✅
+- [x] Disable unavailable platforms (greyed + tooltip + 🔒) ✅
+- [x] Show cost estimate per platform (`PLATFORM_ESTIMATE_USD`) ✅
+- [x] Add to `ResultsPreview.tsx` + `App.jsx` ✅
+
+**Verification:** 33/33 sanity pass, `npm run build` clean (1357 modules), No Fake Success confirmed.
 
 ---
 
 ### M9: End-to-End Video Production 🎬
 **Target:** Click2Kick produces a real video with all 7 agents  
-**KPI:** One complete run from upload to published video
+**KPI:** One complete run from upload to published video  
+**Owner:** Claude Code (backend E2E) + Windsurf Master (gates)  
+**Blocked by:** HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs key)
 
-- [ ] Set Remotion Lambda env vars (`REMOTION_SERVE_URL`, `REMOTION_FUNCTION_NAME`, AWS creds)
-- [ ] Test `render-dispatcher.ts` with a real composition
-- [ ] Wire `compile-video.ts` → Remotion Lambda (not local FFmpeg)
-- [ ] Add `ELEVENLABS_API_KEY` to Netlify (Voice agent goes real)
-- [ ] Full pipeline dry-run with placeholder assets
+**Architecture already built:**
+
+- `compile-video.ts` → `render-dispatcher.ts` → `lib/remotion-client.ts` → `@remotion/lambda/client`
+- 4 compositions registered in `src/remotion/Root.tsx`: SirTrav-Main, IntroSlate, EmblemComposition, EmblemThumbnail
+- CC-019 graceful degradation returns placeholder when keys missing
+- Fallback mode simulates 30s render with progress polling
+
+**Checklist:**
+
+- [ ] **HO-007:** Set Remotion Lambda env vars in Netlify (`REMOTION_SERVE_URL`, `REMOTION_FUNCTION_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) — see `docs/ENV-REMOTION.md`
+- [ ] **HO-006:** Add `ELEVENLABS_API_KEY` to Netlify (Voice agent goes real)
+- [ ] Install `@remotion/lambda` package (currently dynamic-imported, graceful fallback)
+- [ ] Test `render-dispatcher.ts` with IntroSlate composition
+- [ ] E2E dry-run: `just m9-e2e` — readiness check + Remotion test
 - [ ] Full pipeline live run with real user photos
+- [ ] Antigravity verification: E2E passes + control-plane sees Remotion health as ok
 
 ---
 
-### M10: Engagement Loop + Instagram/TikTok 🧠📱
-**Target:** Social mentions feed back into Director memory + 2 more platforms  
-**KPI:** 4/5 platforms GREEN, inbox.json populated
+### M10: Engagement Loop (X + YouTube Only) 🧠
+**Target:** Social mentions feed back into Director memory  
+**KPI:** X + YouTube engagement flowing into inbox.json  
+**Scope decision:** Instagram + TikTok **PARKED** until keys and compliance are ready.
 
 - [ ] Wire `check-x-engagement.ts` with valid X keys
-- [ ] Instagram: Meta Business Manager setup + keys
-- [ ] TikTok: Developer Portal setup + keys
+- [ ] YouTube Analytics integration (views, comments, retention)
 - [ ] Director Agent reads engagement inbox for content ideas
+- [ ] **PARKED:** Instagram (Meta Business Manager) — revisit after M10 core
+- [ ] **PARKED:** TikTok (Developer Portal) — revisit after M10 core
 
 ---
 
@@ -176,9 +195,9 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **M0.8: Repo Hygiene** | Feb 2026 | ✅ DONE | 1 branch, dist untracked |
 | **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
 | **M7: Control Plane** | Mar 2026 | ✅ DONE | Endpoint + verifier + /diagnostics UI live |
-| **M8: Platform Toggle** | Mar 2026 | � In Progress | Backend done (CC-019), UI component pending |
-| **M9: E2E Video** | March 2026 | 📋 Planned | Full pipeline run |
-| **M10: Engagement Loop** | April 2026 | 📋 Planned | 4/5 platforms GREEN |
+| **M8: Platform Toggle** | Mar 2026 | ✅ DONE `0d220f72` | Backend CC-019 + UI CX-017, frozen |
+| **M9: E2E Video** | March 2026 | � Blocked (HO-007) | Architecture ready, needs AWS keys |
+| **M10: Engagement Loop** | April 2026 | 📋 Scoped | X + YouTube only; Insta/TikTok parked |
 
 ---
 
@@ -187,8 +206,8 @@ Build a production-ready, user-friendly video automation platform where users cl
 | Agent | Platform | Role | Last Task | Status |
 |-------|----------|------|-----------|--------|
 | **Windsurf/Cascade** | Windsurf IDE | Acting Master — orchestration, justfile, cockpit, gates | Control plane + local fixes | ✅ Active |
-| **Claude Code** | Terminal | Backend fixes, sanity-test mode-awareness, repo hygiene | CC-017 repo hygiene | ✅ Active |
-| **Codex #2** | CLI | UI wiring, /diagnostics panel, dist guard | CX-016 diagnostics dashboard (merged `21728664`) | ✅ Delivered |
+| **Claude Code** | Terminal | Backend fixes, Remotion E2E, repo hygiene | CC-019 backend (M8), next: M9 Remotion E2E | ✅ Active |
+| **Codex #2** | CLI | UI wiring, /diagnostics panel, platform toggles | CX-017 PlatformToggle.tsx (merged `16cf32c9`) | ⏸️ Waiting for M9/M10 UI tickets |
 | **Antigravity** | CI/Testing | 5-gate verification receipts, QA proofs | AG-014 signed, CX-016 fast-merge approved | ✅ Delivered |
 | **GitHub Copilot** | VS Code | Inline autocomplete | Original pipeline scaffold | 💤 Passive |
 
@@ -240,8 +259,8 @@ just validate-env         # 28-key env audit with masked previews
 | HO-003 | 🟡 MEDIUM | Set LINEAR_API_KEY + enable Linear↔GitHub | Pending |
 | HO-004 | 🟡 MEDIUM | Verify Netlify Dashboard build settings match `netlify.toml` | Pending |
 | HO-005 | 🟢 LOW | Set NETLIFY_AUTH_TOKEN in GitHub Actions secrets (for CI) | When CI is set up |
-| HO-006 | 🟢 LOW | Add ELEVENLABS_API_KEY to Netlify (Voice agent) | When ready for real narration |
-| HO-007 | 🟢 LOW | Add Remotion Lambda AWS env vars | When ready for video rendering |
+| HO-006 | � HIGH | Add ELEVENLABS_API_KEY to Netlify (Voice agent) | **M9 blocker** — needed for real narration |
+| HO-007 | � HIGH | Add Remotion Lambda AWS env vars (see `docs/ENV-REMOTION.md`) | **M9 blocker** — needed for real rendering |
 
 ---
 
@@ -327,6 +346,8 @@ just validate-env         # 28-key env audit with masked previews
 | v3.0.0 | 2026-02-28 | Windsurf/Cascade (Acting Master) | Control plane, split verdicts, repo hygiene, local fixes |
 | v3.1.0 | 2026-03-02 | Windsurf/Cascade (Acting Master) | M7 backend: control-plane.ts + AG-014 receipt + YouTube policy |
 | v3.2.0 | 2026-03-02 | Windsurf/Cascade + Codex #2 | M7 complete: /diagnostics UI + SystemStatusEmblem + fast merge |
+| v3.3.0 | 2026-03-03 | Windsurf/Cascade + Codex #2 + Claude Code | M8 complete: PlatformToggle.tsx (CX-017) + CC-019 backend + frozen at `0d220f72` |
+| v3.4.0 | 2026-03-04 | Windsurf/Cascade (Acting Master) | M8 FROZEN. M9/M10 prep: readiness checker, ENV-REMOTION.md, agent briefs, scope decisions |
 
 ---
 

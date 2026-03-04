@@ -1,0 +1,164 @@
+# AGENT-OPS.md — SirTrav A2A Studio Agent Operations
+
+**Version:** 1.0.0
+**Last Updated:** 2026-03-04
+**Signed by:** Windsurf/Cascade (Acting Master, WSP001)
+
+---
+
+## Current State
+
+- **M8:** ✅ FROZEN at `0d220f72` — do NOT re-open without a bug ticket
+- **M9:** 🔴 Blocked on HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs)
+- **M10:** 📋 Scoped to X + YouTube only; Instagram/TikTok parked
+- **Source of truth:** `c:\WSP001\SirTrav-A2A-Studio` on `main`
+
+---
+
+## Next CLI Actions (per agent)
+
+### Master (Windsurf/Cascade)
+
+**Scope:** Coordination, milestones, cross-repo awareness.
+
+```bash
+git pull origin main
+just cockpit
+# Review MASTER.md M9/M10; M8 is DONE at 0d220f72.
+```
+
+**Standing order:**
+> M8 is CLOSED at `0d220f72`. Nobody touches `PlatformToggle.tsx` or `ResultsPreview.tsx` without a bug ticket. All new work is M9 (Remotion) or M10 (Engagement Loop), both blocked on real keys from Human-Ops.
+
+---
+
+### Human-Ops (Scott / WSP001)
+
+**Scope:** Unblock M9/M10 with real credentials.
+
+**For M9 (Remotion E2E video):**
+
+1. Follow `docs/ENV-REMOTION.md` to deploy Remotion Lambda
+2. Set in Netlify Dashboard (never in code):
+   - `REMOTION_SERVE_URL`
+   - `REMOTION_FUNCTION_NAME`
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+3. Set `ELEVENLABS_API_KEY` in Netlify Dashboard (HO-006)
+
+**For M10 (Engagement Loop):**
+
+- M10 scope = **X + YouTube only**
+- Instagram + TikTok are **PARKED** until keys and compliance are ready
+
+**After keys are set, announce to agents:**
+> "M9 is now UNBLOCKED: Remotion keys are present in Netlify env. M10 remains blocked for Instagram/TikTok; only X + YouTube are in scope."
+
+---
+
+### Claude Code (Backend / Remotion — M9)
+
+**Scope:** M9 Remotion readiness and E2E video test.
+
+```bash
+git pull origin main
+just cockpit
+cat MASTER.md               # Focus on M9 section
+node scripts/m9-readiness-check.mjs
+```
+
+**Task: Implement E2E dry-run for Remotion**
+
+Build or finish `scripts/test-remotion-e2e.mjs` that:
+
+- Calls Remotion Lambda client through `lib/remotion-client.ts`
+- Uses a safe test `projectId` (e.g., `e2e-test-{timestamp}`)
+- Renders IntroSlate composition with default props
+- Returns clear pass/fail without touching social publish
+- Handles fallback mode gracefully (reports it, doesn't fake success)
+
+**Gate before merge:**
+
+```bash
+npm run build
+just sanity-test-local
+just control-plane-gate
+```
+
+**Commit message pattern:**
+
+```bash
+git commit -m "feat(m9): add Remotion E2E dry-run and readiness checks"
+```
+
+---
+
+### Codex #2 (Frontend / UX)
+
+**Scope:** Only touch UI when there is a clear ticket.
+
+**Rules:**
+
+- ⛔ No more M8 work — `PlatformToggle.tsx` and `ResultsPreview.tsx` are frozen
+- Wait for M9/M10 UI tickets before starting any work
+
+**Future tasks (once M9 keys exist):**
+
+- Add M9 "status pill" in ResultsPreview to show Remotion health
+- M10 UI for engagement reporting (only when `check-x-engagement` and keys exist)
+
+```bash
+git pull origin main
+just cockpit
+# Work in feature branch only when ticket exists
+```
+
+---
+
+### Antigravity (QA / Truth Serum)
+
+**Scope:** Keep milestones honest; run gates.
+
+```bash
+git pull origin main
+npm run build
+just sanity-test-local
+just control-plane-gate
+```
+
+**Verify:**
+
+- M8 checklist all ✅ (already done once)
+- M9 readiness report is honest: "M9 BLOCKED: Remotion keys missing" until Human-Ops fixes it
+- After keys exist, E2E dry-run passes
+
+**Standing order:**
+> Do NOT mark M9 as DONE until the E2E dry-run script reports success and control-plane sees Remotion health as ok.
+
+---
+
+## SeaTrace003 (Business Repo)
+
+**Rules:**
+
+- Do NOT re-push old cockpit to `origin/main` yet
+- Master will decide how to re-attach 5x5 protocol to new vessel code
+- Work only on feature branches that don't change governance (`cockpit/`, `AGENT-OPS.md`) for now
+
+---
+
+## SirTrav Copies — Source of Truth
+
+| Location | Role |
+|----------|------|
+| `c:\WSP001\SirTrav-A2A-Studio` | **WRITE** — only active workspace |
+| `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio` | Archive / read-only |
+| `C:\Users\Roberto002\OneDrive\Sir James\SirTrav-A2A-Studio` | Archive / read-only |
+
+**Rule:** No agent pushes from any copy except `WSP001`.
+
+---
+
+*This file is the agent operating manual. All agents read this before starting work.*
+
+**For the Commons Good** 🎬

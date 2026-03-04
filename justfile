@@ -114,6 +114,17 @@ remotion-studio:
     @echo "🎬 Opening Remotion Studio..."
     npx remotion studio
 
+# M9 readiness check (env vars, deps, architecture)
+m9-check:
+    @echo "🔍 M9 Readiness Check..."
+    node scripts/m9-readiness-check.mjs
+
+# M9 E2E dry-run (readiness + Remotion test)
+m9-e2e:
+    @echo "🎬 M9 E2E Dry-Run..."
+    node scripts/m9-readiness-check.mjs
+    node scripts/test-remotion-e2e.mjs
+
 # Test motion graphic generation
 motion-test:
     @echo "🎬 Testing Motion Graphic Agent..."
@@ -322,7 +333,9 @@ help:
     @echo "  just dev            - Start Netlify dev server"
     @echo "  just build          - Build for production"
     @echo ""
-    @echo "Remotion:"
+    @echo "Remotion / M9:"
+    @echo "  just m9-check        - M9 readiness check (env, deps, arch)"
+    @echo "  just m9-e2e          - M9 E2E dry-run (readiness + render test)"
     @echo "  just remotion-studio - Open composition preview"
     @echo "  just motion-test     - Test motion graphic agent"
     @echo "  just narrate-test    - Test writer agent"
