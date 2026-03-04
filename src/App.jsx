@@ -46,6 +46,13 @@ function App() {
   const [systemHealth, setSystemHealth] = useState(null); // live health status
   const [heroVisible, setHeroVisible] = useState(false);
   const [selectedPublishTargets, setSelectedPublishTargets] = useState(ALL_PUBLISH_TARGETS);
+  const [publishTargetAvailability, setPublishTargetAvailability] = useState({
+    x: true,
+    linkedin: true,
+    youtube: true,
+    instagram: true,
+    tiktok: true,
+  });
 
   // Fetch live system health on mount
   useEffect(() => {
@@ -54,6 +61,29 @@ function App() {
       .then(r => r.json())
       .then(data => setSystemHealth(data))
       .catch(() => setSystemHealth({ status: 'offline' }));
+
+    fetch('/.netlify/functions/control-plane')
+      .then(r => r.json())
+      .then(data => {
+        const publishers = Array.isArray(data?.publishers) ? data.publishers : [];
+        const next = {
+          x: false,
+          linkedin: false,
+          youtube: false,
+          instagram: false,
+          tiktok: false,
+        };
+        for (const p of publishers) {
+          if (p?.platform === 'x') next.x = !!p.enabled;
+          if (p?.platform === 'linkedin') next.linkedin = !!p.enabled;
+          if (p?.platform === 'youtube') next.youtube = !!p.enabled;
+        }
+        setPublishTargetAvailability(next);
+        setSelectedPublishTargets(prev => prev.filter(t => next[t] !== false));
+      })
+      .catch(() => {
+        // Keep permissive defaults if control-plane isn't reachable in local mode.
+      });
   }, []);
 
   // File drop handler
@@ -83,6 +113,13 @@ function App() {
   // REAL pipeline execution - calls backend agents
   const runPipeline = async () => {
     if (files.length === 0) return;
+
+    const effectiveTargets = selectedPublishTargets.filter(t => publishTargetAvailability[t] !== false);
+    if (effectiveTargets.length === 0) {
+      setToast({ message: 'No configured publish platforms available. Set API keys first.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
 
     setPipelineStatus('running');
     const newRunId = `run-${Date.now()}`;
@@ -133,7 +170,7 @@ function App() {
           projectId,
           runId: newRunId,
           platform: targetPlatform,
-          publishTargets: selectedPublishTargets,
+          publishTargets: effectiveTargets,
           brief: {
             mood: 'reflective',
             pace: videoLength === 'short' ? 'fast' : 'medium',
@@ -149,7 +186,7 @@ function App() {
             projectMode: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'business_public' : 'commons_public',
             socialPlatform: targetPlatform,
             outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
-            publishTargets: selectedPublishTargets,
+            publishTargets: effectiveTargets,
             musicMode,
             manualMusicFile: musicMode === 'manual' ? files.find(f => f.type.startsWith('audio/'))?.name : undefined,
             // 🎯 MG-002: Pass U2A Preferences in payload too for explicit agent handling
@@ -195,7 +232,7 @@ function App() {
       invoice: data.artifacts?.invoice, // Extract Invoice for display
       publishTargets: Array.isArray(data.artifacts?.publishTargets) && data.artifacts.publishTargets.length > 0
         ? data.artifacts.publishTargets
-        : selectedPublishTargets,
+        : selectedPublishTargets.filter(t => publishTargetAvailability[t] !== false),
     });
   };
 
@@ -708,10 +745,16 @@ function App() {
                 <div className="grid grid-cols-3 gap-2">
                   {ALL_PUBLISH_TARGETS.map((target) => {
                     const selected = selectedPublishTargets.includes(target);
+                    const configured = publishTargetAvailability[target] !== false;
                     return (
                       <button
                         key={target}
                         onClick={() => {
+                          if (!configured) {
+                            setToast({ message: `${target} is not configured. Add platform credentials first.`, type: 'error' });
+                            setTimeout(() => setToast(null), 3000);
+                            return;
+                          }
                           setSelectedPublishTargets(prev => {
                             if (prev.includes(target)) {
                               const next = prev.filter(x => x !== target);
@@ -720,13 +763,16 @@ function App() {
                             return [...prev, target];
                           });
                         }}
-                        disabled={files.length === 0 || pipelineStatus === 'running'}
-                        className={`px-2 py-1.5 rounded text-xs border transition-colors ${selected
+                        disabled={files.length === 0 || pipelineStatus === 'running' || !configured}
+                        title={configured ? `Publish to ${target}` : `${target} disabled: missing configuration`}
+                        className={`px-2 py-1.5 rounded text-xs border transition-colors ${!configured
+                          ? 'bg-gray-900/50 border-gray-700 text-gray-500 cursor-not-allowed'
+                          : selected
                           ? 'bg-amber-600/30 border-amber-500 text-amber-200'
                           : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200'
                           } ${files.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        {target}
+                        {target} {!configured ? '🔒' : ''}
                       </button>
                     );
                   })}
@@ -934,6 +980,13 @@ function App() {
                       <button className="social-btn twitter">
                         <Twitter className="w-5 h-5" />
                         <span>X (Twitter)</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </button>
+                    )}
+                    {activePublishTargets.includes('linkedin') && (
+                      <button className="social-btn linkedin">
+                        <span className="text-lg">💼</span>
+                        <span>LinkedIn</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                       </button>
                     )}
