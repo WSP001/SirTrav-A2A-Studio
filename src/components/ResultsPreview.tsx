@@ -333,31 +333,25 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
 
         {/* Cost Plus Invoice — rendered when real pipeline data is available */}
         {result.invoice && (
-          <div style={{
-            margin: '16px 0',
-            padding: '12px 16px',
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            borderRadius: '10px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div className="invoice-container">
+            <div className="invoice-header">
+              <span className="invoice-title">
                 💰 Cost Plus Invoice
               </span>
-              <span style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace' }}>{result.invoice.jobId}</span>
+              <span className="invoice-job-id">{result.invoice.jobId}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: 8, textAlign: 'center' }}>
-                <p style={{ fontSize: 10, color: '#6ee7b7', marginBottom: 2 }}>Subtotal</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#a7f3d0', fontFamily: 'monospace' }}>${result.invoice.subtotal.toFixed(3)}</p>
+            <div className="invoice-grid">
+              <div className="invoice-item">
+                <p className="invoice-item-label">Subtotal</p>
+                <p className="invoice-item-value">${result.invoice.subtotal.toFixed(3)}</p>
               </div>
-              <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: 8, textAlign: 'center' }}>
-                <p style={{ fontSize: 10, color: '#6ee7b7', marginBottom: 2 }}>Markup (20%)</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#a7f3d0', fontFamily: 'monospace' }}>${result.invoice.markupTotal.toFixed(3)}</p>
+              <div className="invoice-item">
+                <p className="invoice-item-label">Markup (20%)</p>
+                <p className="invoice-item-value">${result.invoice.markupTotal.toFixed(3)}</p>
               </div>
-              <div style={{ padding: '8px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, textAlign: 'center' }}>
-                <p style={{ fontSize: 10, color: '#34d399', fontWeight: 700, marginBottom: 2 }}>TOTAL</p>
-                <p style={{ fontSize: 14, fontWeight: 800, color: '#ecfdf5', fontFamily: 'monospace' }}>${result.invoice.totalDue.toFixed(3)}</p>
+              <div className="invoice-item-total">
+                <p className="invoice-total-label">TOTAL</p>
+                <p className="invoice-total-value">${result.invoice.totalDue.toFixed(3)}</p>
               </div>
             </div>
           </div>

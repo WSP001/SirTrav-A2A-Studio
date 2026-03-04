@@ -288,6 +288,7 @@
   font-family: inherit;
   resize: vertical;
   transition: all 0.3s ease;
+  box-sizing: border-box; /* Fix: Prevent width overflow from padding */
 }
 
 .feedback-comments textarea:focus {
@@ -459,6 +460,92 @@
   .video-metadata {
     padding: 12px 20px;
     gap: 12px;
+  }
+}
+
+/* Invoice Section */
+.invoice-container {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.invoice-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoice-job-id {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: monospace;
+}
+
+.invoice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.invoice-item {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.invoice-item-total {
+  padding: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.invoice-item-label {
+  font-size: 10px;
+  color: #6ee7b7;
+  margin-bottom: 2px;
+}
+
+.invoice-item-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a7f3d0;
+  font-family: monospace;
+}
+
+.invoice-total-label {
+  font-size: 10px;
+  color: #34d399;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.invoice-total-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ecfdf5;
+  font-family: monospace;
+}
+
+/* Fix: Make Invoice grid stack on mobile */
+@media (max-width: 480px) {
+  .invoice-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 
