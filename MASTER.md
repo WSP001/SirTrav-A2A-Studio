@@ -330,7 +330,13 @@ just validate-env         # 28-key env audit with masked previews
 | `docs/LINKEDIN_SETUP.md` | LinkedIn OAuth setup |
 | `docs/POSTMAN-POSTBOT.md` | Postman + Postbot SOP |
 | `docs/BRANCH_ARCHIVE_CC017.md` | Archived branch metadata |
+| `AGENT-OPS.md` | Per-agent CLI handoff + operating rules |
+| `docs/ENV-REMOTION.md` | Human-Ops: Remotion Lambda key setup |
+| `docs/AGENT-METRICS.md` | Agent teamwork quantification (Five Rings) |
 | `plans/AGENT_ASSIGNMENTS.md` | Completed task log |
+| `plans/HANDOFF_CLAUDECODE_M9.md` | M9 Claude Code brief (Remotion E2E) |
+| `plans/HANDOFF_CLAUDECODE_CC-M9-CP.md` | CC-M9-CP: Add Remotion to control-plane |
+| `plans/HANDOFF_CODEX2_CX-018.md` | CX-018: Render Pipeline UI in Diagnostics |
 | `.env.example` | v3.0.0 env template with scope labels |
 
 ---
