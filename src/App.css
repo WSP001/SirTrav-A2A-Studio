@@ -842,6 +842,11 @@ body {
   border-color: rgba(29, 161, 242, 0.4);
 }
 
+.social-btn.linkedin:hover {
+  background: rgba(10, 102, 194, 0.2);
+  border-color: rgba(10, 102, 194, 0.4);
+}
+
 /* Slide Up Animation */
 .animate-slide-up {
   animation: slide-up 0.5s ease-out;
