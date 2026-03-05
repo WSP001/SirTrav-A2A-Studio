@@ -97,14 +97,19 @@ git commit -m "feat(m9): add Remotion E2E dry-run and readiness checks"
 
 **Scope:** Only touch UI when there is a clear ticket.
 
+**Active ticket:** CX-018 — Add "Render Pipeline" section to `DiagnosticsPage.jsx`
+- See `plans/HANDOFF_CODEX2_CX-018.md` for full spec
+- **BLOCKED** on CC-M9-CP (Claude Code adds `remotion` to `/control-plane`)
+- Guard `{data.remotion && ...}` means code can be written now — section won't render until backend ships
+
 **Rules:**
 
 - ⛔ No more M8 work — `PlatformToggle.tsx` and `ResultsPreview.tsx` are frozen
-- Wait for M9/M10 UI tickets before starting any work
+- ⚠️ **READ BEFORE WRITE** — always `cat` the real file before citing line numbers or code. Codex #2's M9 map (2026-03-04) had 12/13 citations wrong, 3 fabricated function names. The flow logic was correct but code details were hallucinated. This is not acceptable for production edits.
+- Only edit `src/pages/DiagnosticsPage.jsx` for CX-018 — no other files
 
-**Future tasks (once M9 keys exist):**
+**Future tasks (after CX-018):**
 
-- Add M9 "status pill" in ResultsPreview to show Remotion health
 - M10 UI for engagement reporting (only when `check-x-engagement` and keys exist)
 
 ```bash
