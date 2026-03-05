@@ -53,6 +53,16 @@ interface ControlPlaneResponse {
   };
   services: ServiceStatus[];
   publishers: PublisherStatus[];
+  remotion: {
+    configured: boolean;
+    mode: 'real' | 'fallback' | 'disabled';
+    serveUrl: boolean;
+    functionName: boolean;
+    awsKeys: boolean;
+    region: string | null;
+    compositions: number;
+    blocker: string | null;
+  };
   verdict: {
     local: VerdictColor;
     cloud: VerdictColor;
@@ -212,7 +222,7 @@ function checkPipeline(): ControlPlaneResponse['pipeline'] {
 
 // ── Verdict ──────────────────────────────────────────────────────────────────
 
-function computeVerdict(services: ServiceStatus[], publishers: PublisherStatus[]): ControlPlaneResponse['verdict'] {
+function computeVerdict(services: ServiceStatus[], publishers: PublisherStatus[], remotion: ControlPlaneResponse['remotion']): ControlPlaneResponse['verdict'] {
   const reasons: string[] = [];
   const context = process.env.CONTEXT || 'dev';
   const isLocal = context !== 'production' && context !== 'deploy-preview';
@@ -231,6 +241,10 @@ function computeVerdict(services: ServiceStatus[], publishers: PublisherStatus[]
   // Publisher checks
   const enabledPubs = publishers.filter(p => p.enabled).length;
   reasons.push(`publishers=${enabledPubs}/3`);
+
+  // Remotion render pipeline
+  if (remotion.configured) reasons.push('remotion=real');
+  else reasons.push(`remotion=${remotion.mode}`);
 
   // Local verdict: storage timeout is acceptable, AI must work
   let local: VerdictColor = 'GREEN';
@@ -277,6 +291,38 @@ function getProof(): ControlPlaneResponse['proof'] {
   return { metricsFiles, ledgerEntries, lastRunId };
 }
 
+// ── Remotion Render Pipeline ─────────────────────────────────────────────────
+
+function checkRemotion(): ControlPlaneResponse['remotion'] {
+  const serveUrl = !!process.env.REMOTION_SERVE_URL;
+  const functionName = !!process.env.REMOTION_FUNCTION_NAME;
+  const awsKeys = !!process.env.AWS_ACCESS_KEY_ID && !!process.env.AWS_SECRET_ACCESS_KEY;
+  const region = process.env.REMOTION_REGION || null;
+  const configured = serveUrl && functionName && awsKeys;
+
+  let mode: 'real' | 'fallback' | 'disabled';
+  let blocker: string | null = null;
+
+  if (configured) {
+    mode = 'real';
+  } else if (serveUrl || functionName) {
+    mode = 'fallback';
+    const missing: string[] = [];
+    if (!serveUrl) missing.push('REMOTION_SERVE_URL');
+    if (!functionName) missing.push('REMOTION_FUNCTION_NAME');
+    if (!awsKeys) missing.push('AWS keys');
+    blocker = 'Partial config: missing ' + missing.join(', ');
+  } else {
+    mode = 'disabled';
+    blocker = 'HO-007: No Remotion keys configured — see docs/ENV-REMOTION.md';
+  }
+
+  // 4 compositions registered in src/remotion/Root.tsx
+  const compositions = 4;
+
+  return { configured, mode, serveUrl, functionName, awsKeys, region, compositions, blocker };
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export default async (req: Request) => {
@@ -298,7 +344,8 @@ export default async (req: Request) => {
     const socialStatus = checkSocial();
     const services = [storageStatus, aiStatus, progressStatus, socialStatus];
     const publishers = getPublisherStatus();
-    const verdict = computeVerdict(services, publishers);
+    const remotion = checkRemotion();
+    const verdict = computeVerdict(services, publishers, remotion);
     const proof = getProof();
 
     const response: ControlPlaneResponse = {
@@ -307,6 +354,7 @@ export default async (req: Request) => {
       pipeline,
       services,
       publishers,
+      remotion,
       verdict,
       proof,
       youtube_link_policy: {
