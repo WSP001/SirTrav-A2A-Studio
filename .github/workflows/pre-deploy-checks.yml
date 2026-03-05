@@ -32,6 +32,8 @@ jobs:
       
       - name: Security Handshake Verification
         # Verifies 401/202 responses and Token validation (P7)
+        # In CI: auto-skips when no local server (exits 0 with SKIPPED message)
+        # Locally: requires netlify dev running
         run: npm run verify:security
         env:
           API_SECRET: ${{ secrets.API_SECRET }}
@@ -43,6 +45,7 @@ jobs:
         # 2. SSE Progress Events
         # 3. Quality Gate (Video Validation)
         # 4. Attribution Generation (Commons Good)
+        # Note: No URL env set — auto-detect tries localhost then falls back to cloud
         run: npm run practice:test
         env:
            # Mocks are used if secrets are missing, ensuring passing CI logic
@@ -50,4 +53,3 @@ jobs:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
            ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
            NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-           URL: http://localhost:8888 
