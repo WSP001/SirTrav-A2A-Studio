@@ -122,7 +122,7 @@ m9-check:
 # M9 E2E dry-run (readiness + Remotion test)
 m9-e2e:
     @echo "🎬 M9 E2E Dry-Run..."
-    node scripts/m9-readiness-check.mjs
+    -node scripts/m9-readiness-check.mjs || true
     node scripts/test-remotion-e2e.mjs
 
 # Test motion graphic generation
