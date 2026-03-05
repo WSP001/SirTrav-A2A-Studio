@@ -34,7 +34,7 @@
 - [ ] `YOUTUBE_CLIENT_SECRET` — YouTube OAuth (netlify)
 - [ ] `YOUTUBE_REFRESH_TOKEN` — YouTube publishing (netlify)
 - [ ] `REMOTION_SERVE_URL` — Remotion Lambda rendering (netlify)
-- [ ] `REMOTION_AWS_REGION` — Remotion Lambda region (netlify)
+- [ ] `REMOTION_REGION` — Remotion Lambda region (netlify)
 
 ## Open Pull Requests
 - [x] No open PRs — board is clean
