@@ -1,6 +1,6 @@
 # AGENT-OPS.md — SirTrav A2A Studio Agent Operations
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last Updated:** 2026-03-04
 **Signed by:** Windsurf/Cascade (Acting Master, WSP001)
 
@@ -75,6 +75,14 @@ just cockpit
 
 **Both tickets verified by Master at `a3362ff1` on main.**
 
+**Ticket 3: CC-M9-METRICS** — 🟢 READY (not blocked on keys)
+- Wire real-time `runningCost` + `elapsedMs` into SSE progress events
+- Add `getRunningTotal()` to `ManifestGenerator` in `lib/cost-manifest.ts`
+- Fix `compositions: 4` → `7` in `checkRemotion()`
+- See `plans/HANDOFF_CLAUDECODE_CC-M9-METRICS.md`
+- Files: `run-pipeline-background.ts`, `lib/cost-manifest.ts`, `control-plane.ts`
+- ⛔ Do NOT edit any `src/` files — that's Codex #2's domain
+
 **Future work (when HO-007 keys arrive):**
 - Verify `just m9-e2e` reports REAL mode (not FALLBACK)
 - No code changes needed — auto-upgrades when keys present
@@ -98,7 +106,12 @@ just cockpit
 - ⚠️ **READ BEFORE WRITE** — always `cat` the real file before citing line numbers or code. Codex #2's M9 map (2026-03-04) had 12/13 citations wrong, 3 fabricated function names. The flow logic was correct but code details were hallucinated. This is not acceptable for production edits.
 - Only edit `src/pages/DiagnosticsPage.jsx` for CX-018 — no other files
 
-**Future tasks (after CX-018):**
+**Next ticket (after CX-018):** CX-019 — Wire Metrics Panel to Live Pipeline Cost + Time
+- Phase 1 (no dependency): Wire `data.artifacts.invoice` into `setMetrics` in `handlePipelineComplete`
+- Phase 2 (after CC-M9-METRICS): Read `runningCost` from SSE events in `PipelineProgress.tsx`
+- See `plans/HANDOFF_CODEX2_CX-019.md`
+
+**Future tasks (after CX-019):**
 
 - M10 UI for engagement reporting (only when `check-x-engagement` and keys exist)
 

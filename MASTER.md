@@ -338,6 +338,8 @@ just validate-env         # 28-key env audit with masked previews
 | `plans/HANDOFF_CLAUDECODE_CC-M9-CP.md` | CC-M9-CP: Add Remotion to control-plane |
 | `plans/HANDOFF_CODEX2_CX-018.md` | CX-018: Render Pipeline UI in Diagnostics |
 | `plans/HANDOFF_NETLIFY_AGENT.md` | Netlify Agent: deploy + cloud verification |
+| `plans/HANDOFF_CLAUDECODE_CC-M9-METRICS.md` | CC-M9-METRICS: Real-time cost in SSE events |
+| `plans/HANDOFF_CODEX2_CX-019.md` | CX-019: Wire metrics panel to pipeline cost |
 | `.env.example` | v3.0.0 env template with scope labels |
 
 ---
