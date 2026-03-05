@@ -270,7 +270,7 @@ function testEnvKeys() {
     { key: 'LINKEDIN_ACCESS_TOKEN',req: false, group: 'social' },
     { key: 'YOUTUBE_CLIENT_ID',    req: false, group: 'social' },
     { key: 'REMOTION_SERVE_URL',   req: false, group: 'remotion' },
-    { key: 'REMOTION_REGION',  req: false, group: 'remotion' },
+    { key: 'REMOTION_REGION',      req: false, group: 'remotion' },
   ];
 
   for (const k of keys) {

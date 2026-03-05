@@ -2118,7 +2118,7 @@ env-diff:
             'TWITTER_API_KEY', 'TWITTER_ACCESS_TOKEN', \
             'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_ACCESS_TOKEN', \
             'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', \
-            'REMOTION_SERVE_URL', 'REMOTION_AWS_REGION', \
+            'REMOTION_SERVE_URL', 'REMOTION_REGION', \
             'LINEAR_API_KEY', 'MCP_SECRET_TOKEN', \
         ]; \
         console.log('  KEY                         LOCAL   CLOUD'); \

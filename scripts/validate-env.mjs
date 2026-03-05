@@ -38,7 +38,7 @@ const KEYS = [
 
   // Remotion Lambda
   { name: 'REMOTION_SERVE_URL',      importance: 'optional', group: 'remotion',       note: 'Deployed Remotion bundle URL' },
-  { name: 'REMOTION_REGION',     importance: 'optional', group: 'remotion',       note: 'AWS region for Lambda' },
+  { name: 'REMOTION_REGION',         importance: 'optional', group: 'remotion',       note: 'AWS region for Lambda (canonical; REMOTION_AWS_REGION deprecated)' },
   { name: 'AWS_ACCESS_KEY_ID',       importance: 'optional', group: 'remotion',       note: 'AWS credentials for S3/Lambda' },
   { name: 'AWS_SECRET_ACCESS_KEY',   importance: 'optional', group: 'remotion',       note: 'AWS credentials for S3/Lambda' },
 

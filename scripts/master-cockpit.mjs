@@ -85,7 +85,7 @@ function checkEnvVars() {
     { key: 'YOUTUBE_CLIENT_SECRET', scope: 'netlify', purpose: 'YouTube OAuth' },
     { key: 'YOUTUBE_REFRESH_TOKEN', scope: 'netlify', purpose: 'YouTube publishing' },
     { key: 'REMOTION_SERVE_URL', scope: 'netlify', purpose: 'Remotion Lambda rendering' },
-    { key: 'REMOTION_REGION', scope: 'netlify', purpose: 'Remotion Lambda region' },
+    { key: 'REMOTION_REGION', scope: 'netlify', purpose: 'Remotion Lambda region (canonical)' },
   ];
 
   const envPath = resolve(ROOT, '.env');
