@@ -44,6 +44,146 @@ create-dirs:
     @echo "✅ Directories ready!"
 
 # ============================================
+# 🎯 M9 AGENT ORIENTATION (Token-Efficient)
+# ============================================
+# Each agent runs ONE command to get full context for M9.
+# Saves tokens: no need to cat 5+ files manually.
+# Pattern: orient-{agent}-m9 → shows status, files, gates, blockers
+# ============================================
+
+# Claude Code M9 orientation — shows both tickets + dependency status
+orient-claude-m9:
+    @echo "🔧 CLAUDE CODE — M9 ORIENTATION"
+    @echo "════════════════════════════════════"
+    @echo ""
+    @echo "TICKET 1: CC-M9-CP (Control Plane Remotion Status)"
+    @if (Select-String -Path netlify/functions/control-plane.ts -Pattern "checkRemotion" -Quiet) { echo "  ✅ DELIVERED — checkRemotion() in control-plane.ts (2e4fdd50)" } else { echo "  ❌ NOT YET — see plans/HANDOFF_CLAUDECODE_CC-M9-CP.md" }
+    @echo ""
+    @echo "TICKET 2: CC-M9-E2E (Remotion E2E Dry-Run)"
+    @if (Test-Path scripts/test-remotion-e2e.mjs) { echo "  ✅ DELIVERED — scripts/test-remotion-e2e.mjs (a3362ff1)" } else { echo "  ❌ NOT YET — see plans/HANDOFF_CLAUDECODE_M9.md" }
+    @echo ""
+    @echo "GATES:"
+    @echo "  npm run build"
+    @echo "  just sanity-test-local"
+    @echo "  just control-plane-gate"
+    @echo "  just m9-e2e"
+    @echo ""
+    @echo "NEXT: Both tickets DONE. Await Master review."
+
+# Codex #2 M9 orientation — shows CX-018 status + blocker check
+orient-codex-m9:
+    @echo "🎨 CODEX #2 — M9 ORIENTATION"
+    @echo "════════════════════════════════════"
+    @echo ""
+    @echo "TICKET: CX-018 (Render Pipeline in DiagnosticsPage)"
+    @echo "  File: src/pages/DiagnosticsPage.jsx ONLY"
+    @echo "  Spec: plans/HANDOFF_CODEX2_CX-018.md"
+    @echo ""
+    @echo "BLOCKER CHECK (CC-M9-CP):"
+    @if (Select-String -Path netlify/functions/control-plane.ts -Pattern "checkRemotion" -Quiet) { echo "  ✅ UNBLOCKED — /control-plane has remotion object" } else { echo "  🔴 BLOCKED — waiting for Claude Code CC-M9-CP" }
+    @echo ""
+    @echo "READ BEFORE WRITE:"
+    @echo "  cat plans/HANDOFF_CODEX2_CX-018.md"
+    @echo "  cat src/pages/DiagnosticsPage.jsx"
+    @echo ""
+    @echo "RULES:"
+    @echo "  ⛔ Do NOT touch PlatformToggle.tsx or ResultsPreview.tsx (M8 frozen)"
+    @echo "  ⛔ Do NOT touch control-plane.ts (backend)"
+    @echo "  ✅ Only edit DiagnosticsPage.jsx"
+    @echo "  ✅ Wrap in {data.remotion && ...} guard"
+    @echo ""
+    @echo "GATES:"
+    @echo "  npm run build"
+    @echo "  just sanity-test-local"
+
+# Antigravity M9 orientation — shows what to verify + commands
+orient-antigravity-m9:
+    @echo "🦅 ANTIGRAVITY — M9 VERIFICATION ORIENTATION"
+    @echo "════════════════════════════════════"
+    @echo ""
+    @echo "ROLE: Validate CC-M9-CP, CC-M9-E2E, and CX-018."
+    @echo "PATTERN: No Fake Success — every ring must report honestly."
+    @echo ""
+    @echo "STATUS CHECK:"
+    @if (Select-String -Path netlify/functions/control-plane.ts -Pattern "checkRemotion" -Quiet) { echo "  ✅ CC-M9-CP: checkRemotion() exists in control-plane.ts" } else { echo "  ❌ CC-M9-CP: NOT delivered yet" }
+    @if (Test-Path scripts/test-remotion-e2e.mjs) { echo "  ✅ CC-M9-E2E: test-remotion-e2e.mjs exists" } else { echo "  ❌ CC-M9-E2E: NOT delivered yet" }
+    @echo ""
+    @echo "VERIFICATION SEQUENCE:"
+    @echo "  1. npm run build"
+    @echo "  2. just sanity-test-local"
+    @echo "  3. just control-plane-gate"
+    @echo "  4. just m9-check"
+    @echo "  5. just m9-e2e"
+    @echo ""
+    @echo "CHECKS:"
+    @echo "  - /control-plane includes remotion block with honest mode"
+    @echo "  - m9-e2e exits 0 (fallback acknowledged, not faked)"
+    @echo "  - DiagnosticsPage shows Render Pipeline (after CX-018)"
+    @echo "  - Control plane + CLI + UI all agree about Remotion state"
+    @echo ""
+    @echo "M9 VERDICT CRITERIA:"
+    @echo "  ✅ ONLY when: CP + CLI + UI agree AND E2E dry-run passes"
+
+# Netlify Agent orientation — deploy + env verification
+orient-netlify:
+    @echo "🌐 NETLIFY AGENT — DEPLOYMENT ORIENTATION"
+    @echo "════════════════════════════════════"
+    @echo ""
+    @echo "ROLE: Deploy, verify cloud health, check env var presence."
+    @echo "SPEC: plans/HANDOFF_NETLIFY_AGENT.md"
+    @echo ""
+    @echo "PRE-DEPLOY GATES:"
+    @echo "  npm run build"
+    @echo "  just sanity-test-local"
+    @echo "  just control-plane-gate"
+    @echo ""
+    @echo "DEPLOY:"
+    @echo "  just deploy-preview    (preview first)"
+    @echo "  just deploy            (production)"
+    @echo ""
+    @echo "POST-DEPLOY VERIFY:"
+    @echo "  just healthcheck-cloud"
+    @echo "  just control-plane-verify-cloud"
+    @echo "  just sanity-test"
+    @echo ""
+    @echo "ENV AUDIT:"
+    @echo "  just validate-env"
+    @echo "  just env-diff"
+    @echo ""
+    @echo "M9 ENV KEYS NEEDED (Human-Ops sets these in Dashboard):"
+    @echo "  REMOTION_SERVE_URL, REMOTION_FUNCTION_NAME"
+    @echo "  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    @echo "  See: docs/ENV-REMOTION.md"
+
+# Human-Ops M9 orientation — what keys to set + where
+orient-human-m9:
+    @echo "👤 HUMAN-OPS — M9 KEY SETUP ORIENTATION"
+    @echo "════════════════════════════════════"
+    @echo ""
+    @echo "M9 IS BLOCKED ON YOU (HO-007). Set these in Netlify Dashboard:"
+    @echo ""
+    @echo "  Required (Remotion Lambda):"
+    @echo "    REMOTION_SERVE_URL       → Lambda bundle URL"
+    @echo "    REMOTION_FUNCTION_NAME   → Lambda function name"
+    @echo "    AWS_ACCESS_KEY_ID        → IAM user key"
+    @echo "    AWS_SECRET_ACCESS_KEY    → IAM user secret"
+    @echo ""
+    @echo "  Optional:"
+    @echo "    REMOTION_REGION          → AWS region (default: us-east-1)"
+    @echo "    ELEVENLABS_API_KEY       → Voice agent (HO-006)"
+    @echo ""
+    @echo "  Guide: docs/ENV-REMOTION.md"
+    @echo ""
+    @echo "AFTER SETTING KEYS:"
+    @echo "  just deploy"
+    @echo "  just healthcheck-cloud"
+    @echo "  just m9-e2e              (should show REAL mode, not FALLBACK)"
+    @echo "  just control-plane-verify-cloud"
+    @echo ""
+    @echo "ANNOUNCE TO AGENTS:"
+    @echo "  M9 is now UNBLOCKED: Remotion keys are present in Netlify env."
+
+# ============================================
 # 🔧 MAINTENANCE
 # ============================================
 

@@ -337,6 +337,7 @@ just validate-env         # 28-key env audit with masked previews
 | `plans/HANDOFF_CLAUDECODE_M9.md` | M9 Claude Code brief (Remotion E2E) |
 | `plans/HANDOFF_CLAUDECODE_CC-M9-CP.md` | CC-M9-CP: Add Remotion to control-plane |
 | `plans/HANDOFF_CODEX2_CX-018.md` | CX-018: Render Pipeline UI in Diagnostics |
+| `plans/HANDOFF_NETLIFY_AGENT.md` | Netlify Agent: deploy + cloud verification |
 | `.env.example` | v3.0.0 env template with scope labels |
 
 ---

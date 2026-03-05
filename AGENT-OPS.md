@@ -1,6 +1,6 @@
 # AGENT-OPS.md — SirTrav A2A Studio Agent Operations
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Last Updated:** 2026-03-04
 **Signed by:** Windsurf/Cascade (Acting Master, WSP001)
 
@@ -60,36 +60,24 @@ just cockpit
 
 **Scope:** M9 Remotion readiness and E2E video test.
 
-```bash
-git pull origin main
-just cockpit
-cat MASTER.md               # Focus on M9 section
-node scripts/m9-readiness-check.mjs
-```
+**Quick start:** `just orient-claude-m9`
 
-**Task: Implement E2E dry-run for Remotion**
+**Ticket 1: CC-M9-CP** — ✅ DELIVERED at `2e4fdd50`
+- Added `checkRemotion()` to `control-plane.ts` (lines 296–323)
+- Wired `remotion` into handler response (line 347)
+- Added `remotion=real|fallback|disabled` to verdict reasons (lines 246–247)
+- Does NOT affect verdict colors (informational only)
 
-Build or finish `scripts/test-remotion-e2e.mjs` that:
+**Ticket 2: CC-M9-E2E** — ✅ DELIVERED at `a3362ff1`
+- Created `scripts/test-remotion-e2e.mjs` (178 lines)
+- Uses IntroSlate composition, reports fallback honestly
+- Fixed `just m9-e2e` recipe to allow readiness check to warn
 
-- Calls Remotion Lambda client through `lib/remotion-client.ts`
-- Uses a safe test `projectId` (e.g., `e2e-test-{timestamp}`)
-- Renders IntroSlate composition with default props
-- Returns clear pass/fail without touching social publish
-- Handles fallback mode gracefully (reports it, doesn't fake success)
+**Both tickets verified by Master at `a3362ff1` on main.**
 
-**Gate before merge:**
-
-```bash
-npm run build
-just sanity-test-local
-just control-plane-gate
-```
-
-**Commit message pattern:**
-
-```bash
-git commit -m "feat(m9): add Remotion E2E dry-run and readiness checks"
-```
+**Future work (when HO-007 keys arrive):**
+- Verify `just m9-e2e` reports REAL mode (not FALLBACK)
+- No code changes needed — auto-upgrades when keys present
 
 ---
 
@@ -97,10 +85,12 @@ git commit -m "feat(m9): add Remotion E2E dry-run and readiness checks"
 
 **Scope:** Only touch UI when there is a clear ticket.
 
+**Quick start:** `just orient-codex-m9`
+
 **Active ticket:** CX-018 — Add "Render Pipeline" section to `DiagnosticsPage.jsx`
 - See `plans/HANDOFF_CODEX2_CX-018.md` for full spec
-- **BLOCKED** on CC-M9-CP (Claude Code adds `remotion` to `/control-plane`)
-- Guard `{data.remotion && ...}` means code can be written now — section won't render until backend ships
+- ✅ **UNBLOCKED** — CC-M9-CP delivered at `2e4fdd50`, `/control-plane` now has `remotion`
+- Guard `{data.remotion && ...}` means section auto-shows when backend is deployed
 
 **Rules:**
 
@@ -124,21 +114,67 @@ just cockpit
 
 **Scope:** Keep milestones honest; run gates.
 
+**Quick start:** `just orient-antigravity-m9`
+
 ```bash
 git pull origin main
 npm run build
 just sanity-test-local
 just control-plane-gate
+just m9-e2e
 ```
 
-**Verify:**
+**M9 Verification checklist:**
 
-- M8 checklist all ✅ (already done once)
-- M9 readiness report is honest: "M9 BLOCKED: Remotion keys missing" until Human-Ops fixes it
-- After keys exist, E2E dry-run passes
+- ✅ CC-M9-CP: `checkRemotion()` exists in `control-plane.ts`
+- ✅ CC-M9-E2E: `test-remotion-e2e.mjs` exits 0 in fallback mode
+- ⏳ CX-018: Render Pipeline section in DiagnosticsPage (Codex #2)
+- ⏳ Three Rings agree: control-plane + CLI + UI show same Remotion state
 
 **Standing order:**
 > Do NOT mark M9 as DONE until the E2E dry-run script reports success and control-plane sees Remotion health as ok.
+
+---
+
+### Netlify Agent (Deployment & Cloud Ops)
+
+**Scope:** Deploy, verify cloud health, audit env var presence.
+
+**Quick start:** `just orient-netlify`
+
+**Spec:** `plans/HANDOFF_NETLIFY_AGENT.md`
+
+**Deploy workflow:**
+
+```bash
+# Pre-deploy gates
+npm run build
+just sanity-test-local
+just control-plane-gate
+
+# Deploy
+just deploy-preview         # Preview first
+just deploy                 # Production
+
+# Post-deploy verify
+just healthcheck-cloud
+just control-plane-verify-cloud
+just sanity-test
+```
+
+**Env audit:**
+
+```bash
+just validate-env            # All 28 keys, required vs optional
+just env-diff                # LOCAL vs CLOUD comparison
+```
+
+**Rules:**
+
+- ⛔ Do NOT modify application code
+- ⛔ Do NOT set env vars — that's Human-Ops
+- ⛔ Do NOT deploy without pre-deploy gates
+- ✅ Report deploy status to Master after each deploy
 
 ---
 
@@ -161,6 +197,20 @@ just control-plane-gate
 | `C:\Users\Roberto002\OneDrive\Sir James\SirTrav-A2A-Studio` | Archive / read-only |
 
 **Rule:** No agent pushes from any copy except `WSP001`.
+
+---
+
+## Token-Efficient Orientation Commands
+
+Every agent runs ONE command at session start to get full M9 context:
+
+| Agent | Command | Tokens Saved |
+|-------|---------|-------------|
+| Claude Code | `just orient-claude-m9` | ~5 file reads |
+| Codex #2 | `just orient-codex-m9` | ~3 file reads |
+| Antigravity | `just orient-antigravity-m9` | ~4 file reads |
+| Netlify Agent | `just orient-netlify` | ~3 file reads |
+| Human-Ops | `just orient-human-m9` | ~2 file reads |
 
 ---
 
