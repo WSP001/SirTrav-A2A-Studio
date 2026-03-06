@@ -1,21 +1,10 @@
-# AI Agents Registry & Best Practices - SirTrav-A2A-Studio
+# AGENTS.md — SirTrav A2A Studio Team Lineup
 
-> **Purpose**: Help all AI agents understand this project, their contributions, and best practices.
-> **Owner**: Roberto002 (WSP001)
-> **Last Updated**: 2026-01-27
-> **Pattern Source**: WSP2agent Golden Path principles
-
----
-
-## 🤖 Agent Directory
-
-| Agent | IDE/Platform | Best For | Memory Persistence |
-|-------|--------------|----------|-------------------|
-| **Windsurf/Cascade** | Windsurf IDE | Full project work, multi-file edits | ✅ Cross-session |
-| **GitHub Copilot** | VS Code | Inline autocomplete | ❌ No memory |
-| **Codex CLI** | Terminal | Automated single tasks | ❌ No memory |
-| **Claude Code** | Terminal/API | Complex reasoning, architecture | ❌ Session only |
-| **Antigravity** | CI/Testing | Test scripts, QA docs | ❌ No memory |
+> **Purpose**: Master registry of all agents, their domains, instruction files, and current task assignments.
+> **Version**: 2.0.0
+> **Owner**: Windsurf/Cascade (Acting Master, WSP001)
+> **Last Updated**: 2026-03-06
+> **Canonical Path**: `c:\WSP001\SirTrav-A2A-Studio`
 
 ---
 
@@ -23,15 +12,174 @@
 
 | Field | Value |
 |-------|-------|
-| **Path** | `c:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio` |
+| **Canonical Path** | `c:\WSP001\SirTrav-A2A-Studio` ← **ALL writes happen here** |
 | **GitHub** | `github.com/WSP001/SirTrav-A2A-Studio` |
-| **Purpose** | Autonomous Agent Architecture for video production |
-| **Stack** | React, Vite, Netlify Functions, Remotion Lambda |
-| **Entry Points** | `just dev`, `netlify dev`, `npm run test:full` |
+| **Purpose** | D2A (Doc-to-Agent) automated video production for the Commons Good |
+| **Stack** | React + Vite + Tailwind (frontend), Netlify Functions (backend), Remotion Lambda (rendering) |
+| **Entry Points** | `just dev`, `just cockpit`, `just --list` |
+| **North Star** | `MASTER.md` — milestones, rules, architecture |
 
 ---
 
-## 🎯 Core Patterns (Shared with WSP2agent)
+## 🤖 Agent Directory & Instruction Files
+
+Every agent reads **two files** on entry:
+
+1. **MASTER.md** — the North Star (milestones, rules, architecture) — everyone reads this
+2. **Their own instruction file** — agent-specific rules and boundaries
+
+| # | Agent | Platform | Instruction File | Domain | Memory |
+|---|-------|----------|-----------------|--------|--------|
+| 0 | **Windsurf/Cascade** (Acting Master) | Windsurf IDE | `MASTER.md` + `AGENT-OPS.md` | Orchestration, justfile, gates, milestones, merges | ✅ Cross-session |
+| 1 | **Claude Code** | Terminal (`claude`) | `CLAUDE.md` | Backend: `netlify/functions/`, `scripts/`, `lib/` | Worktree-scoped |
+| 2 | **Codex #2** | OpenAI Codex CLI | `AGENT-OPS.md` § Codex #2 | Frontend: `src/components/`, `src/pages/` | ❌ Per-session |
+| 3 | **Antigravity** | Gemini CLI / CI | `AGENT-OPS.md` § Antigravity | QA: gates, verification, truth serum | ❌ Per-session |
+| 4 | **Netlify Agent** | CLI / Dashboard | `plans/HANDOFF_NETLIFY_AGENT.md` | Deploy + cloud verification only | ❌ Per-session |
+| 5 | **Human-Ops** (Scott) | Manual | `MASTER.md` § Human-Ops Queue | API keys, credentials, Netlify Dashboard | N/A |
+| 6 | **GitHub Copilot** | VS Code | N/A | Inline autocomplete (passive) | ❌ None |
+
+### About Codex #1 vs Codex #2
+
+- **Codex #2** is the active frontend agent. It delivered CX-016 (Diagnostics UI) and CX-017 (PlatformToggle). Its next ticket is CX-019.
+- **Codex #1** is not currently assigned to this project. If a second Codex instance is needed (e.g., for parallel frontend work or a separate task domain), the Master will create a `plans/HANDOFF_CODEX1_*.md` ticket and add a Codex #1 section to `AGENT-OPS.md`.
+- **Rule**: No agent works without a handoff ticket in `plans/`. No ticket = no work.
+
+### About the Genie (Gemini CLI)
+
+The Genie (Gemini CLI) was used for CX-018 but wandered into the wrong repo copy and produced incorrect code. Lessons learned:
+
+- Genie lacks persistent memory and path awareness
+- Must be given the canonical workspace path explicitly: `c:\WSP001\SirTrav-A2A-Studio`
+- Best used for verification tasks (like Antigravity), not multi-file edits
+- If used again, give it a strict handoff ticket and monitor closely
+
+---
+
+## 📋 Current Task Lineup (as of 2026-03-06)
+
+### Master (Windsurf/Cascade) — ACTIVE
+
+| Priority | Task | Status |
+|----------|------|--------|
+| — | Orchestrate all agents, merge branches, update milestones | Ongoing |
+| — | Create handoff tickets for new work | As needed |
+| DONE | CX-018: Render Pipeline section on DiagnosticsPage | ✅ `91faaae4` |
+| DONE | Merge CC-M9-METRICS into main | ✅ `face3aee` |
+| DONE | Rewrite CLAUDE.md + AGENT-OPS.md v1.3.0 | ✅ `6836785d` |
+| DONE | Sync Documents/GitHub copy | ✅ Both at `6836785d` |
+
+### Claude Code — STANDBY (all M9 tickets delivered)
+
+| Priority | Task | Status |
+|----------|------|--------|
+| DONE | CC-M9-CP: checkRemotion() in control-plane.ts | ✅ `2e4fdd50` |
+| DONE | CC-M9-E2E: test-remotion-e2e.mjs | ✅ `a3362ff1` |
+| DONE | CC-M9-METRICS: SSE cost/time tracking | ✅ `0c37cab9` → `face3aee` |
+| WAIT | Verify `just m9-e2e` in REAL mode | Blocked on HO-007 keys |
+| FUTURE | M10 backend prep | No ticket yet — Master will assign |
+
+**Session start**: `cat CLAUDE.md` then `just orient-claude-m9`
+
+### Codex #2 — READY (CX-019 unblocked)
+
+| Priority | Task | Status |
+|----------|------|--------|
+| DONE | CX-016: Diagnostics UI route | ✅ `21728664` |
+| DONE | CX-017: PlatformToggle.tsx | ✅ `16cf32c9` |
+| **NEXT** | **CX-019 Phase 1: Wire final invoice into metrics panel** | 🟢 UNBLOCKED |
+| NEXT | CX-019 Phase 2: Wire real-time SSE cost into PipelineProgress | 🟢 UNBLOCKED (CC-M9-METRICS delivered) |
+| FUTURE | M10 UI: engagement reporting | No ticket yet |
+
+**Session start**: `just orient-codex-m9` then `cat plans/HANDOFF_CODEX2_CX-019.md`
+
+**Files to edit**: `src/App.jsx`, `src/components/PipelineProgress.tsx`
+**Files NOT to edit**: `PlatformToggle.tsx`, `ResultsPreview.tsx` (M8 frozen), anything in `netlify/functions/`
+
+### Antigravity — WAITING (verification after deploy)
+
+| Priority | Task | Status |
+|----------|------|--------|
+| DONE | AG-014: M7 verification receipt | ✅ Signed |
+| ✅ | CC-M9-CP verified | checkRemotion() exists |
+| ✅ | CC-M9-E2E verified | test-remotion-e2e.mjs exits 0 |
+| ✅ | CX-018 verified | Render Pipeline section exists |
+| ✅ | CC-M9-METRICS verified | SSE cost/time wired |
+| **NEXT** | **Three Rings: control-plane + CLI + UI agree on Remotion state** | ⏳ After deploy |
+
+**Session start**: `just orient-antigravity-m9`
+
+**Verification commands**:
+```bash
+npm run build
+just sanity-test-local
+just control-plane-gate
+just m9-e2e
+```
+
+### Netlify Agent — WAITING (deploy after keys set)
+
+| Priority | Task | Status |
+|----------|------|--------|
+| NEXT | Pre-deploy gates → deploy-preview → deploy → post-deploy verify | ⏳ Blocked on HO-007 |
+
+**Session start**: `just orient-netlify` then `cat plans/HANDOFF_NETLIFY_AGENT.md`
+
+**Deploy sequence**:
+```bash
+npm run build
+just sanity-test-local
+just control-plane-gate
+just deploy-preview
+just deploy
+just healthcheck-cloud
+just control-plane-verify-cloud
+```
+
+### Human-Ops (Scott) — ACTION REQUIRED
+
+| Priority | Task | Status |
+|----------|------|--------|
+| **HIGH** | HO-007: Set Remotion AWS keys in Netlify Dashboard | ⏳ **M9 BLOCKER** |
+| **HIGH** | HO-006: Set ELEVENLABS_API_KEY in Netlify Dashboard | ⏳ **M9 BLOCKER** |
+| DONE | HO-001: Rotate LinkedIn secrets | ✅ Rotated |
+| MEDIUM | HO-003: Set LINEAR_API_KEY + enable Linear↔GitHub | ⏳ Pending |
+| LOW | HO-004: Verify Netlify Dashboard build settings | ⏳ Pending |
+
+**Guide**: `just orient-human-m9` or read `docs/ENV-REMOTION.md`
+
+---
+
+## 🔗 The Harness Chain (Wire-to-Wire)
+
+```
+MASTER.md (North Star — everyone reads this)
+    │
+    ├── CLAUDE.md (Claude Code's instructions)
+    ├── AGENT-OPS.md (all agents' operational rules + tasks)
+    ├── AGENTS.md (THIS FILE — registry + lineup)
+    │
+    ├── plans/HANDOFF_CLAUDECODE_*.md (Claude Code's tickets)
+    ├── plans/HANDOFF_CODEX2_*.md (Codex #2's tickets)
+    ├── plans/HANDOFF_NETLIFY_AGENT.md (Netlify Agent's ticket)
+    │
+    └── justfile (60+ recipes — the operating system)
+        ├── just orient-claude-m9
+        ├── just orient-codex-m9
+        ├── just orient-antigravity-m9
+        ├── just orient-netlify
+        └── just orient-human-m9
+```
+
+Every agent enters through the same door:
+1. Read `MASTER.md` (milestones, rules)
+2. Read their instruction file (boundaries, commands)
+3. Run their `just orient-*` command (current context)
+4. Read their handoff ticket in `plans/` (exact task)
+5. Work → gates → commit → report to Master
+
+---
+
+## 🎯 Core Patterns (All Agents Must Follow)
 
 | Pattern | Description | Implementation |
 |---------|-------------|----------------|
@@ -39,53 +187,39 @@
 | **Click2Kick** | Read Before Execute + prereq check + verification | justfile commands |
 | **Commons Good** | 20% markup on API costs | `cost.markup: 0.20` |
 | **runId Threading** | Trace every agent call | `{ projectId, runId, ...payload }` |
+| **Gate Before Merge** | `npm run build` + `just sanity-test-local` + `just control-plane-gate` | Every commit |
 
 ---
 
-## 🛠️ justfile Commands (NEW)
+## 🛡️ Security Rules (All Agents)
 
-```bash
-# Quick Start
-just init           # First-time setup
-just dev            # Start Netlify dev server
-just build          # Build for production
-
-# Remotion
-just remotion-studio # Open composition preview
-just motion-test     # Test motion graphic agent
-just narrate-test    # Test writer agent
-
-# Social Media (No Fake Success pattern)
-just x-dry          # Test X/Twitter (dry-run)
-just linkedin-dry   # Test LinkedIn (dry-run)
-just youtube-dry    # Test YouTube (dry-run)
-
-# Testing
-just test           # Run all tests
-just golden-path    # Run Golden Path smoke test
-just healthcheck    # Check service status
-
-# Agents
-just claude-init    # Claude Code (init)
-just codex          # Start Codex agent
-
-# Deploy
-just deploy         # Deploy to production
-```
+1. **Never commit secrets** — `.gitignore` includes `.env`, `credentials.json`
+2. **Always dry-run first** — `just x-dry`, `just linkedin-dry`, `just youtube-dry`
+3. **No local FFmpeg in Functions** — Use Remotion Lambda
+4. **Boolean presence checks only** — Never log env var values, only `!!process.env.KEY`
+5. **Canonical workspace only** — Push only from `c:\WSP001\SirTrav-A2A-Studio`
 
 ---
 
-## 📊 Agent Contributions
+## � Agent Contributions (Commit Log)
 
-| Date | Agent | Contribution |
-|------|-------|--------------|
-| 2026-01 | Claude Code | Remotion Lambda architecture |
-| 2026-01 | Claude Code | IntroSlate composition |
-| 2026-01 | Claude Code | MotionGraphicButtons UI |
-| 2026-01-27 | Windsurf/Cascade | justfile (30+ commands) |
-| 2026-01-27 | Windsurf/Cascade | test-linkedin-publish.mjs |
-| 2026-01-27 | Windsurf/Cascade | validate-social-contracts.mjs |
-| 2026-01-27 | Windsurf/Cascade | AGENTS.md (this file) |
+| Date | Agent | Contribution | Commit |
+|------|-------|--------------|--------|
+| 2026-01 | Claude Code | Remotion Lambda architecture | — |
+| 2026-01 | Claude Code | IntroSlate + EmblemComposition | — |
+| 2026-01-27 | Windsurf/Cascade | justfile (30+ commands) | — |
+| 2026-02 | Windsurf/Cascade | Control plane, split verdicts, repo hygiene | v3.0.0 |
+| 2026-03-02 | Windsurf/Cascade | M7 backend: control-plane.ts + AG-014 | `88d7fe69` |
+| 2026-03-02 | Codex #2 | CX-016: Diagnostics UI | `21728664` |
+| 2026-03-03 | Codex #2 | CX-017: PlatformToggle.tsx | `16cf32c9` |
+| 2026-03-03 | Claude Code | CC-019: Editor graceful degradation | `9f076332` |
+| 2026-03-04 | Claude Code | CC-M9-CP: checkRemotion() | `2e4fdd50` |
+| 2026-03-04 | Claude Code | CC-M9-E2E: test-remotion-e2e.mjs | `a3362ff1` |
+| 2026-03-05 | Windsurf/Cascade | CX-018: Render Pipeline section | `91faaae4` |
+| 2026-03-05 | Claude Code | CC-M9-METRICS: SSE cost tracking | `0c37cab9` |
+| 2026-03-05 | Windsurf/Cascade | Merge CC-M9-METRICS | `face3aee` |
+| 2026-03-06 | Windsurf/Cascade | CLAUDE.md rewrite + AGENT-OPS v1.3.0 | `6836785d` |
+| 2026-03-06 | Windsurf/Cascade | AGENTS.md v2.0.0 (this update) | — |
 
 ---
 
@@ -93,56 +227,16 @@ just deploy         # Deploy to production
 
 When starting a new session with ANY agent, provide this context:
 
-```markdown
-## Project Context
-- Project: SirTrav-A2A-Studio
-- Path: c:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio
-- Read: CLAUDE.md, AGENTS.md, plans/AGENT_ASSIGNMENTS.md
-
-## Key Patterns
-- No Fake Success: Disabled services report "disabled", not fake success
-- runId Threading: Always include runId for tracing
-- Commons Good: 20% markup on API costs
-
-## Safe Entrypoints
-- just dev (or: netlify dev)
-- just test
-- just healthcheck
-- node scripts/test-linkedin-publish.mjs --dry-run
+```
+Project: SirTrav-A2A-Studio
+Path: c:\WSP001\SirTrav-A2A-Studio  ← ONLY this path
+Read: MASTER.md, AGENTS.md, AGENT-OPS.md
+Run: just orient-<your-agent>-m9
+Then: cat plans/HANDOFF_<YOUR_AGENT>_<TICKET>.md
 ```
 
 ---
 
-## 🛡️ Security Rules (All Agents)
+*This file is the team registry. All agents read it before starting work.*
 
-1. **Never commit secrets** - Check `.gitignore` includes `.env`, `credentials.json`
-2. **Always dry-run first** - `just x-dry`, `just linkedin-dry`
-3. **No local FFmpeg in Functions** - Use Remotion Lambda
-4. **runId threading** - Every agent call must include runId
-
----
-
-## 📝 Byterover MCP Tools
-
-### 1. `byterover-store-knowledge`
-
-You `MUST` always use this tool when:
-
-- Learning new patterns, APIs, or architectural decisions from the codebase
-- Encountering error solutions or debugging techniques
-- Finding reusable code patterns or utility functions
-- Completing any significant task or plan implementation
-
-### 2. `byterover-retrieve-knowledge`
-
-You `MUST` always use this tool when:
-
-- Starting any new task or implementation to gather relevant context
-- Before making architectural decisions to understand existing patterns
-- When debugging issues to check for previous solutions
-- Working with unfamiliar parts of the codebase
-
----
-
-*This file helps all AI agents understand the project ecosystem and their contributions.*
-*Commons Good: Building tools that benefit the community.*
+**For the Commons Good** 🎬
