@@ -3,7 +3,14 @@
 **Owner:** Netlify Agent (via Netlify Dashboard or CLI)
 **Scope:** Deploy, verify cloud health, audit environment variables
 **Created:** 2026-03-04
-**Status:** ACTIVE — can run after any commit to main
+**Updated:** 2026-03-06 (status correction after reviewing deploy evidence)
+**Status:** BLOCKED — Awaiting Human-Ops "KEYS SET" signal before env-backed redeploy
+
+> **Status correction:** Production deploy already succeeded for current main (36 functions live).
+> This is NOT a first-deploy ticket anymore. Mission changed to:
+> **Environment Variable Redeploy & Cloud Verification.**
+> Remaining risk is runtime configuration, not static deployment.
+> Function env changes require a fresh build+deploy to take effect.
 
 ---
 

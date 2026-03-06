@@ -80,7 +80,7 @@ The Genie (Gemini CLI) was used for CX-018 but wandered into the wrong repo copy
 
 **Session start**: `cat CLAUDE.md` then `just orient-claude-m9`
 
-### Codex #2 — READY (CX-019 unblocked)
+### Codex #2 — ACTIVE (parallel track — decoupled from deployment)
 
 | Priority | Task | Status |
 |----------|------|--------|
@@ -95,7 +95,10 @@ The Genie (Gemini CLI) was used for CX-018 but wandered into the wrong repo copy
 **Files to edit**: `src/App.jsx`, `src/components/PipelineProgress.tsx`
 **Files NOT to edit**: `PlatformToggle.tsx`, `ResultsPreview.tsx` (M8 frozen), anything in `netlify/functions/`
 
-### Antigravity — WAITING (verification after deploy)
+### Antigravity — STANDBY (verification queue)
+
+> **Instruction:** Hold position. Await Netlify Agent's green light on healthcheck-cloud,
+> then immediately run Three Rings verification (control-plane + CLI + UI).
 
 | Priority | Task | Status |
 |----------|------|--------|
@@ -104,11 +107,11 @@ The Genie (Gemini CLI) was used for CX-018 but wandered into the wrong repo copy
 | ✅ | CC-M9-E2E verified | test-remotion-e2e.mjs exits 0 |
 | ✅ | CX-018 verified | Render Pipeline section exists |
 | ✅ | CC-M9-METRICS verified | SSE cost/time wired |
-| **NEXT** | **Three Rings: control-plane + CLI + UI agree on Remotion state** | ⏳ After deploy |
+| **NEXT** | **Three Rings: control-plane + CLI + UI agree on Remotion state** | ⏳ After env-backed redeploy |
 
 **Session start**: `just orient-antigravity-m9`
 
-**Verification commands**:
+**Do NOT run until Netlify Agent confirms healthcheck-cloud passes.** Then:
 ```bash
 npm run build
 just sanity-test-local
@@ -116,23 +119,28 @@ just control-plane-gate
 just m9-e2e
 ```
 
-### Netlify Agent — WAITING (deploy after keys set)
+### Netlify Agent — BLOCKED (pending env-backed redeploy + cloud verify)
+
+> **Status correction (2026-03-06):** Production deploy already exists for current main.
+> Blocker is NOT first deploy. Blocker is HO-006/HO-007 env var confirmation in Netlify Dashboard.
+> Function env changes require a fresh build+deploy to take effect.
 
 | Priority | Task | Status |
 |----------|------|--------|
-| NEXT | Pre-deploy gates → deploy-preview → deploy → post-deploy verify | ⏳ Blocked on HO-007 |
+| DONE | Initial production deploy | ✅ Code is live, 36 functions deployed |
+| **BLOCKED** | **Confirm HO-006 + HO-007 keys in Netlify Dashboard** | ⏳ Waiting on Human-Ops |
+| NEXT | Trigger fresh redeploy after env vars confirmed | ⏳ After KEYS SET signal |
+| NEXT | Post-redeploy: `just healthcheck-cloud` + `just control-plane-verify-cloud` | ⏳ After redeploy |
+| NEXT | `just m9-e2e` — should show REAL mode, not FALLBACK | ⏳ After verify |
 
 **Session start**: `just orient-netlify` then `cat plans/HANDOFF_NETLIFY_AGENT.md`
 
-**Deploy sequence**:
+**Do NOT trigger rebuild until Human-Ops signals "KEYS SET".** Then:
 ```bash
-npm run build
-just sanity-test-local
-just control-plane-gate
-just deploy-preview
-just deploy
+just deploy                          # Fresh build picks up new env vars
 just healthcheck-cloud
 just control-plane-verify-cloud
+just m9-e2e
 ```
 
 ### Human-Ops (Scott) — ACTION REQUIRED
