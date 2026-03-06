@@ -317,8 +317,8 @@ function checkRemotion(): ControlPlaneResponse['remotion'] {
     blocker = 'HO-007: No Remotion keys configured — see docs/ENV-REMOTION.md';
   }
 
-  // 4 compositions registered in src/remotion/Root.tsx
-  const compositions = 4;
+  // 7 compositions registered: IntroSlate, SirTrav-Main, EmblemComposition, EmblemThumbnail, MotionGraphicButtons, WeeklyRecap, EngagementReport
+  const compositions = 7;
 
   return { configured, mode, serveUrl, functionName, awsKeys, region, compositions, blocker };
 }
