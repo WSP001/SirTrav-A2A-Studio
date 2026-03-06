@@ -1,7 +1,7 @@
 # AGENT-OPS.md — SirTrav A2A Studio Agent Operations
 
-**Version:** 1.2.0
-**Last Updated:** 2026-03-04
+**Version:** 1.3.0
+**Last Updated:** 2026-03-06
 **Signed by:** Windsurf/Cascade (Acting Master, WSP001)
 
 ---
@@ -75,13 +75,11 @@ just cockpit
 
 **Both tickets verified by Master at `a3362ff1` on main.**
 
-**Ticket 3: CC-M9-METRICS** — 🟢 READY (not blocked on keys)
-- Wire real-time `runningCost` + `elapsedMs` into SSE progress events
-- Add `getRunningTotal()` to `ManifestGenerator` in `lib/cost-manifest.ts`
-- Fix `compositions: 4` → `7` in `checkRemotion()`
-- See `plans/HANDOFF_CLAUDECODE_CC-M9-METRICS.md`
-- Files: `run-pipeline-background.ts`, `lib/cost-manifest.ts`, `control-plane.ts`
-- ⛔ Do NOT edit any `src/` files — that's Codex #2's domain
+**Ticket 3: CC-M9-METRICS** — ✅ DELIVERED at `0c37cab9`, merged to main at `face3aee`
+- Added `getRunningTotal()` to `ManifestGenerator` in `lib/cost-manifest.ts`
+- Wired `runningCost` + `elapsedMs` into all 7 `updateRun()` calls in `run-pipeline-background.ts`
+- Fixed `compositions: 4` → `7` in `checkRemotion()` (`control-plane.ts`)
+- Worktree: `claude/vigilant-mahavira` — merged by Master (Windsurf/Cascade)
 
 **Future work (when HO-007 keys arrive):**
 - Verify `just m9-e2e` reports REAL mode (not FALLBACK)
@@ -95,10 +93,13 @@ just cockpit
 
 **Quick start:** `just orient-codex-m9`
 
-**Active ticket:** CX-018 — Add "Render Pipeline" section to `DiagnosticsPage.jsx`
-- See `plans/HANDOFF_CODEX2_CX-018.md` for full spec
-- ✅ **UNBLOCKED** — CC-M9-CP delivered at `2e4fdd50`, `/control-plane` now has `remotion`
-- Guard `{data.remotion && ...}` means section auto-shows when backend is deployed
+**Completed ticket:** CX-018 — ✅ DELIVERED at `91faaae4` by Windsurf/Cascade (Acting Master)
+- Render Pipeline (Remotion) section added to `DiagnosticsPage.jsx`
+- Mode badge (emerald/amber/gray), boolean PRESENT/MISSING tiles, blocker banner
+- Version badge bumped CX-016 → CX-018
+- Genie attempted this but edited wrong repo — Master took over and delivered
+
+**Active ticket:** CX-019 — Wire Metrics Panel to Live Pipeline Cost + Time
 
 **Rules:**
 
@@ -141,7 +142,8 @@ just m9-e2e
 
 - ✅ CC-M9-CP: `checkRemotion()` exists in `control-plane.ts`
 - ✅ CC-M9-E2E: `test-remotion-e2e.mjs` exits 0 in fallback mode
-- ⏳ CX-018: Render Pipeline section in DiagnosticsPage (Codex #2)
+- ✅ CX-018: Render Pipeline section in DiagnosticsPage (Master, `91faaae4`)
+- ✅ CC-M9-METRICS: SSE cost/time tracking wired (Claude Code, `0c37cab9`, merged `face3aee`)
 - ⏳ Three Rings agree: control-plane + CLI + UI show same Remotion state
 
 **Standing order:**
