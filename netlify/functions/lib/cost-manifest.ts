@@ -46,6 +46,21 @@ export class ManifestGenerator {
     }
 
     /**
+     * Get running totals without finalizing the manifest.
+     * Used to stream real-time cost data through SSE progress events.
+     */
+    getRunningTotal(): { subtotal: number; markupTotal: number; totalDue: number } {
+        const subtotal = this.items.reduce((sum, item) => sum + item.baseCost, 0);
+        const markupTotal = this.items.reduce((sum, item) => sum + item.markup, 0);
+        const totalDue = this.items.reduce((sum, item) => sum + item.total, 0);
+        return {
+            subtotal: Number(subtotal.toFixed(4)),
+            markupTotal: Number(markupTotal.toFixed(4)),
+            totalDue: Number(totalDue.toFixed(4)),
+        };
+    }
+
+    /**
      * Generate the final Invoice Manifest
      * @param jobId The Run ID
      */

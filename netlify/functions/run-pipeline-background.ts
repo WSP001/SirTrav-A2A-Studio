@@ -60,6 +60,8 @@ async function updateRun(
     artifacts: Record<string, unknown>;
     errors: string[];
     agentResults: Record<string, AgentResult>;
+    runningCost: number;
+    elapsedMs: number;
   }>
 ) {
   const store = runsStore();
@@ -100,6 +102,8 @@ async function updateRun(
     message: patch.message || '',
     timestamp: now,
     progress: patch.progress || 0,
+    runningCost: patch.runningCost,
+    elapsedMs: patch.elapsedMs,
     metadata: {
       step: patch.step,
       agentResults: patch.agentResults ? Object.keys(patch.agentResults) : undefined,
@@ -527,6 +531,8 @@ export const handler: Handler = async (event) => {
       { id: 'demo-1', url: '/test-assets/test-video.mp4' }
     ];
 
+    const startTime = Date.now();
+
     console.log(`\n🚀 ========================================`);
     console.log(`🚀 REAL PIPELINE STARTING: ${projectId}/${runId}`);
     console.log(`🚀 Images: ${images.length}, Mode: ${payload.projectMode || 'commons_public'}`);
@@ -561,6 +567,8 @@ export const handler: Handler = async (event) => {
       step: 'director',
       message: `🎬 Director ${agentResults.director.success ? 'completed' : 'failed'}`,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // ========================================================================
@@ -584,6 +592,8 @@ export const handler: Handler = async (event) => {
       step: 'writer',
       message: `✍️ Writer ${agentResults.writer.success ? 'completed' : 'failed'}`,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // ========================================================================
@@ -618,6 +628,8 @@ export const handler: Handler = async (event) => {
       step: 'production_parallel',
       message: `⚡ Parallel Engine completed. Voice: ${voiceResult.success}, Music: ${composerResult.success}`,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // ========================================================================
@@ -647,6 +659,8 @@ export const handler: Handler = async (event) => {
       step: 'editor',
       message: `🎞️ Editor ${agentResults.editor.success ? 'completed' : 'failed'}`,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // ========================================================================
@@ -669,6 +683,8 @@ export const handler: Handler = async (event) => {
       step: 'attribution',
       message: `📜 Attribution ${agentResults.attribution.success ? 'completed' : 'failed'}`,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // ========================================================================
@@ -729,6 +745,8 @@ export const handler: Handler = async (event) => {
       message: '✅ Pipeline execution finished successfully',
       artifacts: finalArtifacts,
       agentResults,
+      runningCost: manifest.getRunningTotal().totalDue,
+      elapsedMs: Date.now() - startTime,
     });
 
     // 🔒 WIPE: Flush Credentials (AFTER final ledger update)
