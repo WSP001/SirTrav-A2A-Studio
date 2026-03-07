@@ -1935,6 +1935,14 @@ linear-open:
     @node -e "require('child_process').execSync('start https://linear.app/wsp2agent/project/sirtrava2a-studio-14857ab39d4b',{stdio:'inherit'})"
 
 # ============================================
+# 🛡️ WORKSPACE AUDIT & PRESERVATION
+# ============================================
+
+# Audit all known workspace copies against canonical WSP001 (read-only)
+workspace-audit:
+    @node scripts/workspace-audit.mjs
+
+# ============================================
 # 🛡️ PATH FIX — Recursive Nesting Protection
 # ============================================
 
