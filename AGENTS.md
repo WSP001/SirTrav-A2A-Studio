@@ -28,6 +28,10 @@ Every agent reads **two files** on entry:
 1. **MASTER.md** — the North Star (milestones, rules, architecture) — everyone reads this
 2. **Their own instruction file** — agent-specific rules and boundaries
 
+### 🚨 THE GEMINI PIVOT RULE (Effective 2026-03-06)
+**New Priority:** Create a "Gemini-to-Video" bridge.
+**The Rule:** If a function requires a missing key (like Remotion/AWS), the agent MUST fallback to Gemini 1.5/2.0 Flash/Pro to generate frame-by-frame descriptive "vision" or utilize Gemini's native video generation capabilities. AWS/Remotion is officially marked **DEPRECATED-BYPASS**.
+
 | # | Agent | Platform | Instruction File | Domain | Memory |
 |---|-------|----------|-----------------|--------|--------|
 | 0 | **Windsurf/Cascade** (Acting Master) | Windsurf IDE | `MASTER.md` + `AGENT-OPS.md` | Orchestration, justfile, gates, milestones, merges | ✅ Cross-session |

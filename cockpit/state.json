@@ -1,0 +1,6 @@
+{
+  "milestone": "M9-GEMINI-MAGIC-REEL",
+  "blockers": [
+    "AWS/Remotion: DEPRECATED-BYPASS"
+  ]
+}
