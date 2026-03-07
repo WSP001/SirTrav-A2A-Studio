@@ -9,7 +9,7 @@
 ## Current State
 
 - **M8:** ✅ FROZEN at `0d220f72` — do NOT re-open without a bug ticket
-- **M9:** 🔴 Blocked on HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs)
+- **M9:** 🔴 Deployed but runtime blocked — HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs) not yet confirmed in Netlify Dashboard. Function env changes require redeploy.
 - **M10:** 📋 Scoped to X + YouTube only; Instagram/TikTok parked
 - **Source of truth:** `c:\WSP001\SirTrav-A2A-Studio` on `main`
 
@@ -159,36 +159,26 @@ just m9-e2e
 
 **Spec:** `plans/HANDOFF_NETLIFY_AGENT.md`
 
-**Deploy workflow:**
+> **Status correction (2026-03-06):** Production deploy already exists for current main.
+> Blocker is NOT first deploy. Blocker is HO-006/HO-007 env var confirmation in Netlify Dashboard.
+> Function env changes require a fresh build+deploy to take effect.
+
+**Current mission: Environment Variable Redeploy & Cloud Verification**
+
+Do NOT trigger rebuild until Human-Ops signals "KEYS SET". Then:
 
 ```bash
-# Pre-deploy gates
-npm run build
-just sanity-test-local
-just control-plane-gate
-
-# Deploy
-just deploy-preview         # Preview first
-just deploy                 # Production
-
-# Post-deploy verify
+just deploy                          # Fresh build picks up new env vars
 just healthcheck-cloud
 just control-plane-verify-cloud
-just sanity-test
-```
-
-**Env audit:**
-
-```bash
-just validate-env            # All 28 keys, required vs optional
-just env-diff                # LOCAL vs CLOUD comparison
+just m9-e2e
 ```
 
 **Rules:**
 
 - ⛔ Do NOT modify application code
 - ⛔ Do NOT set env vars — that's Human-Ops
-- ⛔ Do NOT deploy without pre-deploy gates
+- ⛔ Do NOT trigger rebuild before Human-Ops confirms KEYS SET
 - ✅ Report deploy status to Master after each deploy
 
 ---
