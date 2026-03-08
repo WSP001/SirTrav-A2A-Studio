@@ -5,6 +5,7 @@ import { trace } from './lib/tracing';
 import {
   analyzeImage,
   batchAnalyzeImages,
+  batchAnalyzeImagesWithGemini,
   filterByPrivacy,
   getDominantMood,
   moodToTempo,
@@ -422,9 +423,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
     console.log(`🎬 Director Agent v2: Analyzing ${images.length} images for ${project_id}`);
     console.log(`📋 Project mode: ${project_mode}`);
 
-    // Check for OpenAI API key — graceful degradation, not hard crash
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('⚠️ OPENAI_API_KEY not configured — returning degraded Director response');
+    // Vision provider: Gemini first (GEMINI_API_KEY), fallback to OpenAI, then degrade.
+    const hasGemini = !!process.env.GEMINI_API_KEY;
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+
+    if (!hasGemini && !hasOpenAI) {
+      console.warn('⚠️ No Vision API key — returning degraded Director response');
       const degradedScenes: Scene[] = [{
         scene_id: 'scene_001',
         title: 'Scene 1: Opening',
@@ -432,7 +436,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         dominant_mood: 'calm',
         tempo: 'slow',
         intended_audience: 'public_commons',
-        summary_for_writer: 'Vision analysis unavailable — OPENAI_API_KEY not configured.',
+        summary_for_writer: 'Vision analysis unavailable — set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.',
         assets: [],
       }];
       return {
@@ -441,7 +445,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           ok: false,
           disabled: true,
           error: 'vision_not_configured',
-          detail: 'OPENAI_API_KEY not set — Director running in degraded mode',
+          detail: 'No vision key present — set GEMINI_API_KEY in Netlify dashboard to enable Director',
           project_id,
           project_mode,
           scenes: degradedScenes,
@@ -457,11 +461,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // Step 1: Batch analyze images with Vision API
-    console.log('👁️ Analyzing images with OpenAI Vision...');
-    const { results, summary } = await batchAnalyzeImages(images, project_mode, {
-      concurrency: 3,
-      delayBetweenBatches: 500,
-    });
+    const visionProvider = hasGemini ? 'gemini' : 'openai';
+    console.log(`👁️ Analyzing images with ${visionProvider === 'gemini' ? 'Gemini 2.5 Flash' : 'OpenAI gpt-4o-mini'} Vision...`);
+    const { results, summary } = visionProvider === 'gemini'
+      ? await batchAnalyzeImagesWithGemini(images, project_mode, { concurrency: 3, delayBetweenBatches: 500 })
+      : await batchAnalyzeImages(images, project_mode, { concurrency: 3, delayBetweenBatches: 500 });
 
     console.log(`✅ Vision analysis complete: ${summary.success}/${summary.total} successful`);
 

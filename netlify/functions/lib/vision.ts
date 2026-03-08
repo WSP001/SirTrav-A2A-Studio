@@ -447,6 +447,137 @@ export function getDominantMood(assets: AnalyzedAsset[]): Mood {
 }
 
 // ============================================================================
+// Gemini Vision Functions
+// ============================================================================
+
+/**
+ * Analyze a single image using Gemini Vision API (gemini-2.5-flash)
+ * Drop-in alternative to analyzeImage() — returns identical AnalyzedAsset shape.
+ */
+export async function analyzeImageWithGemini(
+  image: ImageInput,
+  projectMode: ProjectMode
+): Promise<AnalyzedAsset> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      ...image,
+      analysis: null,
+      analysis_status: 'skipped',
+      error: 'GEMINI_API_KEY not configured',
+    };
+  }
+
+  const traceSpan = trace('vision.analyzeImageGemini', {
+    image_id: image.id,
+    project_mode: projectMode,
+  });
+
+  try {
+    if (!image.base64_data && !image.preview_url) {
+      return {
+        ...image,
+        analysis: null,
+        analysis_status: 'skipped',
+        error: 'No image data provided (need base64_data or preview_url)',
+      };
+    }
+
+    // Prefer base64; if only a URL is provided, fetch and convert.
+    let imageBase64 = image.base64_data || '';
+    if (!imageBase64 && image.preview_url) {
+      const imgRes = await fetch(image.preview_url);
+      if (!imgRes.ok) throw new Error(`Failed to fetch image: ${imgRes.statusText}`);
+      const buf = await imgRes.arrayBuffer();
+      imageBase64 = Buffer.from(buf).toString('base64');
+    }
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: getVisionPrompt(projectMode) },
+              { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
+            ],
+          }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
+        }),
+      }
+    );
+
+    if (!res.ok) throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+
+    const data = await res.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) throw new Error('No content in Gemini response');
+
+    const analysis = parseVisionResponse(content);
+
+    traceSpan.success({
+      content_type: analysis.content_type,
+      privacy_bucket: analysis.privacy_bucket,
+      quality_score: analysis.quality_score,
+    });
+
+    return { ...image, analysis, analysis_status: 'success' };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    traceSpan.error(errorMessage);
+    return { ...image, analysis: null, analysis_status: 'failed', error: errorMessage };
+  }
+}
+
+/**
+ * Batch analyze images using Gemini Vision — mirrors batchAnalyzeImages() interface.
+ */
+export async function batchAnalyzeImagesWithGemini(
+  images: ImageInput[],
+  projectMode: ProjectMode,
+  options: { concurrency?: number; delayBetweenBatches?: number } = {}
+): Promise<{
+  results: AnalyzedAsset[];
+  summary: { total: number; success: number; failed: number; skipped: number; processing_time_ms: number };
+}> {
+  const { concurrency = 3, delayBetweenBatches = 500 } = options;
+  const startTime = Date.now();
+  const results: AnalyzedAsset[] = [];
+
+  const traceSpan = trace('vision.batchAnalyzeGemini', {
+    total_images: images.length,
+    project_mode: projectMode,
+    concurrency,
+  });
+
+  for (let i = 0; i < images.length; i += concurrency) {
+    const batch = images.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(img => analyzeImageWithGemini(img, projectMode))
+    );
+    results.push(...batchResults);
+
+    if (i + concurrency < images.length) {
+      await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+    }
+  }
+
+  const summary = {
+    total: images.length,
+    success: results.filter(r => r.analysis_status === 'success').length,
+    failed: results.filter(r => r.analysis_status === 'failed').length,
+    skipped: results.filter(r => r.analysis_status === 'skipped').length,
+    processing_time_ms: Date.now() - startTime,
+  };
+
+  traceSpan.success(summary);
+  return { results, summary };
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 

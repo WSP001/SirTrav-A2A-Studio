@@ -198,26 +198,20 @@ function checkPipeline(): ControlPlaneResponse['pipeline'] {
   const agents: Record<string, boolean> = {};
   let allWired = true;
 
+  // Resolve functions dir from project root (process.cwd() = /var/task in Netlify Lambda)
+  const functionsDir = join(process.cwd(), 'netlify', 'functions');
+
   for (const [name, file] of Object.entries(AGENT_FILES)) {
-    // Check relative to the functions directory (we're running inside it)
-    const exists = true; // All 7 agent files confirmed to exist in the codebase
+    const exists = existsSync(join(functionsDir, file));
     agents[name] = exists;
     if (!exists) allWired = false;
   }
 
-  // Cycle gates — read from artifacts if available
-  let passed = 0;
-  let failed = 0;
-  let pending = 0;
-
+  // Cycle gates cannot be verified at function runtime — gate scripts run externally.
+  // Run `just cycle-status` to verify. Reporting `pending` is honest; not `passed`.
   const gateNames = ['wiring', 'no_fake_success', 'contracts', 'golden_path', 'build'];
-  for (const gate of gateNames) {
-    // In the function runtime we can't run gate scripts, so report based on known state
-    // The verifier script checks these externally
-    passed++; // All gates passed as of M6 commit
-  }
 
-  return { wired: allWired, agents, cycleGates: { passed, failed, pending } };
+  return { wired: allWired, agents, cycleGates: { passed: 0, failed: 0, pending: gateNames.length } };
 }
 
 // ── Verdict ──────────────────────────────────────────────────────────────────
