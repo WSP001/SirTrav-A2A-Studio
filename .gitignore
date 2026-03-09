@@ -79,4 +79,8 @@ nul
 # Generated output snapshots
 out/
 
-
+# Audit report exports (never commit large exports)
+*-Audit-Report*.md
+*-Audit-Report*.pdf
+github_repos*/
+github_repos*.zip
