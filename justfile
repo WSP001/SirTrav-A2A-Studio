@@ -359,6 +359,10 @@ linkedin-setup:
 linkedin-auth-url:
     node scripts/linkedin-setup-helper.mjs auth-url
 
+# Antigravity: LinkedIn cloud dry-run verification + receipt (QA only, no live fire)
+linkedin-verify-cloud:
+    @node scripts/verify-linkedin-cloud.mjs
+
 # LinkedIn runbook helper
 linkedin-doc:
     @echo "📘 LinkedIn setup runbook: docs/LINKEDIN_SETUP.md"
