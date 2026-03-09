@@ -1606,3 +1606,193 @@ body {
     display: none;
   }
 }
+
+/* ============================================
+   Ken Burns Cinematic Engine (Project Genie)
+   Dynamic CSS Variables driven by Gemini AI
+   ============================================ */
+
+@keyframes kenburns {
+  0% {
+    transform: scale(var(--kb-start-scale, 1)) 
+               translate(var(--kb-start-x, 0%), var(--kb-start-y, 0%));
+  }
+  100% {
+    transform: scale(var(--kb-end-scale, 1.2)) 
+               translate(var(--kb-end-x, -5%), var(--kb-end-y, -5%));
+  }
+}
+
+@keyframes kenburns-focus {
+  0% {
+    filter: blur(2px) brightness(0.8);
+    opacity: 0;
+  }
+  15% {
+    filter: blur(0px) brightness(1);
+    opacity: 1;
+  }
+  85% {
+    filter: blur(0px) brightness(1);
+    opacity: 1;
+  }
+  100% {
+    filter: blur(1px) brightness(0.9);
+    opacity: 0.8;
+  }
+}
+
+.ken-burns-active {
+  animation: kenburns var(--kb-duration, 8s) ease-in-out forwards;
+  will-change: transform;
+}
+
+.ken-burns-focus {
+  animation: kenburns-focus var(--kb-duration, 8s) ease-in-out forwards;
+}
+
+/* Cinematic Theater Container */
+.cinematic-theater {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-dark);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 
+    0 0 60px rgba(0, 0, 0, 0.8),
+    inset 0 0 120px rgba(0, 0, 0, 0.4);
+}
+
+.cinematic-theater::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    transparent 15%,
+    transparent 85%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Cinematic Vignette Overlay */
+.cinematic-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 80%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Ken Burns Slide */
+.ken-burns-slide {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.ken-burns-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center center;
+}
+
+/* Playback HUD */
+.playback-hud {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    transparent 100%
+  );
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.playback-agent-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.playback-agent-status .agent-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  border: 1px solid var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.playback-agent-status .status-text {
+  color: var(--brand-primary);
+  font-weight: 500;
+}
+
+.playback-progress {
+  flex: 1;
+  max-width: 200px;
+  margin-left: 20px;
+}
+
+.playback-progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.playback-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-accent), var(--brand-primary));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Azure & Gold Design Tokens for Genie Mode */
+.genie-mode-active {
+  border: 2px solid var(--brand-primary);
+  box-shadow: var(--glow-brand);
+}
+
+.genie-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, var(--brand-accent), var(--brand-primary));
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--surface-dark);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.genie-badge::before {
+  content: '✨';
+}

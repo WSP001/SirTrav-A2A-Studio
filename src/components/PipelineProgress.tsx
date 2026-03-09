@@ -25,6 +25,8 @@ interface ProgressEvent {
   message: string;
   timestamp: string;
   progress: number;
+  runningCost?: number;   // CX-019: Real-time cost from CC-M9-METRICS
+  elapsedMs?: number;     // CX-019: Elapsed time in milliseconds
 }
 
 interface ProgressData {
@@ -39,6 +41,7 @@ interface PipelineProgressProps {
   runId?: string;
   onComplete?: (result: ProgressData) => void;
   onError?: (error: string) => void;
+  onMetricsUpdate?: (metrics: { cost: number; time: number }) => void;  // CX-019
 }
 
 const AGENTS = [
@@ -51,7 +54,7 @@ const AGENTS = [
   { id: 'publisher', name: 'Publisher', icon: '🚀', description: 'Uploads to storage' }
 ];
 
-export default function PipelineProgress({ projectId, runId, onComplete, onError }: PipelineProgressProps) {
+export default function PipelineProgress({ projectId, runId, onComplete, onError, onMetricsUpdate }: PipelineProgressProps) {
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -90,6 +93,13 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
               }
               return [...prev, evt];
             });
+            // CX-019 Phase 2: Wire real-time cost updates to parent
+            if (evt.runningCost !== undefined) {
+              onMetricsUpdate?.({ 
+                cost: evt.runningCost, 
+                time: (evt.elapsedMs || 0) / 1000 
+              });
+            }
           } catch (err) {
             console.error('[PipelineProgress] Parse error:', err);
           }

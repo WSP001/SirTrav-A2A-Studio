@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { BookOpen, Database, Github, Code2, Upload, FileText, X, Play, Loader2, CheckCircle, DollarSign, Clock, BarChart3, Download, Share2, Lock, Globe, Youtube, Instagram, Twitter, ThumbsUp, ThumbsDown, Video, ExternalLink, LayoutGrid, Zap, Shield, Award } from "lucide-react";
 import "./App.css";
 import ResultsPreview from './components/ResultsPreview';
@@ -27,6 +27,7 @@ function App() {
   const [pipelineStatus, setPipelineStatus] = useState('idle'); // idle, running, completed, error
   const [agentStates, setAgentStates] = useState({});
   const [metrics, setMetrics] = useState({ cost: 0, time: 0 });
+  const startTimeRef = useRef(0);  // CX-019: Track pipeline start time for elapsed calculation
   const [logs, setLogs] = useState({});
   const [videoResult, setVideoResult] = useState(null);
   const [publishMode, setPublishMode] = useState('private'); // private, unlisted, public
@@ -101,7 +102,7 @@ function App() {
     const newRunId = `run-${Date.now()}`;
     setCurrentRunId(newRunId);
     setMetrics({ cost: 0, time: 0 });
-    const startTime = Date.now();
+    startTimeRef.current = Date.now();  // CX-019: Capture start time in ref for handlePipelineComplete
 
     // Reset agent states
     AGENTS.forEach(agent => {
@@ -189,6 +190,15 @@ function App() {
 
   const handlePipelineComplete = (data) => {
     setPipelineStatus('completed');
+
+    // CX-019 Phase 1: Wire final invoice into metrics panel
+    const elapsed = (Date.now() - startTimeRef.current) / 1000;
+    if (data.artifacts?.invoice) {
+      setMetrics({ 
+        cost: data.artifacts.invoice.totalDue || 0, 
+        time: elapsed 
+      });
+    }
 
     // Validate videoUrl
     const videoUrl = data.artifacts?.videoUrl;
@@ -561,6 +571,7 @@ function App() {
                 runId={currentRunId}
                 onComplete={handlePipelineComplete}
                 onError={handlePipelineError}
+                onMetricsUpdate={(m) => setMetrics(m)}
               />
             ) : (
               /* Fallback / Idle State */
