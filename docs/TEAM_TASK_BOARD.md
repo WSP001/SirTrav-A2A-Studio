@@ -2,7 +2,7 @@
 
 > **One-line command:** Review Codex #2 truthfully, freeze live fire, stay Gemini-first, merge only after PASS, then build the Producer Brief Box and prove YouTube dry-run.
 >
-> Updated: 2026-03-10
+> Updated: 2026-03-11
 > Board owner: Human-Ops (Scott)
 
 ---
@@ -22,7 +22,7 @@ RULE: No live social posting until harness review is complete.
 |----------|---------|--------|
 | X/Twitter | `2031156358255394879` | ✅ Posted live |
 | LinkedIn | `urn:li:ugcPost:7436922101518917632` | ✅ Posted live |
-| YouTube | — | ⏳ Dry-run pending |
+| YouTube | — | ✅ Dry-run support added (was missing — fixed) |
 
 ---
 
@@ -30,7 +30,7 @@ RULE: No live social posting until harness review is complete.
 
 | Check | Status | Evidence |
 |-------|--------|----------|
-| Build passes | ✅ | 1357 modules, 2.89s, zero errors |
+| Build passes | ✅ | 1357 modules, 6.41s, zero errors (re-verified 2026-03-11) |
 | 36 functions deployed | ✅ | Netlify deploy log confirms |
 | Live fire frozen | ✅ | This board is the freeze order |
 | AWS/Remotion deprioritized | ✅ | `remotion.configured: false` — deferred per HO-007 |
@@ -132,12 +132,16 @@ verdict_options:
 ### Claude Code (Backend Only)
 
 ```yaml
-status: HOLDING — waiting for review verdict
+status: ACTIVE — YouTube dry-run FIXED, committing
+completed:
+  - YouTube dry-run truth check (4 criteria verified + 2 bugs fixed)
+  - Backend mission brief — all GREEN
+  - TEAM_TASK_BOARD.md creation + maintenance
 ready_tasks:
-  - verify YouTube dry-run path (item #6)
   - fix any backend contract bugs found by review
   - improve projected invoice / cost contract if frontend needs it
   - tighten NoFakeSuccess receipts
+  - fix hardcoded memory paths (narrate-project.ts, generate-music.ts)
 forbidden:
   - frontend code (React, JSX, CSS)
   - live fire posting (freeze active)
@@ -220,7 +224,7 @@ what_is_NOT_blocked:
   - Voice agent (ElevenLabs keys configured)
   - Composer agent (Suno fallback works)
   - Attribution agent (always works)
-  - Publisher agent (LinkedIn ✅, X/Twitter ✅, YouTube ⏳)
+  - Publisher agent (LinkedIn ✅, X/Twitter ✅, YouTube ✅ dry-run ready)
 
 what_IS_blocked:
   - Full video render (Remotion — deferred, not a blocker tonight)
@@ -238,10 +242,12 @@ what_IS_blocked:
 | 2026-03-09 | X/Twitter dry-run | PASS | `configured=true, validated=true, dryRun=true` |
 | 2026-03-09 | X/Twitter LIVE | ✅ | tweetId `2031156358255394879` |
 | 2026-03-09 | LinkedIn LIVE | ✅ | ugcPost `7436922101518917632` |
-| 2026-03-09 | YouTube dry-run | ⏳ | Pending — Claude's next task |
+| 2026-03-11 | YouTube dry-run code | ✅ FIXED | Was MISSING — added `dryRun` param + `prepared` status |
 | 2026-03-09 | Control plane health | YELLOW | `storage=ok, ai=available, publishers=3/3, remotion=disabled` |
 | 2026-03-09 | Build | GREEN | 1357 modules, 0 errors, 2.89s |
 | 2026-03-09 | Netlify deploy | GREEN | 36 functions, 50s build, Lighthouse scored |
+| 2026-03-11 | Master deploy runbook | GREEN | All 8 steps passed, 21 env vars SET |
+| 2026-03-11 | YouTube truth check | FIXED | dry-run + prepared/published distinction added |
 
 ---
 

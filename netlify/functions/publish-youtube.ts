@@ -27,6 +27,7 @@ interface YouTubeRequest {
   categoryId?: string;  // YouTube category (22 = People & Blogs)
   playlistId?: string;  // Optional playlist to add to
   commonsGoodCredits?: string;  // Attribution text to append
+  dryRun?: boolean;  // Validate payload + credentials without uploading
 }
 
 interface YouTubeResponse {
@@ -34,9 +35,15 @@ interface YouTubeResponse {
   projectId: string;
   youtubeId?: string;
   youtubeUrl?: string;
-  status: 'uploaded' | 'processing' | 'failed' | 'placeholder';
+  status: 'uploaded' | 'processing' | 'failed' | 'placeholder' | 'prepared';
   error?: string;
   thumbnailUrl?: string;
+  dryRun?: boolean;
+  validated?: boolean;
+  configured?: boolean;
+  disabled?: boolean;
+  platform?: string;
+  reason?: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -72,6 +79,10 @@ function validateYouTubePayload(body: unknown): { valid: true; data: YouTubeRequ
   }
   if (p.privacy !== undefined && !['private', 'unlisted', 'public'].includes(p.privacy as string)) {
     errors.push("'privacy' must be one of: private, unlisted, public");
+  }
+  // Optional: dryRun must be boolean if present
+  if (p.dryRun !== undefined && typeof p.dryRun !== 'boolean') {
+    errors.push("'dryRun' must be a boolean");
   }
 
   if (errors.length > 0) {
@@ -284,23 +295,57 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: false,
           error: 'Invalid payload',
-          details: validation.errors,
+          details: (validation as { valid: false; errors: string[] }).errors,
         }),
       };
     }
 
-    const request = validation.data;
-    
+    const request = (validation as { valid: true; data: YouTubeRequest }).data;
+
+    // Credential presence check (boolean only — never log values)
+    const hasClientId = !!process.env.YOUTUBE_CLIENT_ID;
+    const hasClientSecret = !!process.env.YOUTUBE_CLIENT_SECRET;
+    const hasRefreshToken = !!process.env.YOUTUBE_REFRESH_TOKEN;
+    const configured = hasClientId && hasClientSecret && hasRefreshToken;
+
+    // ──────────────────────────────────────────────────────────────────
+    // DRY-RUN contract: validate payload + credentials; never upload.
+    // Matches the Twisted Pair pattern from publish-x.ts / publish-linkedin.ts.
+    // Returns { success: false, dryRun: true, validated: true, configured }
+    // ──────────────────────────────────────────────────────────────────
+    if (request.dryRun) {
+      console.log('📺 [DRY-RUN] YouTube publisher — validating only, no upload');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          dryRun: true,
+          platform: 'youtube',
+          validated: true,
+          configured,
+          disabled: !configured,
+          projectId: request.projectId,
+          status: 'prepared' as const,
+          reason: configured
+            ? undefined
+            : 'YouTube disabled (missing credentials: '
+              + [!hasClientId && 'CLIENT_ID', !hasClientSecret && 'CLIENT_SECRET', !hasRefreshToken && 'REFRESH_TOKEN']
+                  .filter(Boolean).join(', ') + ')',
+        }),
+      };
+    }
+
     // Build description with Commons Good credits
     let description = request.description || '';
     if (request.commonsGoodCredits) {
       description += `\n\n---\n🌍 Commons Good Attribution:\n${request.commonsGoodCredits}`;
     }
     description += '\n\n🎬 Created with SirTrav A2A Studio - For the Commons Good';
-    
-    // Get access token
+
+    // Get access token (live path only — never reached in dry-run)
     const accessToken = await getAccessToken();
-    
+
     if (!accessToken) {
       console.warn('⚠️ [DISABLED] YouTube credentials not configured');
       return {
@@ -363,11 +408,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       projectId: request.projectId,
       youtubeId: uploadResult.id,
       youtubeUrl: `https://youtube.com/watch?v=${uploadResult.id}`,
-      status: 'uploaded',
+      status: 'uploaded',  // "uploaded" = published to YouTube (not just "prepared")
+      platform: 'youtube',
       thumbnailUrl: `https://img.youtube.com/vi/${uploadResult.id}/maxresdefault.jpg`,
     };
-    
-    console.log(`✅ YouTube upload complete: ${response.youtubeUrl}`);
+
+    console.log(`✅ YouTube upload complete (PUBLISHED): ${response.youtubeUrl}`);
     
     return {
       statusCode: 200,
