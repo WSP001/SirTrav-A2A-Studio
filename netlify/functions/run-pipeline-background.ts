@@ -89,10 +89,24 @@ async function updateRun(
   await updateRunIndex(projectId, runId, indexPatch);
 
   // Post progress event for SSE streaming
-  // Map RunStatus to ProgressStatus for SSE consumers
-  const progressStatus = patch.status === 'completed' ? 'completed'
-    : patch.status === 'failed' ? 'failed'
-      : 'running';
+  // Determine status: pipeline-level for final events, agent-level for step completions
+  let progressStatus: string;
+  if (patch.status === 'completed') {
+    progressStatus = 'completed';
+  } else if (patch.status === 'failed') {
+    progressStatus = 'failed';
+  } else {
+    // Check if this specific agent step just completed (agentResults contains its result)
+    const step = patch.step;
+    const stepResult = step ? patch.agentResults?.[step] : undefined;
+    if (stepResult) {
+      progressStatus = stepResult.success ? 'completed' : 'failed';
+    } else if (step === 'production_parallel' && patch.agentResults?.voice && patch.agentResults?.composer) {
+      progressStatus = (patch.agentResults.voice.success && patch.agentResults.composer.success) ? 'completed' : 'failed';
+    } else {
+      progressStatus = 'running';
+    }
+  }
 
   await appendProgress(projectId, runId, {
     projectId,

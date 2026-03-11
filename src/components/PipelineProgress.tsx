@@ -162,7 +162,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
               // Check completion from events
               const last = data.events[data.events.length - 1];
-              if (last?.status === 'completed' && last?.agent === 'publisher') {
+              if (last?.status === 'completed' && (last?.agent === 'publisher' || last?.agent === 'completed')) {
                 if (pollIntervalRef.current) clearTimeout(pollIntervalRef.current);
                 return;
               }
