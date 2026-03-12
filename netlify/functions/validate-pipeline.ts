@@ -38,8 +38,16 @@ function checkEnv(name: string): boolean {
 async function checkStorage(): Promise<boolean> {
   try {
     const store = runsStore();
-    await store.list({ prefix: '__ping__' });
-    return true;
+    // Write a small ephemeral key and read it back to verify real persistence.
+    // Timeout after 3s to avoid blocking the response.
+    const pingKey = '__ping__/validate';
+    const pingValue = JSON.stringify({ ts: Date.now() });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('storage timeout')), 3000)
+    );
+    await Promise.race([store.set(pingKey, pingValue), timeout]);
+    const readBack = await Promise.race([store.get(pingKey, { type: 'text' }), timeout]);
+    return readBack !== null;
   } catch {
     return false;
   }
@@ -54,6 +62,10 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed. Use GET.' }) };
   }
 
   const checks: ValidationCheck[] = [];
@@ -121,7 +133,9 @@ export const handler: Handler = async (event) => {
   if (!renderReady) warnings.push('Remotion Lambda keys missing — editor will use fallback video (HO-007)');
 
   // ── Publishing: X/Twitter ──
-  const hasX = checkEnv('TWITTER_API_KEY') && checkEnv('TWITTER_ACCESS_TOKEN');
+  // Runtime (publish-x.ts) requires all 4: API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET
+  const hasX = checkEnv('TWITTER_API_KEY') && checkEnv('TWITTER_API_SECRET')
+    && checkEnv('TWITTER_ACCESS_TOKEN') && checkEnv('TWITTER_ACCESS_SECRET');
   checks.push({
     category: 'publishing',
     name: 'TWITTER_KEYS',
@@ -143,7 +157,9 @@ export const handler: Handler = async (event) => {
   if (!hasLinkedIn) warnings.push('LinkedIn token missing — LinkedIn publishing will be skipped');
 
   // ── Publishing: YouTube ──
-  const hasYouTube = checkEnv('YOUTUBE_CLIENT_ID') && checkEnv('YOUTUBE_REFRESH_TOKEN');
+  // Runtime (publish-youtube.ts) requires all 3: CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN
+  const hasYouTube = checkEnv('YOUTUBE_CLIENT_ID') && checkEnv('YOUTUBE_CLIENT_SECRET')
+    && checkEnv('YOUTUBE_REFRESH_TOKEN');
   checks.push({
     category: 'publishing',
     name: 'YOUTUBE_KEYS',

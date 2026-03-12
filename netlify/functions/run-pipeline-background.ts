@@ -596,11 +596,15 @@ async function executeSocialPublishingAgent(
     })
   );
 
-  for (const settlement of settlements) {
+  let unknownIndex = 0;
+  for (let i = 0; i < settlements.length; i++) {
+    const settlement = settlements[i];
     if (settlement.status === 'fulfilled') {
       results[`publisher_${settlement.value.platform}`] = settlement.value.result;
     } else {
-      results['publisher_unknown'] = {
+      // Preserve the platform name from the original call if possible
+      const platform = platformCalls[i]?.platform || `unknown_${unknownIndex++}`;
+      results[`publisher_${platform}`] = {
         success: false,
         error: settlement.reason?.message || 'Unknown publish error',
         fallback: true,

@@ -16,14 +16,19 @@ export interface QualityCheckResult {
     summary: string;
 }
 
+// Patterns that indicate upstream API failures leaked into the narrative.
+// Intentionally technical/log-shaped to avoid false positives on normal prose.
 const API_ERROR_PATTERNS = [
-    /^Error:/m,
-    /API error/i,
-    /rate limit/i,
-    /unauthorized/i,
-    /quota exceeded/i,
-    /ECONNREFUSED/i,
-    /timeout/i,
+    /^Error:/m,                   // Stack trace leader
+    /API error/i,                 // Explicit API failure
+    /rate.?limit exceeded/i,      // Rate limiting (not just "rate limit" in prose)
+    /401 unauthorized/i,          // HTTP 401 (not just "unauthorized" as a word)
+    /403 forbidden/i,             // HTTP 403
+    /quota exceeded/i,            // API quota
+    /ECONNREFUSED/,               // Node connection error (case-sensitive)
+    /ETIMEDOUT/,                  // Node timeout error (case-sensitive)
+    /fetch failed/i,              // Fetch API failure
+    /status: ?5\d\d/,             // HTTP 5xx in logged response
 ];
 
 export async function inspectOutput(artifacts: {
