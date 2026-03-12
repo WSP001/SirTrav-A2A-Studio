@@ -90,7 +90,15 @@ export function flushCredentials(): void {
         'ELEVENLABS_API_KEY',
         'SUNO_API_KEY',
         'STRIPE_SECRET_KEY',
-        'NETLIFY_AUTH_TOKEN'
+        'NETLIFY_AUTH_TOKEN',
+        'TWITTER_API_KEY',
+        'TWITTER_API_SECRET',
+        'TWITTER_ACCESS_TOKEN',
+        'TWITTER_ACCESS_SECRET',
+        'LINKEDIN_ACCESS_TOKEN',
+        'LINKEDIN_CLIENT_SECRET',
+        'YOUTUBE_CLIENT_SECRET',
+        'YOUTUBE_REFRESH_TOKEN',
     ];
 
     let wipedCount = 0;

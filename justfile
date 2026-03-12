@@ -294,6 +294,31 @@ healthcheck-cloud:
     @echo "📊 Running healthcheck (cloud)..."
     @powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -Uri 'https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck').Content } catch { @{ error = 'Cloud healthcheck request failed' } | ConvertTo-Json -Compress }"
 
+# ============================================
+# 🚀 PIPELINE VALIDATION & KICKOFF
+# ============================================
+
+# Pre-flight check: validate all pipeline dependencies (local, requires netlify dev)
+pipeline-validate:
+    @echo "🔍 Pipeline Pre-flight Validation (local)..."
+    @powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8888/.netlify/functions/validate-pipeline'; $j = $r.Content | ConvertFrom-Json; Write-Host $r.Content; if (-not $j.canRun) { Write-Host '❌ Pipeline BLOCKED — see blockers above'; exit 1 } else { Write-Host \"`n✅ Pipeline can run in $($j.mode) mode\" } } catch { Write-Host '❌ Server not running. Start with: just dev'; exit 1 }"
+
+# Pre-flight check against cloud deployment
+pipeline-validate-cloud:
+    @echo "🔍 Pipeline Pre-flight Validation (cloud)..."
+    @powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'https://sirtrav-a2a-studio.netlify.app/.netlify/functions/validate-pipeline'; $j = $r.Content | ConvertFrom-Json; Write-Host $r.Content; if (-not $j.canRun) { Write-Host '❌ Pipeline BLOCKED — see blockers above'; exit 1 } else { Write-Host \"`n✅ Pipeline can run in $($j.mode) mode\" } } catch { Write-Host '❌ Cloud validation failed'; exit 1 }"
+
+# Full pipeline kickoff: validate → start (requires netlify dev)
+pipeline-kickoff projectId="demo-project":
+    @echo "🚀 Pipeline Kickoff: {{projectId}}"
+    @echo "Step 1: Pre-flight validation..."
+    @just pipeline-validate
+    @echo ""
+    @echo "Step 2: Starting pipeline..."
+    @powershell -NoProfile -Command "try { $body = @{ projectId = '{{projectId}}'; userToken = 'demo'; publishTargets = @('x', 'linkedin') } | ConvertTo-Json; $r = Invoke-WebRequest -UseBasicParsing -Method POST -Uri 'http://localhost:8888/.netlify/functions/start-pipeline' -ContentType 'application/json' -Body $body; Write-Host $r.Content } catch { Write-Host '❌ Pipeline start failed'; exit 1 }"
+    @echo ""
+    @echo "✅ Pipeline started! Monitor at http://localhost:8888"
+
 # Start Claude Code with init hook
 claude-init:
     @echo "🤖 Starting Claude Code (init mode)..."
