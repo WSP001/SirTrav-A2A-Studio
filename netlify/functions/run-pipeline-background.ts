@@ -492,6 +492,125 @@ function determinePipelineMode(agentResults: Record<string, AgentResult>): strin
   return 'DEMO';
 }
 
+/**
+ * PUBLISHER AGENT - Social media distribution (best-effort, parallel)
+ * Individual platform failures do NOT fail the pipeline.
+ */
+async function executeSocialPublishingAgent(
+  projectId: string,
+  runId: string,
+  publishTargets: string[],
+  videoUrl: string,
+  narrative: string,
+  attributionData: any
+): Promise<Record<string, AgentResult>> {
+  const baseUrl = process.env.URL || 'http://localhost:8888';
+  const results: Record<string, AgentResult> = {};
+
+  if (!publishTargets || publishTargets.length === 0) {
+    console.log('🚀 [Publisher] No publish targets — skipping social distribution');
+    return results;
+  }
+
+  const platformCalls: Array<{ platform: string; url: string; body: any }> = [];
+
+  for (const target of publishTargets) {
+    if (target === 'x') {
+      const text = narrative.length > 250
+        ? narrative.substring(0, 247) + '...'
+        : narrative;
+      platformCalls.push({
+        platform: 'x',
+        url: `${baseUrl}/.netlify/functions/publish-x`,
+        body: { text, dryRun: false },
+      });
+    } else if (target === 'linkedin') {
+      platformCalls.push({
+        platform: 'linkedin',
+        url: `${baseUrl}/.netlify/functions/publish-linkedin`,
+        body: {
+          projectId,
+          runId,
+          videoUrl,
+          title: `SirTrav: ${projectId}`,
+          description: narrative.substring(0, 500),
+          visibility: 'PUBLIC',
+          commonsGoodCredits: attributionData?.markdown || 'For the Commons Good',
+          dryRun: false,
+        },
+      });
+    } else if (target === 'youtube') {
+      platformCalls.push({
+        platform: 'youtube',
+        url: `${baseUrl}/.netlify/functions/publish-youtube`,
+        body: {
+          projectId,
+          videoUrl,
+          title: `SirTrav: ${projectId}`,
+          description: narrative.substring(0, 2000),
+          tags: ['SirTrav', 'A2A', 'CommonsGood', 'Travel'],
+          privacy: 'unlisted',
+          commonsGoodCredits: attributionData?.markdown || 'For the Commons Good',
+          dryRun: false,
+        },
+      });
+    }
+    // tiktok, instagram: parked (M10 scope decision)
+  }
+
+  console.log(`🚀 [Publisher] Publishing to ${platformCalls.length} platform(s): ${platformCalls.map(c => c.platform).join(', ')}`);
+
+  const settlements = await Promise.allSettled(
+    platformCalls.map(async ({ platform, url, body }) => {
+      const startTime = Date.now();
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(60000),
+        });
+        const data = await response.json();
+        console.log(`🚀 [Publisher:${platform}] ${data.success ? 'SUCCESS' : 'FAILED'}: ${JSON.stringify(data).substring(0, 200)}`);
+        return {
+          platform,
+          result: {
+            success: data.success === true,
+            data,
+            duration_ms: Date.now() - startTime,
+            fallback: data.disabled === true || data.dryRun === true,
+          } as AgentResult,
+        };
+      } catch (error) {
+        console.error(`🚀 [Publisher:${platform}] Error:`, error);
+        return {
+          platform,
+          result: {
+            success: false,
+            error: error instanceof Error ? error.message : 'Publish failed',
+            duration_ms: Date.now() - startTime,
+            fallback: true,
+          } as AgentResult,
+        };
+      }
+    })
+  );
+
+  for (const settlement of settlements) {
+    if (settlement.status === 'fulfilled') {
+      results[`publisher_${settlement.value.platform}`] = settlement.value.result;
+    } else {
+      results['publisher_unknown'] = {
+        success: false,
+        error: settlement.reason?.message || 'Unknown publish error',
+        fallback: true,
+      };
+    }
+  }
+
+  return results;
+}
+
 // ============================================================================
 // MAIN PIPELINE HANDLER
 // ============================================================================
@@ -693,7 +812,7 @@ export const handler: Handler = async (event) => {
     recordJobPacket({ runId, projectId, agent: 'attribution', action: 'generate_credits', jobType: 'Attribution Agent - Commons Good Audit', status: agentResults.attribution.success ? 'success' : 'failed', cost: { baseCost: 0.01 }, error: agentResults.attribution.error });
 
     await updateRun(projectId, runId, {
-      progress: 98,
+      progress: 95,
       step: 'attribution',
       message: `📜 Attribution ${agentResults.attribution.success ? 'completed' : 'failed'}`,
       agentResults,
@@ -712,11 +831,13 @@ export const handler: Handler = async (event) => {
     });
 
     if (!qualityCheck.passed) {
-      console.error('❌ Quality Gate Failed:', qualityCheck.errors);
+      console.error('❌ Quality Gate Failed:', qualityCheck.summary);
+      console.error('   Items:', JSON.stringify(qualityCheck.items.filter(i => !i.passed)));
       await updateRun(projectId, runId, {
         status: 'failed',
         step: 'quality_gate',
-        message: `Quality check failed: ${qualityCheck.errors.join(', ')}`
+        message: `Quality check failed: ${qualityCheck.summary}`,
+        artifacts: { qualityGate: qualityCheck },
       });
 
       return {
@@ -724,20 +845,74 @@ export const handler: Handler = async (event) => {
         body: JSON.stringify({
           ok: false,
           error: 'Quality gate failed',
-          details: qualityCheck.errors
+          summary: qualityCheck.summary,
+          details: qualityCheck.errors,
+          items: qualityCheck.items,
         })
       };
     }
 
     // ========================================================================
-    // STEP 7: COMPLETE - Exchange & Wipe (Security)
+    // STEP 7: PUBLISHER AGENT (Social Distribution — best-effort)
     // ========================================================================
     const rawVideoUrl = agentResults.editor.data?.videoUrl || '/test-assets/test-video.mp4';
+    const narrative = agentResults.writer?.data?.narrative || '';
+    const effectiveTargets = publishTargets || [];
+
+    let publisherResults: Record<string, AgentResult> = {};
+
+    if (effectiveTargets.length > 0) {
+      await updateRun(projectId, runId, {
+        progress: 96,
+        step: 'publisher',
+        message: `🚀 Publishing to ${effectiveTargets.join(', ')}...`,
+      });
+
+      publisherResults = await executeSocialPublishingAgent(
+        projectId,
+        runId,
+        effectiveTargets,
+        rawVideoUrl,
+        narrative,
+        agentResults.attribution?.data,
+      );
+
+      // Merge publisher results into agentResults
+      Object.assign(agentResults, publisherResults);
+
+      // 💰 RECORD COST: Publisher (per-platform, only successful)
+      for (const [key, result] of Object.entries(publisherResults)) {
+        const platform = key.replace('publisher_', '');
+        if (result.success) {
+          manifest.addEntry('Publisher', `Social: ${platform}`, 0.01);
+        }
+        recordJobPacket({ runId, projectId, agent: 'publisher', action: `publish_${platform}`, jobType: `Publisher Agent - ${platform}`, status: result.success ? 'success' : 'failed', publicResult: { platform, disabled: result.fallback }, cost: { baseCost: 0.01 }, error: result.error });
+      }
+
+      const successCount = Object.values(publisherResults).filter(r => r.success).length;
+      await updateRun(projectId, runId, {
+        progress: 98,
+        step: 'publisher',
+        message: `🚀 Publishing complete (${successCount}/${Object.keys(publisherResults).length} succeeded)`,
+        agentResults,
+        runningCost: manifest.getRunningTotal().totalDue,
+        elapsedMs: Date.now() - startTime,
+      });
+    } else {
+      console.log('🚀 [Publisher] No publish targets selected — skipping social distribution');
+    }
+
+    // ========================================================================
+    // STEP 8: COMPLETE - Exchange & Wipe (Security)
+    // ========================================================================
 
     // 🔒 EXCHANGE: Generate Secure Signed URL
     const secureVideo = await publishVideo(rawVideoUrl, 24);
 
     // (Credentials flushed after final update)
+
+    const publishSuccessCount = Object.values(publisherResults).filter(r => r.success).length;
+    const publishTotalCount = Object.keys(publisherResults).length;
 
     const finalArtifacts = {
       videoUrl: secureVideo.signedUrl,
@@ -748,8 +923,14 @@ export const handler: Handler = async (event) => {
       pipelineMode: determinePipelineMode(agentResults),
       invoice: manifest.generate(runId),
       exchangeMode: secureVideo.mode,
-      // 🎯 CC-019 M8: Platforms the user toggled on for publishing
-      publishTargets: publishTargets || ['x', 'youtube', 'linkedin', 'tiktok', 'instagram'],
+      publishTargets: effectiveTargets,
+      publishResults: {
+        attempted: effectiveTargets,
+        results: publisherResults,
+        successCount: publishSuccessCount,
+        totalCount: publishTotalCount,
+      },
+      qualityGate: { passed: qualityCheck.passed, degraded: qualityCheck.degraded, summary: qualityCheck.summary },
     };
 
     await updateRun(projectId, runId, {
