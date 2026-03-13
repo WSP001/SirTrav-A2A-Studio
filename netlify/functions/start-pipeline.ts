@@ -157,19 +157,35 @@ export const handler: Handler = async (event) => {
     const baseUrl = process.env.URL || 'http://localhost:8888';
     const invokeUrl = `${baseUrl}/.netlify/functions/run-pipeline-background`;
 
-    await fetch(invokeUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId,
-        runId,
-        payloadKey,
-        // 🎯 Pass platform + brief + publishTargets to background worker
-        platform,
-        brief,
-        publishTargets,
-      }),
-    });
+    console.log(`[start-pipeline] Invoking background worker at: ${invokeUrl}`);
+    console.log(`[start-pipeline] process.env.URL = ${process.env.URL || '(not set)'}`);
+
+    let bgStatus = 'unknown';
+    let bgError: string | undefined;
+    try {
+      const bgResponse = await fetch(invokeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          runId,
+          payloadKey,
+          platform,
+          brief,
+          publishTargets,
+        }),
+      });
+      bgStatus = `${bgResponse.status}`;
+      console.log(`[start-pipeline] Background worker response: ${bgResponse.status} ${bgResponse.statusText}`);
+      if (bgResponse.status !== 202) {
+        const bgBody = await bgResponse.text().catch(() => '(no body)');
+        console.error(`[start-pipeline] Unexpected background response: ${bgBody.substring(0, 500)}`);
+        bgError = `Background function returned ${bgResponse.status}: ${bgBody.substring(0, 200)}`;
+      }
+    } catch (fetchErr) {
+      bgError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+      console.error(`[start-pipeline] Background worker fetch FAILED:`, bgError);
+    }
 
     return {
       statusCode: 202,
@@ -180,10 +196,10 @@ export const handler: Handler = async (event) => {
         projectId,
         status: 'queued',
         payloadKey,
-        // 🎯 Echo platform + brief + publishTargets for UI confirmation
         platform,
         brief: Object.keys(brief).length > 0 ? brief : undefined,
         publishTargets,
+        _debug: { invokeUrl, bgStatus, bgError },
       }),
     };
   } catch (error) {
