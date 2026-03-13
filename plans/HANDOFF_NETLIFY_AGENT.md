@@ -1,156 +1,147 @@
-# Netlify Agent — Deployment & Environment Operations
+# Netlify Agent Deploy & Verify — Gemini Pivot Edition
 
-**Owner:** Netlify Agent (via Netlify Dashboard or CLI)
-**Scope:** Deploy, verify cloud health, audit environment variables
-**Created:** 2026-03-04
-**Updated:** 2026-03-06 (status correction after reviewing deploy evidence)
-**Status:** BLOCKED — Awaiting Human-Ops "KEYS SET" signal before env-backed redeploy
+Deploy current main to production via Netlify CLI, verify all working endpoints including the X/LinkedIn "Twisted Pair," skip Remotion (per Gemini Pivot Rule), and produce a structured deploy report.
 
-> **Status correction:** Production deploy already succeeded for current main (36 functions live).
-> This is NOT a first-deploy ticket anymore. Mission changed to:
-> **Environment Variable Redeploy & Cloud Verification.**
-> Remaining risk is runtime configuration, not static deployment.
-> Function env changes require a fresh build+deploy to take effect.
+## Objective
+Create a step-by-step Netlify CLI runbook that Scott runs from c:\WSP001\SirTrav-A2A-Studio to:
 
----
+- Build and deploy current main to production
+- Verify all currently-working cloud endpoints
+- Test both social publishers (X + LinkedIn "Twisted Pair") via dry-run
+- Skip Remotion/AWS verification (deprecated per Gemini Pivot)
+- Produce a structured deploy report for the team
 
-## Role
+## Acceptance Criteria
+- Fresh production deploy succeeds from current main
+- Healthcheck endpoint returns status: ok or degraded (not offline)
+- X/Twitter dry-run returns `{ success: false, dryRun: true, validated: true }` (No Fake Success)
+- LinkedIn dry-run returns `{ success: false, dryRun: true, validated: true }` (Twisted Pair)
+- Control-plane endpoint responds with valid JSON
+- remotion.mode showing "disabled" or "fallback" is EXPECTED — not an error
+- Frontend loads at sirtrav-a2a-studio.netlify.app (HTTP 200)
+- Deploy report saved to `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md`
+- No Remotion-related steps attempted (Gemini Pivot active)
 
-The Netlify Agent handles deployment and cloud verification. It does NOT write application code. Its job is to:
+## Scope
+**In scope:**
+- netlify.toml build settings verification
+- netlify deploy --prod from CLI
+- Cloud endpoint testing (healthcheck, control-plane, publish-x dry-run, publish-linkedin dry-run, progress)
+- Deploy report generation
 
-1. Deploy commits to production (or preview)
-2. Verify cloud endpoints respond correctly after deploy
-3. Audit environment variable presence (never expose values)
-4. Report deploy status to the Master
+**Out of scope:**
+- Setting new env vars (no Remotion keys)
+- Modifying any code files
+- Running local dev server or tests
+- Anything related to Remotion Lambda
 
----
+## Constraints
+- Must run from canonical path c:\WSP001\SirTrav-A2A-Studio
+- Must be on main branch, clean working tree
+- Netlify CLI must be installed (npm i -g netlify-cli if not)
+- Site must be linked (netlify link or .netlify/state.json present)
+- All commands are read-only or deploy-only — no code edits
+- Dry-run expected output is success: false — that IS correct (No Fake Success pattern)
 
-## Quick Start
+## Implementation
+The plan creates two files:
 
-```bash
-git pull origin main
-just orient-netlify        # Shows full orientation
+| File | Action | Description |
+|------|--------|-------------|
+| `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md` | CREATE | Deploy report template to fill in after running steps |
+| (plan file — this document) | EXISTS | Reference runbook |
+
+## Step-by-step Runbook
+
+### Step 0 — Prerequisites
+
+```powershell
+# Run from canonical path
+git -C c:\WSP001\SirTrav-A2A-Studio pull origin main
+git -C c:\WSP001\SirTrav-A2A-Studio status    # Must show "working tree clean" or only untracked
+netlify status                                  # Must show linked to sirtrav-a2a-studio
 ```
 
----
+### Step 1 — Pre-deploy build gate
 
-## Deploy Workflow
-
-### Pre-Deploy Gates (must all pass)
-
-```bash
-npm run build              # 0 errors required
-just sanity-test-local     # 33+ pass, 0 fail
-just control-plane-gate    # verdict check
+```powershell
+npm run build
+# Expected: "built in ~2s", 0 errors, dist/ populated
 ```
 
-### Deploy
+### Step 2 — Deploy to production
 
-```bash
-# Preview first (safe — generates a preview URL)
-just deploy-preview
-
-# Production (after preview looks good)
-just deploy
+```powershell
+netlify deploy --prod
+# Expected: Deploy URL = https://sirtrav-a2a-studio.netlify.app
+# Note the deploy ID for the report
 ```
 
-### Post-Deploy Verification
+### Step 3 — Verify frontend loads
 
-```bash
-just healthcheck-cloud               # Returns healthy/degraded/unhealthy
-just control-plane-verify-cloud      # 33/33 assertions
-just sanity-test                     # Cloud endpoint sanity (33+ checks)
+```powershell
+curl -s -o NUL -w "%{http_code}" https://sirtrav-a2a-studio.netlify.app/
+# Expected: 200
 ```
 
----
+### Step 4 — Verify healthcheck
 
-## Environment Variable Audit
-
-The Netlify Agent can check which keys are present without seeing their values:
-
-```bash
-just validate-env          # Shows all 28 keys, required vs optional
-just env-diff              # LOCAL vs CLOUD comparison
+```powershell
+curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/healthcheck
+# Expected: { "status": "ok" or "degraded", "services": [...] }
 ```
 
-### M9 Critical Keys (Human-Ops sets these)
+### Step 5 — Verify control-plane
 
-| Key | Purpose | Status |
-|-----|---------|--------|
-| `REMOTION_SERVE_URL` | Lambda bundle URL | Check via `/control-plane` → `remotion.serveUrl` |
-| `REMOTION_FUNCTION_NAME` | Lambda function name | Check via `/control-plane` → `remotion.functionName` |
-| `AWS_ACCESS_KEY_ID` | AWS credentials | Check via `/control-plane` → `remotion.awsKeys` |
-| `AWS_SECRET_ACCESS_KEY` | AWS credentials | Check via `/control-plane` → `remotion.awsKeys` |
-| `REMOTION_REGION` | AWS region (optional) | Check via `/control-plane` → `remotion.region` |
-
-### After Human-Ops Sets M9 Keys
-
-```bash
-just deploy                          # Push new env to production
-just healthcheck-cloud               # Should still be healthy
-just control-plane-verify-cloud      # remotion.mode should be "real"
-just m9-e2e                          # Should show REAL mode, not FALLBACK
+```powershell
+curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/control-plane
+# Expected: JSON with verdict, pipeline, services, remotion objects
+# remotion.mode = "disabled" or "fallback" is EXPECTED (Gemini Pivot — not an error)
 ```
 
----
+### Step 6a — X/Twitter dry-run (Twisted Pair — publisher 1)
 
-## What the Netlify Agent Should Report
-
-After each deploy, report to Master:
-
-```
-Deploy Report:
-  Commit: <sha>
-  Preview URL: <url> (if preview) OR Production: sirtrav-a2a-studio.netlify.app
-  Healthcheck: healthy | degraded | unhealthy
-  Control Plane: <verdict> (<reasons>)
-  Remotion: <mode> (real | fallback | disabled)
-  Build: <module count> modules, <error count> errors
+```powershell
+curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-x -H "Content-Type: application/json" -d "{\"text\":\"Netlify Agent deploy verify 2026-03-11\",\"dryRun\":true}"
+# Expected (No Fake Success): { success: false, dryRun: true, validated: true, configured: true }
+# If configured: false — X keys are missing or expired
 ```
 
----
+### Step 6b — LinkedIn dry-run (Twisted Pair — publisher 2)
 
-## What NOT to Do
-
-- ⛔ Do NOT modify application code (*.ts, *.tsx, *.jsx, *.mjs)
-- ⛔ Do NOT set environment variables directly — that's Human-Ops
-- ⛔ Do NOT deploy without running pre-deploy gates
-- ⛔ Do NOT expose environment variable values in reports
-
----
-
-## Netlify-Specific Commands
-
-```bash
-# Site info
-netlify status
-
-# List recent deploys
-netlify deploys --json | head -20
-
-# Open Netlify Dashboard
-netlify open
-
-# Check build settings
-netlify env:list          # Shows keys (not values) from Dashboard
+```powershell
+curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-linkedin -H "Content-Type: application/json" -d "{\"projectId\":\"deploy-verify\",\"videoUrl\":\"https://example.com/test.mp4\",\"title\":\"Deploy Verify\",\"description\":\"Netlify Agent deploy verify 2026-03-11\",\"visibility\":\"PUBLIC\",\"dryRun\":true}"
+# Expected (No Fake Success): { success: false, dryRun: true, validated: true }
+# configured: true means keys are live; configured: false means keys missing (expected if not set)
 ```
 
----
+### Step 7 — Verify SSE/progress endpoint
 
-## Useful justfile Recipes
+```powershell
+curl -s "https://sirtrav-a2a-studio.netlify.app/.netlify/functions/progress?projectId=deploy-verify"
+# Expected: 200 with JSON (possibly empty events array)
+```
 
-| Recipe | Purpose |
-|--------|---------|
-| `just orient-netlify` | Full orientation (run first) |
-| `just deploy-preview` | Deploy preview |
-| `just deploy` | Deploy production |
-| `just healthcheck-cloud` | Cloud healthcheck |
-| `just control-plane-verify-cloud` | Control plane assertions |
-| `just sanity-test` | Cloud sanity test |
-| `just validate-env` | Env key audit |
-| `just env-diff` | Local vs cloud env comparison |
-| `just ops-spine-cloud` | Full cloud verification sequence |
+### Step 8 — Check env var presence (keys only, not values)
 
----
+```powershell
+netlify env:list
+# Report which of these are SET vs MISSING:
+# OPENAI_API_KEY, ELEVENLABS_API_KEY, GEMINI_API_KEY,
+# TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET,
+# LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN
+# (Skip REMOTION_* and AWS_* — Gemini Pivot active)
+```
 
-*Deploy honestly. Report honestly. For the Commons Good.* 🎬
+### Step 9 — Fill in deploy report 
+Create `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md` with results from Steps 3-8.
+
+### Key: Reading Dry-Run Results
+Per the No Fake Success pattern verified in both publish-x.ts and publish-linkedin.ts:
+
+| Response Field | Meaning |
+|----------------|---------|
+| `success: false, dryRun: true, validated: true, configured: true` | Keys present, payload valid, live post withheld — GOOD |
+| `success: false, dryRun: true, validated: true, configured: false` | Keys missing, payload valid — publisher disabled as expected |
+| `success: false, disabled: true` | Not a dry-run; keys missing, publisher honestly refused — No Fake Success working |
+| `success: true, tweetId: "..."` | Live post executed (should NOT happen in dry-run mode) |
