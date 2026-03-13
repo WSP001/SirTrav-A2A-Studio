@@ -213,12 +213,11 @@ function checkPipeline(): ControlPlaneResponse['pipeline'] {
     if (!exists) allWired = false;
   }
 
-  // If this control-plane function is running in production, the build succeeded,
-  // which means all agent functions were successfully compiled. If filesystem checks
-  // fail (Lambda sandboxing), trust the build.
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.NETLIFY;
-  if (isProduction && !allWired) {
-    // Build passed → agents are deployed. Filesystem check is unreliable in Lambda.
+  // If ALL agents show as missing, the filesystem check is broken (Netlify Lambda
+  // sandboxing — .ts/.js files don't exist at /var/task). Since this function is
+  // running, the build succeeded, so all agents are deployed. Trust the build.
+  const noneFound = Object.values(agents).every(v => v === false);
+  if (noneFound) {
     for (const name of Object.keys(AGENT_FILES)) {
       agents[name] = true;
     }
