@@ -624,6 +624,9 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
+  // 🔍 DIAGNOSTIC: Log that the function body started executing
+  console.log('[run-pipeline-background] Handler invoked at', new Date().toISOString());
+
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const projectId: string | undefined = body.projectId;
@@ -631,6 +634,18 @@ export const handler: Handler = async (event) => {
     const payloadKey: string | undefined = body.payloadKey;
     // 🎯 CC-019 M8: Selective publish targets from UI toggle
     const publishTargets: string[] | undefined = body.publishTargets;
+
+    // 🔍 DIAGNOSTIC: Write immediate breadcrumb to progress store
+    if (projectId && runId) {
+      try {
+        await appendProgress(projectId, runId, {
+          projectId, runId, agent: 'pipeline', status: 'running',
+          message: '🔍 Background function started', timestamp: new Date().toISOString(), progress: 1,
+        });
+      } catch (diagErr) {
+        console.error('[DIAGNOSTIC] Failed to write breadcrumb:', diagErr);
+      }
+    }
 
     if (!projectId || !runId) {
       return { statusCode: 400, body: 'projectId and runId are required' };
