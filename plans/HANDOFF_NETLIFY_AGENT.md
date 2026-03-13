@@ -71,10 +71,16 @@ npm run build
 
 ### Step 2 — Deploy to production
 
+> **Note:** API deploys (`netlify deploy --prod`) are disabled for this site (returns 403).
+> Use git-based deploy trigger instead:
+
 ```powershell
-netlify deploy --prod
-# Expected: Deploy URL = https://sirtrav-a2a-studio.netlify.app
-# Note the deploy ID for the report
+# Option A: Push to main triggers auto-deploy (if CI is wired)
+git push origin main
+
+# Option B: Trigger build via Netlify API (works from any terminal)
+node -e "const{execSync}=require('child_process');execSync('netlify api createSiteBuild --data '+JSON.stringify(JSON.stringify({site_id:'53ebb517-cfb7-468c-b253-4e7a30f3a85a'})),{stdio:'inherit'})"
+# Expected: JSON with deploy_id and deploy_state: "new"
 ```
 
 ### Step 3 — Verify frontend loads
