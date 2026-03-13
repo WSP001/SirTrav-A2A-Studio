@@ -5,13 +5,14 @@
 import type { Handler } from '@netlify/functions';
 import { appendProgress } from './lib/progress-store';
 
-// These are the exact same imports as run-pipeline-background.ts
+// GROUP A: storage + runIndex (comment out Group B to isolate crash)
 import { runsStore, artifactsStore, uploadsStore } from './lib/storage';
 import { updateRunIndex } from './lib/runIndex';
-import { ManifestGenerator } from './lib/cost-manifest';
-import { inspectOutput } from './lib/quality-gate';
-import { publishVideo, flushCredentials } from './lib/publish';
-import { recordJobPacket } from './lib/vault-helpers';
+// GROUP B: commented out for binary search
+// import { ManifestGenerator } from './lib/cost-manifest';
+// import { inspectOutput } from './lib/quality-gate';
+// import { publishVideo, flushCredentials } from './lib/publish';
+// import { recordJobPacket } from './lib/vault-helpers';
 
 export const handler: Handler = async (event) => {
   const results: Record<string, string> = {};
@@ -25,11 +26,12 @@ export const handler: Handler = async (event) => {
     results['storage-artifactsStore'] = typeof artifactsStore === 'function' ? 'ok' : 'broken';
     results['storage-uploadsStore'] = typeof uploadsStore === 'function' ? 'ok' : 'broken';
     results['runIndex'] = typeof updateRunIndex === 'function' ? 'ok' : 'broken';
-    results['cost-manifest'] = typeof ManifestGenerator === 'function' ? 'ok' : 'broken';
-    results['quality-gate'] = typeof inspectOutput === 'function' ? 'ok' : 'broken';
-    results['publish-publishVideo'] = typeof publishVideo === 'function' ? 'ok' : 'broken';
-    results['publish-flushCredentials'] = typeof flushCredentials === 'function' ? 'ok' : 'broken';
-    results['vault-helpers'] = typeof recordJobPacket === 'function' ? 'ok' : 'broken';
+    // Group B commented out for binary search
+    results['cost-manifest'] = 'skipped';
+    results['quality-gate'] = 'skipped';
+    results['publish-publishVideo'] = 'skipped';
+    results['publish-flushCredentials'] = 'skipped';
+    results['vault-helpers'] = 'skipped';
 
     // Try to actually call runsStore (the first thing the pipeline does)
     try {
