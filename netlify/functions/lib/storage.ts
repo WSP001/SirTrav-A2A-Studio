@@ -1,7 +1,8 @@
 import { createReadStream, statSync, readFileSync } from 'fs';
 import path from 'path';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+// AWS SDK imports are LAZY — loaded dynamically inside S3Storage methods only.
+// Static top-level imports of @aws-sdk/client-s3 crash Netlify background
+// functions on cold start when the SDK initialization exceeds the Lambda timeout.
 import { getStore } from '@netlify/blobs';
 
 export interface StorageResult {
@@ -195,20 +196,28 @@ const resolveContentType = (filePath: string): string =>
   'application/octet-stream';
 
 class S3Storage {
-  private readonly s3: S3Client;
+  private s3: any;  // Lazily loaded S3Client
   private readonly bucket: string;
   private readonly publicBase?: string;
 
   constructor() {
     this.bucket = process.env.S3_BUCKET || '';
     this.publicBase = process.env.S3_PUBLIC_BASE_URL;
-    this.s3 = new S3Client({
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-      },
-      region: process.env.AWS_REGION || 'us-east-1',
-    });
+    // S3Client is NOT created here — loaded lazily in getClient()
+  }
+
+  private async getClient() {
+    if (!this.s3) {
+      const { S3Client } = await import('@aws-sdk/client-s3');
+      this.s3 = new S3Client({
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+        region: process.env.AWS_REGION || 'us-east-1',
+      });
+    }
+    return this.s3;
   }
 
   async upload(
@@ -230,6 +239,9 @@ class S3Storage {
       const fileStream = createReadStream(localPath);
       const contentType = resolveContentType(localPath);
 
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const client = await this.getClient();
+
       const uploadParams = {
         Bucket: this.bucket,
         Key: key,
@@ -238,7 +250,7 @@ class S3Storage {
         Metadata: metadata,
       };
 
-      await this.s3.send(new PutObjectCommand(uploadParams));
+      await client.send(new PutObjectCommand(uploadParams));
 
       const publicUrl = this.publicBase
         ? `${this.publicBase}/${key}`
@@ -262,12 +274,16 @@ class S3Storage {
     expiresIn: number = DEFAULT_EXPIRY_SECONDS
   ): Promise<StorageResult> {
     try {
+      const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+      const client = await this.getClient();
+
       const command = new GetObjectCommand({
         Bucket: this.bucket,
         Key: key,
       });
 
-      const signedUrl = await getSignedUrl(this.s3, command, { expiresIn });
+      const signedUrl = await getSignedUrl(client, command, { expiresIn });
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
       return { ok: true, signedUrl, expiresAt };

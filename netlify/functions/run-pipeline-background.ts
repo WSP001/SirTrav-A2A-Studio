@@ -1,7 +1,11 @@
 /**
- * run-pipeline-background v3.0 - REAL AGENT EXECUTION
+ * run-pipeline-background v4.0 - LOUD CRASH EDITION
+ *
  * Background worker that executes the 7-agent pipeline with REAL API calls.
- * No more mocks - calls actual agent functions when APIs are available.
+ * v4.0 key change: ALL imports are dynamic inside the handler. The only
+ * top-level import is @netlify/blobs getStore — the lightest possible module.
+ * If the handler crashes, the error is written to the progress store so the
+ * UI (or CLI probe) sees the exact stack trace instead of spinning forever.
  *
  * Pipeline Modes (auto-detected based on available APIs):
  * - FULL: All agents use real APIs (OpenAI, ElevenLabs, Suno, FFmpeg)
@@ -10,15 +14,17 @@
  * - DEMO: Test mode with placeholder video
  */
 import type { Handler } from '@netlify/functions';
-import { runsStore, artifactsStore, uploadsStore } from './lib/storage';
-import { updateRunIndex } from './lib/runIndex';
-import { appendProgress } from './lib/progress-store';
-import { ManifestGenerator } from './lib/cost-manifest';
-import { inspectOutput } from './lib/quality-gate';
-// publish.ts loaded lazily inside handler to avoid import-time storage crashes
-// const { publishVideo, flushCredentials } = await import('./lib/publish');
-// 🎯 CC-014: Memory Vault write helpers
-import { recordJobPacket } from './lib/vault-helpers';
+// ⚠️ NO OTHER IMPORTS AT TOP LEVEL — everything else loaded dynamically
+// inside the handler to prevent cold-start crashes in Lambda.
+
+// Module-level holders — populated by the handler's dynamic imports.
+// updateRun() and agent execution functions reference these.
+let runsStore: () => any;
+let updateRunIndex: any;
+let appendProgress: any;
+let ManifestGenerator: any;
+let inspectOutput: any;
+let recordJobPacket: any;
 
 type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -625,27 +631,79 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // 🔍 DIAGNOSTIC: Log that the function body started executing
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOUD CRASH WRAPPER — writes to Netlify Blobs BEFORE importing anything
+  // else. If any dynamic import crashes, the error lands in the progress store
+  // so the UI shows the exact stack trace instead of spinning at 0% forever.
+  // ═══════════════════════════════════════════════════════════════════════════
   console.log('[run-pipeline-background] Handler invoked at', new Date().toISOString());
+
+  let projectId: string | undefined;
+  let runId: string | undefined;
 
   try {
     const body = event.body ? JSON.parse(event.body) : {};
-    const projectId: string | undefined = body.projectId;
-    const runId: string | undefined = body.runId;
+    projectId = body.projectId;
+    runId = body.runId;
     const payloadKey: string | undefined = body.payloadKey;
     // 🎯 CC-019 M8: Selective publish targets from UI toggle
     const publishTargets: string[] | undefined = body.publishTargets;
 
-    // 🔍 DIAGNOSTIC: Write immediate breadcrumb to progress store
+    // ─── STEP 0: Write "I'm alive" breadcrumb using ONLY @netlify/blobs ───
+    // This is the LIGHTEST possible write — no custom storage wrappers.
     if (projectId && runId) {
       try {
-        await appendProgress(projectId, runId, {
-          projectId, runId, agent: 'pipeline', status: 'running',
-          message: '🔍 Background function started', timestamp: new Date().toISOString(), progress: 1,
-        });
-      } catch (diagErr) {
-        console.error('[DIAGNOSTIC] Failed to write breadcrumb:', diagErr);
+        const { getStore } = await import('@netlify/blobs');
+        const progressKey = `projects/${projectId}/runs/${runId || 'default'}/progress.json`;
+        let progressStore: ReturnType<typeof getStore> | null = null;
+        if (process.env.NETLIFY_BLOBS_CONTEXT) {
+          progressStore = getStore('sirtrav-progress');
+        } else {
+          const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+          const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+          if (siteID && token) {
+            progressStore = getStore({ name: 'sirtrav-progress', siteID, token });
+          }
+        }
+        if (progressStore) {
+          await progressStore.set(progressKey, JSON.stringify([{
+            projectId, runId, agent: 'system', status: 'running', progress: 1,
+            message: '🔍 Cloud background worker awakened — loading modules...',
+            timestamp: new Date().toISOString(),
+          }]));
+          console.log('[LOUD-CRASH] Breadcrumb written to progress store');
+        }
+      } catch (breadcrumbErr) {
+        console.error('[LOUD-CRASH] Failed to write breadcrumb:', breadcrumbErr);
       }
+    }
+
+    // ─── STEP 1: Dynamic-import all heavy modules ─────────────────────────
+    console.log('[LOUD-CRASH] Loading modules...');
+    const [storageModule, runIndexModule, progressModule, costModule, qualityModule, vaultModule] = await Promise.all([
+      import('./lib/storage'),
+      import('./lib/runIndex'),
+      import('./lib/progress-store'),
+      import('./lib/cost-manifest'),
+      import('./lib/quality-gate'),
+      import('./lib/vault-helpers'),
+    ]);
+    console.log('[LOUD-CRASH] All modules loaded successfully');
+
+    // Populate module-level holders so updateRun() + agent functions work
+    runsStore = storageModule.runsStore;
+    updateRunIndex = runIndexModule.updateRunIndex;
+    appendProgress = progressModule.appendProgress;
+    ManifestGenerator = costModule.ManifestGenerator;
+    inspectOutput = qualityModule.inspectOutput;
+    recordJobPacket = vaultModule.recordJobPacket;
+
+    // ─── Write real "1% started" progress via the proper store ────────────
+    if (projectId && runId) {
+      await appendProgress(projectId, runId, {
+        projectId, runId, agent: 'pipeline', status: 'running',
+        message: '🔍 Background function started', timestamp: new Date().toISOString(), progress: 1,
+      });
     }
 
     if (!projectId || !runId) {
@@ -987,12 +1045,48 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('❌ run-pipeline-background error:', error);
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOUD CRASH: Write the exact error + stack trace to the progress store
+    // so the UI/CLI probe can display it instead of spinning at 0% forever.
+    // ═══════════════════════════════════════════════════════════════════════
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : 'no stack';
+    console.error('❌ LOUD CRASH in run-pipeline-background:', errMsg);
+    console.error('   Stack:', errStack);
+
+    if (projectId && runId) {
+      try {
+        const { getStore } = await import('@netlify/blobs');
+        const progressKey = `projects/${projectId}/runs/${runId || 'default'}/progress.json`;
+        let progressStore: ReturnType<typeof getStore> | null = null;
+        if (process.env.NETLIFY_BLOBS_CONTEXT) {
+          progressStore = getStore('sirtrav-progress');
+        } else {
+          const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+          const token = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+          if (siteID && token) {
+            progressStore = getStore({ name: 'sirtrav-progress', siteID, token });
+          }
+        }
+        if (progressStore) {
+          await progressStore.set(progressKey, JSON.stringify([{
+            projectId, runId, agent: 'system', status: 'failed', progress: 0,
+            message: `FATAL CRASH: ${errMsg} | STACK: ${errStack}`,
+            timestamp: new Date().toISOString(),
+          }]));
+          console.log('[LOUD-CRASH] Error written to progress store — UI can see it now');
+        }
+      } catch (writeErr) {
+        console.error('[LOUD-CRASH] Could not write error to progress store:', writeErr);
+      }
+    }
+
     return {
       statusCode: 500,
       body: JSON.stringify({
         ok: false,
-        error: error instanceof Error ? error.message : 'pipeline_failed'
+        error: errMsg,
+        stack: errStack,
       })
     };
   }
