@@ -566,11 +566,24 @@ class NetlifyBlobsStorage {
   }
 }
 
-// Pre-configured blob stores for different media types and artifacts
-export const videoStore = new NetlifyBlobsStorage('sirtrav-videos');
-export const audioStore = new NetlifyBlobsStorage('sirtrav-audio');
-export const imageStore = new NetlifyBlobsStorage('sirtrav-images');
-export const creditsStore = new NetlifyBlobsStorage('sirtrav-credits');
+// Lazy proxy: defers construction until first property access.
+// Prevents import-time crashes in Netlify Lambda background functions.
+function createLazyProxy<T extends object>(factory: () => T): T {
+  let _instance: T | undefined;
+  return new Proxy({} as T, {
+    get(_target, prop, receiver) {
+      if (!_instance) _instance = factory();
+      const value = Reflect.get(_instance as object, prop, receiver);
+      return typeof value === 'function' ? value.bind(_instance) : value;
+    },
+  });
+}
+
+// Pre-configured blob stores — actual construction deferred until first use.
+export const videoStore = createLazyProxy<NetlifyBlobsStorage>(() => new NetlifyBlobsStorage('sirtrav-videos'));
+export const audioStore = createLazyProxy<NetlifyBlobsStorage>(() => new NetlifyBlobsStorage('sirtrav-audio'));
+export const imageStore = createLazyProxy<NetlifyBlobsStorage>(() => new NetlifyBlobsStorage('sirtrav-images'));
+export const creditsStore = createLazyProxy<NetlifyBlobsStorage>(() => new NetlifyBlobsStorage('sirtrav-credits'));
 export const uploadsStore = () => getConfiguredBlobsStore('sirtrav-uploads');
 export const evalsStore = () => getConfiguredBlobsStore('sirtrav-evals');
 export const runsStore = () => getConfiguredBlobsStore('sirtrav-runs');
@@ -613,9 +626,12 @@ const hasS3Config = Boolean(
   process.env.AWS_SECRET_ACCESS_KEY
 );
 
-// Default storage instance - uses Netlify Blobs on Netlify, Mock locally
-export const storage = isProduction
-  ? (hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media'))
-  : new MockStorage();
+// Default storage instance — lazy to prevent import-time crashes in Lambda
+export const storage = createLazyProxy<S3Storage | NetlifyBlobsStorage | MockStorage>(() => {
+  if (isProduction) {
+    return hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media');
+  }
+  return new MockStorage();
+});
 
 export { S3Storage, MockStorage, NetlifyLMStorage, NetlifyBlobsStorage };

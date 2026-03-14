@@ -15,7 +15,8 @@ import { updateRunIndex } from './lib/runIndex';
 import { appendProgress } from './lib/progress-store';
 import { ManifestGenerator } from './lib/cost-manifest';
 import { inspectOutput } from './lib/quality-gate';
-import { publishVideo, flushCredentials } from './lib/publish';
+// publish.ts loaded lazily inside handler to avoid import-time storage crashes
+// const { publishVideo, flushCredentials } = await import('./lib/publish');
 // 🎯 CC-014: Memory Vault write helpers
 import { recordJobPacket } from './lib/vault-helpers';
 
@@ -921,10 +922,11 @@ export const handler: Handler = async (event) => {
     // STEP 8: COMPLETE - Exchange & Wipe (Security)
     // ========================================================================
 
+    // Load publish helpers lazily — avoids import-time storage crashes in Lambda
+    const { publishVideo, flushCredentials } = await import('./lib/publish');
+
     // 🔒 EXCHANGE: Generate Secure Signed URL
     const secureVideo = await publishVideo(rawVideoUrl, 24);
-
-    // (Credentials flushed after final update)
 
     const publishSuccessCount = Object.values(publisherResults).filter(r => r.success).length;
     const publishTotalCount = Object.keys(publisherResults).length;
