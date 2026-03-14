@@ -87,7 +87,13 @@ Return ONLY valid JSON in this exact format (no markdown, no code fences):
   ]
 }`;
 
-    const result = await model.generateContent(prompt);
+    // 30s timeout — prevents Gemini from hanging the entire pipeline
+    const result = await Promise.race([
+      model.generateContent(prompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini API timeout after 30s')), 30000)
+      ),
+    ]);
     const text = result.response.text();
 
     // Try to parse structured JSON from Gemini
@@ -142,6 +148,7 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
         max_tokens: 1000,
         temperature: 0.8,
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {

@@ -160,6 +160,7 @@ async function executeDirectorAgent(
         max_scenes: 5,
         max_assets_per_scene: 3,
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -212,6 +213,7 @@ async function executeWriterAgent(
         mood,
         sceneCount,
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -264,6 +266,7 @@ async function executeVoiceAgent(
         text,
         character: 'narrator',
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -330,6 +333,7 @@ async function executeComposerAgent(
         duration: 30,
         style: 'cinematic',
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -394,6 +398,7 @@ async function executeEditorAgent(
         musicUrl: musicResult?.data?.musicUrl,
         resolution: outputFormat?.aspectRatio === '9:16' ? '1080p' : '1080p',
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
@@ -455,6 +460,7 @@ async function executeAttributionAgent(
           editor: agentResults.editor?.fallback ? 'fallback' : 'ffmpeg',
         },
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
