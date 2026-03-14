@@ -72,9 +72,9 @@ export default async (req: Request) => {
           const startTime = Date.now();
           let seenEvents = new Set<string>();
 
-          // Loop constraint: Netlify Functions have 10-26s timeout. 
-          // We'll run for ~20s then close gracefully to let client reconnect.
-          while (Date.now() - startTime < 20000) {
+          // Loop constraint: Netlify synchronous functions have 60s timeout.
+          // Run for ~55s to cover the full pipeline (~45s) before closing.
+          while (Date.now() - startTime < 55000) {
             try {
               const events = await readEvents(projectId, runId || undefined);
 
