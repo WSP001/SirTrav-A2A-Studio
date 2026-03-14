@@ -1,7 +1,7 @@
 import { createReadStream, statSync, readFileSync } from 'fs';
 import path from 'path';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+// AWS SDK loaded lazily inside S3Storage methods to avoid crashing
+// Lambda background functions when the package isn't installed.
 import { getStore } from '@netlify/blobs';
 
 export interface StorageResult {
@@ -195,20 +195,28 @@ const resolveContentType = (filePath: string): string =>
   'application/octet-stream';
 
 class S3Storage {
-  private readonly s3: S3Client;
+  private s3: any; // Lazy-loaded S3Client
   private readonly bucket: string;
   private readonly publicBase?: string;
 
   constructor() {
     this.bucket = process.env.S3_BUCKET || '';
     this.publicBase = process.env.S3_PUBLIC_BASE_URL;
-    this.s3 = new S3Client({
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-      },
-      region: process.env.AWS_REGION || 'us-east-1',
-    });
+    // S3Client created lazily in getClient() to avoid crashing at import time
+  }
+
+  private async getClient() {
+    if (!this.s3) {
+      const { S3Client } = await import('@aws-sdk/client-s3');
+      this.s3 = new S3Client({
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+        region: process.env.AWS_REGION || 'us-east-1',
+      });
+    }
+    return this.s3;
   }
 
   async upload(
@@ -230,6 +238,9 @@ class S3Storage {
       const fileStream = createReadStream(localPath);
       const contentType = resolveContentType(localPath);
 
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const s3 = await this.getClient();
+
       const uploadParams = {
         Bucket: this.bucket,
         Key: key,
@@ -238,7 +249,7 @@ class S3Storage {
         Metadata: metadata,
       };
 
-      await this.s3.send(new PutObjectCommand(uploadParams));
+      await s3.send(new PutObjectCommand(uploadParams));
 
       const publicUrl = this.publicBase
         ? `${this.publicBase}/${key}`
@@ -262,12 +273,16 @@ class S3Storage {
     expiresIn: number = DEFAULT_EXPIRY_SECONDS
   ): Promise<StorageResult> {
     try {
+      const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+      const s3 = await this.getClient();
+
       const command = new GetObjectCommand({
         Bucket: this.bucket,
         Key: key,
       });
 
-      const signedUrl = await getSignedUrl(this.s3, command, { expiresIn });
+      const signedUrl = await getSignedUrl(s3, command, { expiresIn });
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
       return { ok: true, signedUrl, expiresAt };
@@ -605,17 +620,22 @@ export function createStorage(storeName?: string) {
   return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
 }
 
-// Export appropriate storage based on environment
-const isProduction = process.env.NODE_ENV === 'production';
-const hasS3Config = Boolean(
-  process.env.S3_BUCKET &&
-  process.env.AWS_ACCESS_KEY_ID &&
-  process.env.AWS_SECRET_ACCESS_KEY
-);
-
-// Default storage instance - uses Netlify Blobs on Netlify, Mock locally
-export const storage = isProduction
-  ? (hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media'))
-  : new MockStorage();
+// Lazy storage factory — avoids loading AWS SDK at module init time,
+// which crashes background functions when @aws-sdk isn't installed.
+let _storage: S3Storage | MockStorage | NetlifyBlobsStorage | null = null;
+export function getStorage() {
+  if (!_storage) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const hasS3Config = Boolean(
+      process.env.S3_BUCKET &&
+      process.env.AWS_ACCESS_KEY_ID &&
+      process.env.AWS_SECRET_ACCESS_KEY
+    );
+    _storage = isProduction
+      ? (hasS3Config ? new S3Storage() : new NetlifyBlobsStorage('sirtrav-media'))
+      : new MockStorage();
+  }
+  return _storage;
+}
 
 export { S3Storage, MockStorage, NetlifyLMStorage, NetlifyBlobsStorage };

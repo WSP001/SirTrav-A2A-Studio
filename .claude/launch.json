@@ -2,16 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "netlify-dev",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["netlify", "dev"],
-      "port": 8888
-    },
-    {
-      "name": "vite-preview",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "preview"],
-      "port": 4173
+      "name": "vite-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173"],
+      "port": 5173
     }
   ]
 }
