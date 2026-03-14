@@ -196,7 +196,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [projectId, onComplete, onError]);
+  }, [projectId, runId, onComplete, onError]);
 
   // Aggregate events into ProgressStatus
   const progress: ProgressData | null = React.useMemo(() => {
