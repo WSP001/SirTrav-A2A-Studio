@@ -57,6 +57,7 @@ const AGENTS = [
 export default function PipelineProgress({ projectId, runId, onComplete, onError, onMetricsUpdate }: PipelineProgressProps) {
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [showDetails, setShowDetails] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -274,6 +275,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   ).length || 0;
   const totalSteps = AGENTS.length;
   const progressPercent = Math.round((completedSteps / totalSteps) * 100);
+  const hasRealAgentState = progress?.steps?.some(s => s.status !== 'pending') || false;
 
   // Get status for each agent
   const getAgentStatus = (agentId: string): AgentStatus => {
@@ -332,101 +334,141 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         </div>
       </div>
 
-      {/* Agent Grid - 7 cards: 4 on top row, 3 centered on bottom row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {AGENTS.slice(0, 4).map((agent, index) => {
+      {!hasRealAgentState && (
+        <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <p className="text-sm text-[var(--color-text-primary)]">Run started. Waiting for the first agent event.</p>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+            Progress stays here while the backend stream catches up.
+          </p>
+        </div>
+      )}
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {AGENTS.map((agent) => {
           const status = getAgentStatus(agent.id);
           return (
             <div
               key={agent.id}
-              className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
-                ? 'border-blue-500 bg-blue-500/10'
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${status.status === 'running'
+                ? 'border-blue-500/50 bg-blue-500/10 text-blue-200'
                 : status.status === 'completed'
-                  ? 'border-green-500/50 bg-green-500/5'
+                  ? 'border-green-500/50 bg-green-500/10 text-green-200'
                   : status.status === 'failed'
-                    ? 'border-red-500/50 bg-red-500/5'
-                    : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                    ? 'border-red-500/50 bg-red-500/10 text-red-200'
+                    : status.status === 'fallback'
+                      ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]'
                 }`}
             >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{agent.icon}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--color-text-primary)]">{agent.name}</span>
-                    <span className="text-sm">{getStatusIcon(status.status)}</span>
-                  </div>
-                  <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 1}</span>
-                </div>
-              </div>
-              <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
-
-              {/* Status indicator */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
-                <span className="text-xs capitalize text-[var(--color-text-secondary)]">
-                  {status.status}
-                  {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
-                </span>
-              </div>
-
-              {/* Error message */}
-              {status.error && (
-                <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
-                  {status.error}
-                </p>
-              )}
+              <span aria-hidden="true">{agent.icon}</span>
+              <span>{agent.name}</span>
+              <span aria-hidden="true">{getStatusIcon(status.status)}</span>
             </div>
           );
         })}
       </div>
 
-      {/* Row 2: Editor, Attribution, Publisher (3 cards centered) */}
-      <div className="grid grid-cols-3 gap-4 mt-4 max-w-3xl mx-auto">
-        {AGENTS.slice(4).map((agent, index) => {
-          const status = getAgentStatus(agent.id);
-          return (
-            <div
-              key={agent.id}
-              className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
-                ? 'border-blue-500 bg-blue-500/10'
-                : status.status === 'completed'
-                  ? 'border-green-500/50 bg-green-500/5'
-                  : status.status === 'failed'
-                    ? 'border-red-500/50 bg-red-500/5'
-                    : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
-                }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{agent.icon}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--color-text-primary)]">{agent.name}</span>
-                    <span className="text-sm">{getStatusIcon(status.status)}</span>
+      {hasRealAgentState && (
+        <div className="mb-2">
+          <button
+            type="button"
+            onClick={() => setShowDetails(prev => !prev)}
+            className="text-xs font-medium text-[var(--color-text-secondary)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
+          >
+            {showDetails ? 'Hide detailed agent cards' : 'Show detailed agent cards'}
+          </button>
+        </div>
+      )}
+
+      {hasRealAgentState && showDetails && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {AGENTS.slice(0, 4).map((agent, index) => {
+              const status = getAgentStatus(agent.id);
+              return (
+                <div
+                  key={agent.id}
+                  className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : status.status === 'completed'
+                      ? 'border-green-500/50 bg-green-500/5'
+                      : status.status === 'failed'
+                        ? 'border-red-500/50 bg-red-500/5'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                    }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">{agent.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[var(--color-text-primary)]">{agent.name}</span>
+                        <span className="text-sm">{getStatusIcon(status.status)}</span>
+                      </div>
+                      <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 1}</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 5}</span>
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
+                    <span className="text-xs capitalize text-[var(--color-text-secondary)]">
+                      {status.status}
+                      {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
+                    </span>
+                  </div>
+                  {status.error && (
+                    <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
+                      {status.error}
+                    </p>
+                  )}
                 </div>
-              </div>
-              <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
+              );
+            })}
+          </div>
 
-              {/* Status indicator */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
-                <span className="text-xs capitalize text-[var(--color-text-secondary)]">
-                  {status.status}
-                  {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
-                </span>
-              </div>
-
-              {/* Error message */}
-              {status.error && (
-                <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
-                  {status.error}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+          <div className="grid grid-cols-3 gap-4 mt-4 max-w-3xl mx-auto">
+            {AGENTS.slice(4).map((agent, index) => {
+              const status = getAgentStatus(agent.id);
+              return (
+                <div
+                  key={agent.id}
+                  className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : status.status === 'completed'
+                      ? 'border-green-500/50 bg-green-500/5'
+                      : status.status === 'failed'
+                        ? 'border-red-500/50 bg-red-500/5'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
+                    }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">{agent.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[var(--color-text-primary)]">{agent.name}</span>
+                        <span className="text-sm">{getStatusIcon(status.status)}</span>
+                      </div>
+                      <span className="text-xs text-[var(--color-text-secondary)]">Agent {index + 5}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-2">{agent.description}</p>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
+                    <span className="text-xs capitalize text-[var(--color-text-secondary)]">
+                      {status.status}
+                      {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
+                    </span>
+                  </div>
+                  {status.error && (
+                    <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
+                      {status.error}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Status Message */}
       {progress?.status === 'completed' && (

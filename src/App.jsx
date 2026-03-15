@@ -23,6 +23,7 @@ const AGENTS = [
 
 function App() {
   const [projectId, setProjectId] = useState(`week${new Date().getWeekNumber()}_recap`);
+  const [producerBrief, setProducerBrief] = useState('');
   const [files, setFiles] = useState([]);
   const [pipelineStatus, setPipelineStatus] = useState('idle'); // idle, running, completed, error
   const [agentStates, setAgentStates] = useState({});
@@ -151,7 +152,7 @@ function App() {
           brief: {
             mood: 'reflective',
             pace: videoLength === 'short' ? 'fast' : 'medium',
-            story: `Weekly recap for ${projectId}`,
+            story: producerBrief || `Weekly recap for ${projectId}`,
             cta: 'Share your story',
             tone: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'professional' : 'casual',
             // 🎯 MG-002: Pass U2A Preferences
@@ -326,15 +327,16 @@ function App() {
           <nav className="flex items-center gap-4">
             <SystemStatusEmblem />
             <a href="/diagnostics" className="nav-link">Diagnostics</a>
-            <a href="#" className="nav-link"><BookOpen className="w-4 h-4" /> Docs</a>
-            <a href="#" className="nav-link"><Database className="w-4 h-4" /> Vault</a>
+            <a href="#" className="nav-link" aria-label="Open documentation"><BookOpen className="w-4 h-4" /> Docs</a>
+            <a href="#" className="nav-link" aria-label="Open memory vault"><Database className="w-4 h-4" /> Vault</a>
             <button
               onClick={() => setShowResultsPreview(true)}
               className="btn-secondary"
+              aria-label="Open results preview"
             >
               Preview
             </button>
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link">
+            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="Open GitHub repository">
               <Github className="w-4 h-4" />
             </a>
           </nav>
@@ -463,10 +465,11 @@ function App() {
 
               {/* Project ID */}
               <div className="mb-4">
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Project ID / Job Ticket</label>
+                <label htmlFor="project-id" className="text-xs text-gray-500 uppercase tracking-wide">Project ID / Job Ticket</label>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-gray-500">#</span>
                   <input
+                    id="project-id"
                     type="text"
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
@@ -697,6 +700,25 @@ function App() {
                     </select>
                   </div>
                 </div>
+              </div>
+
+              <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-2">
+                <div>
+                  <label htmlFor="producer-brief" className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">
+                    Producer Brief
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Tell the agents what story to tell this week.
+                  </p>
+                </div>
+                <textarea
+                  id="producer-brief"
+                  value={producerBrief}
+                  onChange={(e) => setProducerBrief(e.target.value)}
+                  rows={4}
+                  placeholder="This week: cormorants near Eagle Lake; focus on Florida boat and fishing shots."
+                  className="w-full resize-y bg-gray-900 border border-gray-700 text-white text-sm rounded p-3 focus:ring-1 focus:ring-amber-500 outline-none"
+                />
               </div>
 
               {/* Music Mode Toggle */}

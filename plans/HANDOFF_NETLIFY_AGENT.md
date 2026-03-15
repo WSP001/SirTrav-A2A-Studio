@@ -1,5 +1,7 @@
 # Netlify Agent Deploy & Verify — Gemini Pivot Edition
 
+**Lane:** Master / Netlify Agent lane only
+
 Deploy current main to production via Netlify CLI, verify all working endpoints including the X/LinkedIn "Twisted Pair," skip Remotion (per Gemini Pivot Rule), and produce a structured deploy report.
 
 ## Objective
@@ -19,7 +21,7 @@ Create a step-by-step Netlify CLI runbook that Scott runs from c:\WSP001\SirTrav
 - Control-plane endpoint responds with valid JSON
 - remotion.mode showing "disabled" or "fallback" is EXPECTED — not an error
 - Frontend loads at sirtrav-a2a-studio.netlify.app (HTTP 200)
-- Deploy report saved to `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md`
+- Deploy report saved to `plans/NETLIFY_DEPLOY_REPORT_<DATE>.md`
 - No Remotion-related steps attempted (Gemini Pivot active)
 
 ## Scope
@@ -48,7 +50,7 @@ The plan creates two files:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md` | CREATE | Deploy report template to fill in after running steps |
+| `plans/NETLIFY_DEPLOY_REPORT_<DATE>.md` | CREATE | Deploy report template to fill in after running steps |
 | (plan file — this document) | EXISTS | Reference runbook |
 
 ## Step-by-step Runbook
@@ -108,7 +110,7 @@ curl -s https://sirtrav-a2a-studio.netlify.app/.netlify/functions/control-plane
 ### Step 6a — X/Twitter dry-run (Twisted Pair — publisher 1)
 
 ```powershell
-curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-x -H "Content-Type: application/json" -d "{\"text\":\"Netlify Agent deploy verify 2026-03-11\",\"dryRun\":true}"
+curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-x -H "Content-Type: application/json" -d "{\"text\":\"Netlify Agent deploy verify <DATE>\",\"dryRun\":true}"
 # Expected (No Fake Success): { success: false, dryRun: true, validated: true, configured: true }
 # If configured: false — X keys are missing or expired
 ```
@@ -116,7 +118,7 @@ curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publis
 ### Step 6b — LinkedIn dry-run (Twisted Pair — publisher 2)
 
 ```powershell
-curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-linkedin -H "Content-Type: application/json" -d "{\"projectId\":\"deploy-verify\",\"videoUrl\":\"https://example.com/test.mp4\",\"title\":\"Deploy Verify\",\"description\":\"Netlify Agent deploy verify 2026-03-11\",\"visibility\":\"PUBLIC\",\"dryRun\":true}"
+curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publish-linkedin -H "Content-Type: application/json" -d "{\"projectId\":\"deploy-verify\",\"videoUrl\":\"https://example.com/test.mp4\",\"title\":\"Deploy Verify\",\"description\":\"Netlify Agent deploy verify <DATE>\",\"visibility\":\"PUBLIC\",\"dryRun\":true}"
 # Expected (No Fake Success): { success: false, dryRun: true, validated: true }
 # configured: true means keys are live; configured: false means keys missing (expected if not set)
 ```
@@ -125,7 +127,8 @@ curl -s -X POST https://sirtrav-a2a-studio.netlify.app/.netlify/functions/publis
 
 ```powershell
 curl -s "https://sirtrav-a2a-studio.netlify.app/.netlify/functions/progress?projectId=deploy-verify"
-# Expected: 200 with JSON (possibly empty events array)
+# Expected: 200 with JSON.
+# An empty events array is OK here as long as the endpoint responds 200 and returns valid JSON.
 ```
 
 ### Step 8 — Check env var presence (keys only, not values)
@@ -140,7 +143,7 @@ netlify env:list
 ```
 
 ### Step 9 — Fill in deploy report 
-Create `plans/NETLIFY_DEPLOY_REPORT_2026-03-11.md` with results from Steps 3-8.
+Create `plans/NETLIFY_DEPLOY_REPORT_<DATE>.md` with results from Steps 3-8.
 
 ### Key: Reading Dry-Run Results
 Per the No Fake Success pattern verified in both publish-x.ts and publish-linkedin.ts:
