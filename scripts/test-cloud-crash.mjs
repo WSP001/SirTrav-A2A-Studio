@@ -95,9 +95,9 @@ async function main() {
         }
         lastEventCount = count;
 
-        // Check if pipeline is complete
+        // Check if pipeline is complete (must be 100%, not just agent-level "completed")
         const lastEvt = Array.isArray(events) ? events[events.length - 1] : null;
-        if (lastEvt && (lastEvt.progress >= 100 || lastEvt.status === 'completed')) {
+        if (lastEvt && lastEvt.progress >= 100) {
           console.log('');
           console.log('═══════════════════════════════════════════════════════════');
           console.log(`  ✅ PIPELINE COMPLETE — ${count} events in ${(i + 1) * 2}s`);
