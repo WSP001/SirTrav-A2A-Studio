@@ -515,7 +515,8 @@ async function executeSocialPublishingAgent(
   publishTargets: string[],
   videoUrl: string,
   narrative: string,
-  attributionData: any
+  attributionData: any,
+  imageUrls?: string[]
 ): Promise<Record<string, AgentResult>> {
   const baseUrl = process.env.URL || 'http://localhost:8888';
   const results: Record<string, AgentResult> = {};
@@ -535,7 +536,12 @@ async function executeSocialPublishingAgent(
       platformCalls.push({
         platform: 'x',
         url: `${baseUrl}/.netlify/functions/publish-x`,
-        body: { text, dryRun: false },
+        body: {
+          text,
+          dryRun: false,
+          // Pass uploaded image URLs so publish-x can attach them to the tweet
+          mediaUrls: imageUrls && imageUrls.length > 0 ? imageUrls.slice(0, 4) : undefined,
+        },
       });
     } else if (target === 'linkedin') {
       platformCalls.push({
@@ -939,6 +945,11 @@ export const handler: Handler = async (event) => {
     const narrative = agentResults.writer?.data?.narrative || '';
     const effectiveTargets = publishTargets || [];
 
+    // Extract image URLs from the original payload for social media posts
+    const uploadedImageUrls = images
+      .map(img => img.url)
+      .filter(url => url && !url.includes('demo-') && !url.includes('test-'));
+
     let publisherResults: Record<string, AgentResult> = {};
 
     if (effectiveTargets.length > 0) {
@@ -955,6 +966,7 @@ export const handler: Handler = async (event) => {
         rawVideoUrl,
         narrative,
         agentResults.attribution?.data,
+        uploadedImageUrls,
       );
 
       // Merge publisher results into agentResults

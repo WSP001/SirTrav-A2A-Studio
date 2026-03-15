@@ -163,8 +163,43 @@ const handler: Handler = async (event) => {
 
         console.log(`🐦 [X-AGENT] Posting: "${text.substring(0, 50)}..."`);
 
-        // 5. Execute Post (v2 endpoint)
-        const result = await userClient.v2.tweet(text);
+        const { mediaUrls } = validation.data;
+
+        // 5. Upload media if provided (up to 4 images per Twitter rules)
+        let mediaIds: string[] = [];
+        if (mediaUrls && mediaUrls.length > 0) {
+            console.log(`🐦 [X-AGENT] Uploading ${mediaUrls.length} media file(s)...`);
+            for (const url of mediaUrls.slice(0, 4)) {
+                try {
+                    // Fetch image from URL (could be Netlify Blob, external URL, etc.)
+                    const imgResponse = await fetch(url, { signal: AbortSignal.timeout(15000) });
+                    if (!imgResponse.ok) {
+                        console.warn(`🐦 [X-AGENT] Failed to fetch media: ${url} (${imgResponse.status})`);
+                        continue;
+                    }
+                    const buffer = Buffer.from(await imgResponse.arrayBuffer());
+                    const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+
+                    // Upload to Twitter via v1.1 media upload
+                    const mediaId = await userClient.v1.uploadMedia(buffer, {
+                        mimeType: contentType,
+                    });
+                    mediaIds.push(mediaId);
+                    console.log(`🐦 [X-AGENT] Media uploaded: ${mediaId}`);
+                } catch (mediaErr) {
+                    console.warn(`🐦 [X-AGENT] Media upload failed for ${url}:`, mediaErr instanceof Error ? mediaErr.message : mediaErr);
+                    // Continue without this media — best-effort
+                }
+            }
+        }
+
+        // 6. Execute Post (v2 endpoint, with media if available)
+        const tweetPayload: { text: string; media?: { media_ids: string[] } } = { text };
+        if (mediaIds.length > 0) {
+            tweetPayload.media = { media_ids: mediaIds };
+            console.log(`🐦 [X-AGENT] Attaching ${mediaIds.length} media to tweet`);
+        }
+        const result = await userClient.v2.tweet(tweetPayload);
 
         if (result.errors && result.errors.length > 0) {
             throw new Error(`Twitter API Error: ${result.errors[0].detail || result.errors[0].title}`);
