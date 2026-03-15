@@ -90,9 +90,18 @@ export default async (req: Request) => {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
                   seenEvents.add(signature);
 
-                  // If complete/failed, we can close the stream early
-                  if (evt.status === 'completed' || evt.status === 'failed') {
+                  // Only close stream on PIPELINE-LEVEL completion (progress>=100),
+                  // NOT on agent-level "completed" (e.g., Director at 15%).
+                  // Bug fix: the old check `evt.status === 'completed'` closed the
+                  // stream when Director finished, causing the UI to stall at 14%.
+                  if (evt.progress >= 100 || (evt.agent === 'completed' && evt.status === 'completed')) {
                     controller.enqueue(encoder.encode(`event: complete\ndata: {"projectId":"${projectId}","status":"${evt.status}"}\n\n`));
+                    controller.close();
+                    return;
+                  }
+                  // Close on pipeline-level failure too
+                  if (evt.agent === 'pipeline' && evt.status === 'failed') {
+                    controller.enqueue(encoder.encode(`event: complete\ndata: {"projectId":"${projectId}","status":"failed"}\n\n`));
                     controller.close();
                     return;
                   }
