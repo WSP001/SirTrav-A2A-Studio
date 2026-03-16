@@ -51,6 +51,16 @@ interface CompileRequest {
   narrationSegments?: NarrationSegment[];  // For precise ducking timing
   duckingConfig?: Partial<DuckingConfig>;  // Override ducking settings
   useSidechainDucking?: boolean;           // Use dynamic sidechain vs keyframes
+  // PATH B: Veo 2 — script/narrative for video synthesis prompt
+  narrative?: string;
+}
+
+interface VeoDispatchResult {
+  dispatch: boolean;
+  operationName?: string;
+  veoUnavailable?: boolean;
+  status?: number;
+  error?: string;
 }
 
 interface CompileResponse {
@@ -155,6 +165,71 @@ function estimateCost(duration: number, resolution: string): number {
   // Rough estimate: $0.01 per second for 1080p, scaled by resolution
   const resolutionMultiplier = resolution === '4k' ? 3 : resolution === '1080p' ? 1 : 0.5;
   return Math.ceil(duration * resolutionMultiplier);
+}
+
+/**
+ * PATH B: Compile video via Google Veo 2 (Genie Pivot)
+ * Uses GEMINI_API_KEY to dispatch a long-running video generation job.
+ * Returns the operation name for polling via render-progress.
+ * NoFakeSuccess: all failure paths return veoUnavailable or error — never a placeholder.
+ */
+async function compileWithVeo(request: CompileRequest, duration: number): Promise<VeoDispatchResult> {
+  const geminiKey = process.env.GEMINI_API_KEY!;
+
+  const clipSeconds = Math.min(Math.ceil(duration), 8); // Veo max ~8s per clip
+  const prompt = request.narrative
+    ? `Create a cinematic ${clipSeconds}-second travel video reel. ${request.narrative.substring(0, 500)}`
+    : `Create a cinematic ${clipSeconds}-second travel slideshow with smooth transitions and warm color grading.`;
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key=${geminiKey}`;
+
+  const instance: Record<string, any> = { prompt };
+
+  // Attach first base64 image as visual reference
+  const imageWithBase64 = request.images?.find((img: any) => img.base64);
+  if (imageWithBase64?.base64) {
+    instance.image = {
+      bytesBase64Encoded: imageWithBase64.base64,
+      mimeType: 'image/jpeg',
+    };
+  }
+
+  const body = {
+    instances: [instance],
+    parameters: {
+      aspectRatio: '16:9',
+      durationSeconds: clipSeconds,
+      sampleCount: 1,
+      negativePrompt: 'blurry, low quality, artifacts, watermark, text overlay',
+    },
+  };
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const status = response.status;
+    const errorBody = await response.json().catch(() => ({}));
+    console.warn(`⚠️ [Veo] API returned ${status}:`, JSON.stringify(errorBody).substring(0, 200));
+    // 400/403/404 = model not available on this key tier
+    if (status === 400 || status === 403 || status === 404) {
+      return { dispatch: false, veoUnavailable: true, status, error: JSON.stringify(errorBody) };
+    }
+    return { dispatch: false, veoUnavailable: false, status, error: `HTTP ${status}` };
+  }
+
+  const lro = await response.json();
+  const operationName: string | undefined = lro.name;
+
+  if (!operationName) {
+    return { dispatch: false, veoUnavailable: false, error: 'No operation name in Veo response' };
+  }
+
+  console.log(`🎬 [Veo] Dispatched LRO: ${operationName}`);
+  return { dispatch: true, operationName };
 }
 
 /**
@@ -294,28 +369,97 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const hasFFmpegService = Boolean(process.env.FFMPEG_SERVICE_URL);
 
     if (!hasRemotionKeys && !hasFFmpegService) {
-      // Graceful degradation: return placeholder video, don't crash
-      console.warn('⚠️ [CC-019] Editor Agent: REMOTION_SERVE_URL / REMOTION_FUNCTION_NAME not set. Returning degraded placeholder.');
-      const cost = estimateCost(duration, request.resolution);
-      const response: CompileResponse = {
-        success: true,
-        projectId: request.projectId,
-        videoUrl: `/test-assets/test-video.mp4`,
-        duration,
-        resolution: request.resolution,
-        stored: false,
-        placeholder: true,
-        cost,
-        duckingApplied,
-        ffmpegCommand: generateFFmpegCommand(request, duration),
-      };
+      const geminiKey = process.env.GEMINI_API_KEY;
+      const hasGemini = Boolean(geminiKey);
+
+      if (!hasGemini) {
+        // NoFakeSuccess: no renderer configured at all
+        console.warn('⚠️ [CC-019] Editor: No renderer available (no Remotion, FFmpeg, or Gemini key).');
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            disabled: true,
+            projectId: request.projectId,
+            reason: 'no_video_renderer',
+            message: 'Editor disabled: configure REMOTION_SERVE_URL, FFMPEG_SERVICE_URL, or GEMINI_API_KEY',
+            editor_backend: 'none',
+          }),
+        };
+      }
+
+      // PATH B: Genie Pivot — attempt Veo 2 via GEMINI_API_KEY
+      console.log('🧞 [CC-019] Editor: Path B — attempting Veo 2 synthesis via GEMINI_API_KEY...');
+
+      let veoResult: VeoDispatchResult;
+      try {
+        veoResult = await compileWithVeo(request, duration);
+      } catch (veoError: any) {
+        console.error('❌ [Veo] Dispatch threw:', veoError?.message);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            disabled: true,
+            projectId: request.projectId,
+            reason: 'veo_dispatch_failed',
+            message: veoError?.message || 'Veo 2 request threw unexpectedly',
+            editor_backend: 'veo2',
+          }),
+        };
+      }
+
+      if (veoResult.veoUnavailable) {
+        console.warn(`⚠️ [Veo] Model not available on this key tier (HTTP ${veoResult.status})`);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            disabled: true,
+            projectId: request.projectId,
+            reason: 'veo_model_not_available',
+            message: `Veo 2 not accessible on this API key tier (HTTP ${veoResult.status}). Enable at: aistudio.google.com`,
+            editor_backend: 'veo2',
+            veoStatus: veoResult.status,
+          }),
+        };
+      }
+
+      if (!veoResult.dispatch || !veoResult.operationName) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            projectId: request.projectId,
+            reason: 'veo_no_operation',
+            message: 'Veo 2 did not return an operation ID',
+            editor_backend: 'veo2',
+          }),
+        };
+      }
+
+      // Veo job dispatched — return 202 with poll URL
       return {
-        statusCode: 200,
+        statusCode: 202,
         headers,
         body: JSON.stringify({
-          ...response,
-          status: 'degraded',
-          degradedReason: 'Missing REMOTION_SERVE_URL and FFMPEG_SERVICE_URL — set AWS keys for real rendering',
+          success: true,
+          projectId: request.projectId,
+          videoUrl: '',
+          duration,
+          resolution: request.resolution,
+          stored: false,
+          placeholder: false,
+          cost: estimateCost(duration, request.resolution),
+          jobId: veoResult.operationName,
+          duckingApplied,
+          status: 'rendering',
+          editor_backend: 'veo2',
+          pollUrl: `/.netlify/functions/render-progress?operationName=${encodeURIComponent(veoResult.operationName)}&backend=veo2`,
         }),
       };
     }

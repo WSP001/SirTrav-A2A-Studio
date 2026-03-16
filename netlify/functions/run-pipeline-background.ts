@@ -370,7 +370,8 @@ async function executeEditorAgent(
   curatedMedia: any,
   voiceResult: any,
   musicResult: any,
-  outputFormat?: any
+  outputFormat?: any,
+  writerData?: any
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
@@ -393,21 +394,38 @@ async function executeEditorAgent(
       body: JSON.stringify({
         projectId,
         runId,
-        images: images.length > 0 ? images : undefined, // Let compile-video use placeholders if empty
+        images: images.length > 0 ? images : undefined,
         narrationUrl: voiceResult?.data?.audioUrl,
         musicUrl: musicResult?.data?.musicUrl,
         resolution: outputFormat?.aspectRatio === '9:16' ? '1080p' : '1080p',
+        // PATH B: pass narrative for Veo 2 synthesis prompt
+        narrative: writerData?.narrative || writerData?.script || undefined,
       }),
       signal: AbortSignal.timeout(30000),
     });
 
-    if (!response.ok) {
+    // 202 = Veo dispatched (async render), 200 = sync result or disabled
+    if (!response.ok && response.status !== 202) {
       const errorText = await response.text();
       throw new Error(`Editor API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    console.log(`🎞️ [Editor] Completed: ${data.videoUrl || 'test video'}`);
+
+    // NoFakeSuccess: disabled/veo-unavailable is not a success
+    if (data.disabled === true) {
+      console.warn(`⚠️ [Editor] Disabled — reason: ${data.reason}`);
+      return {
+        success: false,
+        data,
+        duration_ms: Date.now() - startTime,
+        fallback: true,
+        error: data.reason || 'editor_disabled',
+      };
+    }
+
+    const isRendering = data.status === 'rendering' && data.editor_backend === 'veo2';
+    console.log(`🎞️ [Editor] ${isRendering ? `Veo 2 dispatched — poll: ${data.pollUrl}` : `Completed: ${data.videoUrl}`}`);
 
     return {
       success: true,
@@ -866,7 +884,8 @@ export const handler: Handler = async (event) => {
       agentResults.director.data,
       agentResults.voice,
       agentResults.composer,
-      payload.outputFormat
+      payload.outputFormat,
+      agentResults.writer?.data  // PATH B: narrative for Veo 2 prompt
     );
 
     // 💰 RECORD COST: Editor (Compute)
