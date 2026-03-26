@@ -42,6 +42,7 @@ interface PipelinePayload {
     blobKey?: string;
     bpm?: number;
   };
+  producerBrief?: string;
 }
 
 interface AgentResult {
@@ -194,7 +195,8 @@ async function executeDirectorAgent(
  */
 async function executeWriterAgent(
   projectId: string,
-  curatedMedia: any
+  curatedMedia: any,
+  producerBrief?: string
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
@@ -213,6 +215,7 @@ async function executeWriterAgent(
         theme: 'memory_recollection',
         mood,
         sceneCount,
+        producerBrief,
       }),
       signal: AbortSignal.timeout(30000),
     });
@@ -818,7 +821,7 @@ export const handler: Handler = async (event) => {
       message: '✍️ Writer crafting narrative...'
     });
 
-    agentResults.writer = await executeWriterAgent(projectId, agentResults.director.data);
+    agentResults.writer = await executeWriterAgent(projectId, agentResults.director.data, payload.producerBrief);
 
     // 💰 RECORD COST: Writer (GPT-4)
     // Base Cost: ~500 tokens = $0.03

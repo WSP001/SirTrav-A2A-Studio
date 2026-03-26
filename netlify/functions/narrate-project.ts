@@ -14,12 +14,14 @@
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { readMemoryIndex, learnFromHistory } from './lib/memory';
+import { fetchIdentityContext, buildIdentityPrompt } from './lib/content-seed';
 
 interface NarrateRequest {
   projectId: string;
   theme: string;
   mood: string;
   sceneCount: number;
+  producerBrief?: string;
 }
 
 interface Scene {
@@ -76,9 +78,13 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
     // gemini-2.5-flash: latest Flash model, fast, cheap, 1M+ context
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const prompt = `You are a cinematic narrator for travel documentaries. Create compelling, visual narratives.
+    // Fetch identity context — gives the agent Scott's voice, story, and focus
+    const identity = await fetchIdentityContext();
+    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief);
 
-Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}".
+    const prompt = `${identityPrompt}
+
+Create a ${request.sceneCount}-scene narrative with theme "${request.theme}" and mood "${request.mood}".
 
 Return ONLY valid JSON in this exact format (no markdown, no code fences):
 {

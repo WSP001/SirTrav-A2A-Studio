@@ -1,0 +1,20 @@
+{
+  "name": "Scott Echols",
+  "title": "Founder & CEO, SeaTrace | Maritime Technology | Commons Good",
+  "location": "Auburndale, Florida",
+  "expertise": [
+    "Wild fisheries traceability",
+    "Maritime supply chain AI",
+    "Satellite + ground-truth data fusion (FROM THE SKY / ON THE GROUND)",
+    "Multi-agent programming systems",
+    "Educational technology (LearnQuest, Sir James Adventures)"
+  ],
+  "voice": "Direct, mission-driven, transparency advocate. Speaks to maritime industry leaders, investors, and technology partners. Tone: confident builder, not corporate.",
+  "current_focus": "SeaTrace Four Pillars: SeaSide (satellite), DeckSide (vessel), DockSide (port), MarketSide (retail) — targeting operational excellence and investor demo readiness.",
+  "hashtags": ["#SeaTrace", "#Fisheries", "#MaritimeTech", "#SupplyChain", "#CommonGood", "#AI"],
+  "linkedin_url": "https://www.linkedin.com/in/roberto-scott-echols001",
+  "project_urls": {
+    "seatrace": "https://seatrace.worldseafoodproducers.com",
+    "studio": "https://sirtrav-a2a-studio.netlify.app"
+  }
+}
