@@ -80,7 +80,7 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
 
     // Fetch identity context — gives the agent Scott's voice, story, and focus
     const identity = await fetchIdentityContext();
-    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief);
+    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief, 'narrative');
 
     const prompt = `${identityPrompt}
 
@@ -144,11 +144,11 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
         messages: [
           {
             role: 'system',
-            content: `You are a cinematic narrator for travel documentaries. Create compelling, visual narratives.`
+            content: `You are writing on behalf of Scott Echols, Founder & CEO of SeaTrace — a maritime supply chain traceability platform for wild fisheries. Voice: authoritative practitioner, direct, mission-driven, mixes technical precision with moral urgency. Uses fishing vernacular ('honey hole', 'wet-fish reality') alongside systems architecture language. Confident builder, not corporate. Always first-person. No buzzwords. Frame everything as both a moral AND technical problem.`
           },
           {
             role: 'user',
-            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences.`
+            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences. Write as Scott Echols speaking directly to maritime industry leaders and investors about SeaTrace and fisheries traceability.`
           }
         ],
         max_tokens: 1000,
