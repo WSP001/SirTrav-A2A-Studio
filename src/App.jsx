@@ -92,6 +92,13 @@ function App() {
   const runPipeline = async () => {
     if (files.length === 0) return;
 
+    const visualFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (visualFiles.length === 0) {
+      setToast({ message: 'Upload at least one image asset to start the 7-agent pipeline.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
     const effectiveTargets = selectedPublishTargets.filter(t => publishTargetAvailability[t] !== false);
     if (effectiveTargets.length === 0) {
       setToast({ message: 'No configured publish platforms available. Set API keys first.', type: 'error' });
@@ -116,6 +123,7 @@ function App() {
       setAgentStates(prev => ({ ...prev, director: 'processing' }));
       setLogs(prev => ({ ...prev, director: ['> Uploading assets to backend...'] }));
 
+      const uploadedVisualAssets = [];
       for (const file of files) {
         const base64 = await fileToBase64(file);
         const uploadResponse = await fetch('/.netlify/functions/intake-upload', {
@@ -132,7 +140,20 @@ function App() {
         if (!uploadResponse.ok) {
           throw new Error(`Upload failed for ${file.name}`);
         }
+        const uploadData = await uploadResponse.json();
         setLogs(prev => ({ ...prev, director: [...(prev.director || []), `> Uploaded: ${file.name}`] }));
+
+        if (file.type.startsWith('image/')) {
+          uploadedVisualAssets.push({
+            id: uploadData.key || file.name,
+            vault_path: uploadData.key || file.name,
+            preview_url: `${window.location.origin}/.netlify/functions/blob-get?store=uploads&key=${encodeURIComponent(uploadData.key || file.name)}`
+          });
+        }
+      }
+
+      if (uploadedVisualAssets.length === 0) {
+        throw new Error('No image assets were uploaded for the Director agent.');
       }
 
       // Step 2: Start the real pipeline
@@ -160,7 +181,7 @@ function App() {
             videoLength
           },
           payload: {
-            images: files.map(f => ({ id: f.name, url: `uploads/${projectId}/${f.name}` })),
+            images: uploadedVisualAssets,
             projectMode: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'business_public' : 'commons_public',
             socialPlatform: targetPlatform,
             outputObjective: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'social' : 'personal',
@@ -202,7 +223,7 @@ function App() {
     }
 
     // Validate videoUrl
-    const videoUrl = data.artifacts?.videoUrl;
+    const videoUrl = data.videoUrl || data.artifacts?.videoUrl;
     const isRealVideo = videoUrl && !videoUrl.startsWith('placeholder://') && !videoUrl.startsWith('error://');
 
     setVideoResult({
@@ -214,8 +235,8 @@ function App() {
       fileSize: data.artifacts?.fileSize || '10.1 MB',
       creditsUrl: data.artifacts?.creditsUrl || '/test-assets/credits.json',
       generatedAt: new Date().toISOString(),
-      pipelineMode: data.artifacts?.pipelineMode || 'DEMO',
-      isPlaceholder: !isRealVideo,
+      pipelineMode: data.pipelineMode || data.artifacts?.pipelineMode || 'DEMO',
+      isPlaceholder: data.isPlaceholder ?? data.artifacts?.placeholder ?? !isRealVideo,
       invoice: data.artifacts?.invoice, // Extract Invoice for display
       publishTargets: Array.isArray(data.artifacts?.publishTargets) && data.artifacts.publishTargets.length > 0
         ? data.artifacts.publishTargets

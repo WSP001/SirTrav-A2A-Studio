@@ -61,9 +61,33 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const completionHandledRef = useRef(false);
   useEffect(() => {
     if (!projectId) return;
 
+
+    completionHandledRef.current = false;
+
+    const emitCompletion = async () => {
+      if (completionHandledRef.current || !runId) return;
+      completionHandledRef.current = true;
+
+      try {
+        const res = await fetch(`/.netlify/functions/results?projectId=${encodeURIComponent(projectId)}&runId=${encodeURIComponent(runId)}`);
+        if (!res.ok) {
+          throw new Error(`results_failed_${res.status}`);
+        }
+        const result = await res.json();
+        onComplete?.(result);
+      } catch (err) {
+        console.error('[PipelineProgress] Failed to load final results:', err);
+        onComplete?.({
+          projectId,
+          status: 'completed',
+          steps: [],
+        });
+      }
+    };
     // Try SSE first, fall back to polling
     const connectSSE = () => {
       // Add runId if available to filter stream
@@ -108,9 +132,8 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
         es.addEventListener('complete', (event: any) => {
           try {
-            const data = JSON.parse(event.data);
-            // Verify final state
-            onComplete?.(data);
+            JSON.parse(event.data);
+            void emitCompletion();
             es.close();
           } catch (err) {
             console.error('[PipelineProgress] Parse error on complete:', err);
@@ -165,6 +188,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
               const last = data.events[data.events.length - 1];
               if (last?.status === 'completed' && (last?.agent === 'publisher' || last?.agent === 'completed')) {
                 if (pollIntervalRef.current) clearTimeout(pollIntervalRef.current);
+                await emitCompletion();
                 return;
               }
             }
@@ -197,7 +221,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [projectId, runId, onComplete, onError]);
+  }, [projectId, runId, onComplete, onError, onMetricsUpdate]);
 
   // Aggregate events into ProgressStatus
   const progress: ProgressData | null = React.useMemo(() => {
@@ -259,15 +283,12 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
     };
   }, [events, projectId]);
 
-  // Handle completion callbacks using effect
+  // Surface terminal failures even when SSE completes before the custom error event arrives.
   useEffect(() => {
-    if (progress?.status === 'completed') {
-      // @ts-ignore
-      onComplete?.(progress);
-    } else if (progress?.status === 'failed') {
+    if (progress?.status === 'failed') {
       onError?.(progress.error || 'Pipeline failed');
     }
-  }, [progress?.status]);
+  }, [progress?.status, progress?.error, onError]);
 
   // Calculate progress percentage
   const completedSteps = progress?.steps?.filter(s =>

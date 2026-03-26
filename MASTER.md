@@ -1,9 +1,14 @@
 # MASTER.md — SirTrav A2A Studio Build Plan
 
-**Version:** 3.4.0  
-**Last Updated:** 2026-03-04  
-**Signed by:** Windsurf/Cascade (Acting Master, WSP001)  
-**Status:** M8 FROZEN at `0d220f72` — Next: M9 (Remotion E2E) + M10 (X + YouTube)
+**Version:** 3.5.0
+**Last Updated:** 2026-03-23
+**Signed by:** Claude Code (Restart Backup) + Windsurf/Cascade (prior ops)
+**Status:** M8 FROZEN `0d220f72` | M9 ACTIVE (Veo 2 Path B wired, AWS keys pending) | M10 scoped
+
+> ⚡ **RESTART BACKUP 2026-03-23** — Machine restarting after AMD/NPU update.
+> Resume state: `PHASE5_LIVE_STATUS_BOARD.md` | Ops: `AGENT-OPS.md`
+> WSP001 latest commit: `26de1e85` — Genie Veo2 commit (`57e0421e`) in archive only — pull after reboot.
+> Active dirty file: `src/App.jsx` (+73 lines control-plane wiring) — commit before or after restart.
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc-to-Agent) automated video production platform for the Commons Good.
 

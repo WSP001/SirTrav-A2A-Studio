@@ -53,13 +53,17 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
   const [comments, setComments] = useState('');
   const [selectedRating, setSelectedRating] = useState<'good' | 'bad' | null>(null);
 
-  // X Posting State
+  // Social Media Posting State
   const [isPostingX, setIsPostingX] = useState(false);
   const [xPostResult, setXPostResult] = useState<{ success: boolean; message?: string } | null>(null);
+  const [isPostingLinkedIn, setIsPostingLinkedIn] = useState(false);
+  const [linkedInPostResult, setLinkedInPostResult] = useState<{ success: boolean; message?: string } | null>(null);
+  const [isPostingYouTube, setIsPostingYouTube] = useState(false);
+  const [youTubePostResult, setYouTubePostResult] = useState<{ success: boolean; message?: string; url?: string } | null>(null);
   const [publishTargets, setPublishTargets] = useState<PublishPlatform[]>(
     Array.isArray(result.publishTargets) && result.publishTargets.length > 0
       ? result.publishTargets
-      : ['x', 'linkedin', 'youtube', 'instagram', 'tiktok']
+      : ['x', 'linkedin', 'youtube'] // TikTok & Instagram parked for M10
   );
 
   const handleDownload = () => {
@@ -187,7 +191,9 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     text: `Check out my new AI video! 🎥✨ #${result.projectId} #SirTravStudio`,
-                    // Future: Add media upload logic here
+                    videoUrl: result.videoUrl,
+                    projectId: result.projectId,
+                    runId: result.runId,
                   }),
                 });
 
@@ -234,6 +240,156 @@ export const ResultsPreview: React.FC<ResultsPreviewProps> = ({
             ) : (
               <>
                 <span>🐦</span> Post to X
+              </>
+            )}
+          </button>
+
+          {/* LinkedIn Publish Button */}
+          <button
+            onClick={async () => {
+              if (isPostingLinkedIn) return;
+              setIsPostingLinkedIn(true);
+              setLinkedInPostResult(null);
+
+              try {
+                const res = await fetch('/.netlify/functions/publish-linkedin', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    text: `Excited to share my latest AI-generated video! 🎥✨\n\nProject: ${result.projectId}\n\n#AIVideo #SirTravStudio #Innovation`,
+                    videoUrl: result.videoUrl,
+                    projectId: result.projectId,
+                    runId: result.runId,
+                  }),
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                  setLinkedInPostResult({ success: true, message: 'Posted to LinkedIn!' });
+                } else if (data.disabled || data.error?.includes('Auth') || data.error?.includes('401')) {
+                  setLinkedInPostResult({ success: false, message: 'Auth Error: Check Netlify Keys' });
+                } else {
+                  setLinkedInPostResult({ success: false, message: 'Failed to post' });
+                }
+              } catch (err) {
+                setLinkedInPostResult({ success: false, message: 'Network Error' });
+              } finally {
+                setIsPostingLinkedIn(false);
+              }
+            }}
+            className={`linkedin-publish-button ${isPostingLinkedIn ? 'loading' : ''} ${linkedInPostResult?.success ? 'success' : ''} ${linkedInPostResult?.success === false ? 'error' : ''}`}
+            disabled={isPostingLinkedIn || linkedInPostResult?.success}
+            style={{
+              background: linkedInPostResult?.success ? '#10B981' : linkedInPostResult?.success === false ? '#EF4444' : '#0A66C2',
+              color: 'white',
+              border: '1px solid #084a8f',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              marginTop: '10px',
+              cursor: isPostingLinkedIn || linkedInPostResult?.success ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {isPostingLinkedIn ? (
+              <span>⏳ Posting...</span>
+            ) : linkedInPostResult?.success ? (
+              <span>✅ Posted to LinkedIn!</span>
+            ) : linkedInPostResult?.success === false ? (
+              <span>❌ {linkedInPostResult.message}</span>
+            ) : (
+              <>
+                <span>💼</span> Post to LinkedIn
+              </>
+            )}
+          </button>
+
+          {/* YouTube Publish Button */}
+          <button
+            onClick={async () => {
+              if (isPostingYouTube) return;
+              setIsPostingYouTube(true);
+              setYouTubePostResult(null);
+
+              try {
+                const res = await fetch('/.netlify/functions/publish-youtube', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title: `AI Video - ${result.projectId}`,
+                    description: `Generated with SirTrav A2A Studio 🎥✨\n\nProject: ${result.projectId}\n\nFor the Commons Good - Open Access Content Creation`,
+                    videoUrl: result.videoUrl,
+                    projectId: result.projectId,
+                    runId: result.runId,
+                  }),
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                  setYouTubePostResult({ 
+                    success: true, 
+                    message: 'Uploaded to YouTube!',
+                    url: data.youtubeUrl || data.videoUrl
+                  });
+                } else if (data.disabled || data.error?.includes('Auth') || data.error?.includes('401')) {
+                  setYouTubePostResult({ success: false, message: 'Auth Error: Check Netlify Keys' });
+                } else {
+                  setYouTubePostResult({ success: false, message: 'Failed to upload' });
+                }
+              } catch (err) {
+                setYouTubePostResult({ success: false, message: 'Network Error' });
+              } finally {
+                setIsPostingYouTube(false);
+              }
+            }}
+            className={`youtube-publish-button ${isPostingYouTube ? 'loading' : ''} ${youTubePostResult?.success ? 'success' : ''} ${youTubePostResult?.success === false ? 'error' : ''}`}
+            disabled={isPostingYouTube || youTubePostResult?.success}
+            style={{
+              background: youTubePostResult?.success ? '#10B981' : youTubePostResult?.success === false ? '#EF4444' : '#FF0000',
+              color: 'white',
+              border: '1px solid #cc0000',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              marginTop: '10px',
+              cursor: isPostingYouTube || youTubePostResult?.success ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {isPostingYouTube ? (
+              <span>⏳ Uploading...</span>
+            ) : youTubePostResult?.success ? (
+              <>
+                <span>✅ Uploaded to YouTube!</span>
+                {youTubePostResult.url && (
+                  <a 
+                    href={youTubePostResult.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ marginLeft: '8px', textDecoration: 'underline' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View
+                  </a>
+                )}
+              </>
+            ) : youTubePostResult?.success === false ? (
+              <span>❌ {youTubePostResult.message}</span>
+            ) : (
+              <>
+                <span>📺</span> Upload to YouTube
               </>
             )}
           </button>

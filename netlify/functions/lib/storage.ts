@@ -195,8 +195,10 @@ const resolveContentType = (filePath: string): string =>
   mimeLookup[path.extname(filePath).replace('.', '').toLowerCase()] ||
   'application/octet-stream';
 
+import type { S3Client } from '@aws-sdk/client-s3';
+
 class S3Storage {
-  private s3: any;  // Lazily loaded S3Client
+  private s3?: S3Client;  // Lazily loaded S3Client
   private readonly bucket: string;
   private readonly publicBase?: string;
 

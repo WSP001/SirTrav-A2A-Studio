@@ -36,15 +36,17 @@ export default async (req: Request) => {
     });
   }
 
-  // Standardized Golden Path Contract
+  // Standardized Golden Path Contract - matches run-pipeline-background artifacts structure
   const resultContract = {
     status: index.status,
-    videoUrl: index.videoUrl || null,
-    creditsUrl: index.creditsUrl || null,
     artifacts: {
+      videoUrl: index.videoUrl || null,
+      creditsUrl: index.creditsUrl || null,
       resolution: index.finalVideoKey ? '1080p' : undefined,
       duration: index.music?.duration,
       invoice: index.invoice,
+      pipelineMode: index.pipelineMode,
+      publishTargets: index.publishTargets,
     },
     error: index.error || null,
     updatedAt: index.updatedAt || new Date().toISOString(),

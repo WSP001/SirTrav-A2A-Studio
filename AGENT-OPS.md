@@ -1,8 +1,50 @@
 # AGENT-OPS.md — SirTrav A2A Studio Agent Operations
 
-**Version:** 1.3.0
-**Last Updated:** 2026-03-06
-**Signed by:** Windsurf/Cascade (Acting Master, WSP001)
+**Version:** 1.4.0
+**Last Updated:** 2026-03-23
+**Signed by:** Claude Code (Restart Backup) + Windsurf/Cascade (prior ops)
+
+---
+
+## ⚡ MACHINE RESTART BACKUP — 2026-03-23
+
+> Restart pending: AMD / NPU / processor hardware update.
+> Full board state: `PHASE5_LIVE_STATUS_BOARD.md` — **read that first after reboot**.
+
+### Resume Order After Reboot
+```
+1. git status -sb                        ← verify branch=main, see dirty files
+2. git log --oneline -8                  ← verify last commit = 26de1e85 (WSP001)
+3. Read MASTER.md                        ← milestone/phase state
+4. Read AGENT-OPS.md                     ← this file — lane rules
+5. Read plans/HANDOFF_CODEX2_CX-019.md  ← active Codex ticket
+6. Continue ONLY in assigned lane
+```
+
+### Uncommitted Work Surviving Restart
+| Repo | File | Change | Action |
+|------|------|--------|--------|
+| `C:\WSP001\SirTrav-A2A-Studio` | `src/App.jsx` | +73 lines control-plane wiring (editor mode + Veo 2 status) | Stage + commit after reboot |
+| `My Drive\WSP2AGENT` | `modules/searcher.py`, `curator.py`, `app_v3.py` | Reusable stock modules updated | Commit after reboot |
+| `SeaTrace-ODOO` | `src/security/packet_crypto.py` | Security patch | Commit after reboot |
+| `SirTrav-A2A-Studio` archive | `CLAUDE.md`, `.claude/settings.json` | Lane rules added | Commit after reboot |
+
+### Active Blockers Snapshot
+- 🔴 **HO-007:** Remotion AWS keys not in Netlify — M9 blocked
+- 🔴 **HO-006:** ElevenLabs key not in Netlify — Voice agent blocked
+- 🔴 **RAG Ingest:** `setup-wsp-rag.ps1` not confirmed run — Antigravity CANNOT QA yet
+- 🟡 **WSP001 vs Archive:** WSP001 missing Veo 2 commit `57e0421e` — run `git pull` after reboot
+- ✅ **CV file #3:** Present at `C:\WSP001\R.-Scott-Echols-CV\knowledge_base\public\cv\` — verify date after reboot
+
+### CV File #3 Copy Command (preserve)
+```powershell
+Copy-Item "C:\Users\Roberto002\OneDrive\Scott CV\092322CURRICULUM VITAE OF ROBERT SCOTT ECHOLS drive.docx" `
+    "C:\WSP001\R.-Scott-Echols-CV\knowledge_base\public\cv\CURRICULUM VITAE OF ROBERT SCOTT ECHOLS (2) (1).docx" `
+    -Force
+```
+
+### WRITE Source of Truth
+> `C:\WSP001\SirTrav-A2A-Studio` on `main` — NO agent pushes from any other copy.
 
 ---
 

@@ -91,6 +91,7 @@ async function updateRun(
     if (patch.artifacts.creditsUrl) indexPatch.creditsUrl = patch.artifacts.creditsUrl;
     if (patch.artifacts.pipelineMode) indexPatch.pipelineMode = patch.artifacts.pipelineMode;
     if ((patch.artifacts as any).invoice) indexPatch.invoice = (patch.artifacts as any).invoice;
+    if ((patch.artifacts as any).publishTargets) indexPatch.publishTargets = (patch.artifacts as any).publishTargets;
   }
 
   await updateRunIndex(projectId, runId, indexPatch);

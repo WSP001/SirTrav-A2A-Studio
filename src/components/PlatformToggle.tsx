@@ -96,7 +96,7 @@ export default function PlatformToggle({ value, onChange, disabled, onAvailabili
       if (!mounted) return;
       setAvailability(next);
       onAvailabilityChange?.(next);
-      onChange(value.filter(v => next[v]?.enabled));
+      // DON'T call onChange here - only on explicit user toggle to prevent loops
     };
 
     syncAvailability();
