@@ -149,7 +149,7 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
           },
           {
             role: 'user',
-            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences. Write as Scott Echols speaking directly to maritime industry leaders and investors about SeaTrace and fisheries traceability.`
+            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences. Write as Scott Echols speaking directly to maritime industry leaders and investors about SeaTrace and fisheries traceability.${request.producerBrief ? `\n\nPOST TOPIC / PRODUCER BRIEF: ${request.producerBrief}` : ''}`
           }
         ],
         max_tokens: 1000,
