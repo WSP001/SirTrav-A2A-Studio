@@ -76,8 +76,8 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-2.5-flash: latest Flash model, fast, cheap, 1M+ context
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // gemini-1.5-flash: latest Flash model, fast, cheap, 1M+ context
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Fetch identity context — gives the agent Scott's voice, story, and focus
     const identity = await fetchIdentityContext();

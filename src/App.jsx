@@ -403,7 +403,7 @@ function App() {
                     borderRadius: '50%',
                     objectFit: 'cover',
                     filter: 'drop-shadow(0 0 12px rgba(200,160,30,0.8))',
-                    animation: 'emblem-shimmer 3s ease-in-out infinite, emblem-rotate 20s linear infinite',
+                    animation: 'emblem-shimmer 3s ease-in-out infinite',
                   }}
                 />
                 {/* Live pulse ring */}
