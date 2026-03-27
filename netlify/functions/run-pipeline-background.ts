@@ -204,6 +204,17 @@ async function executeWriterAgent(
   try {
     console.log(`✍️ [Writer] Generating narrative...`);
 
+    // Phase 2: Query vector engine for relevant CV context chunks before writing.
+    // Falls back silently to [] if VECTOR_ENGINE_URL is not set or engine is down.
+    const { queryVectorEngine } = await import('./lib/content-seed');
+    const vectorChunks = await queryVectorEngine(
+      producerBrief || projectId,
+      ['cv_personal', 'cv_projects']
+    );
+    if (vectorChunks.length > 0) {
+      console.log(`[Writer] Injecting ${vectorChunks.length} vector context chunks`);
+    }
+
     const mood = curatedMedia?.scenes?.[0]?.dominant_mood || 'reflective';
     const sceneCount = curatedMedia?.scenes?.length || 3;
 
@@ -216,6 +227,7 @@ async function executeWriterAgent(
         mood,
         sceneCount,
         producerBrief,
+        vectorChunks,
       }),
       signal: AbortSignal.timeout(30000),
     });

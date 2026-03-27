@@ -106,6 +106,48 @@ const FALLBACK_IDENTITY: IdentityContext = {
   ],
 };
 
+/**
+ * VECTOR ENGINE QUERY — Phase 2 retrieval layer.
+ *
+ * Queries the ChromaDB vector engine (hosted at VECTOR_ENGINE_URL)
+ * for context chunks relevant to the producer brief.
+ *
+ * Targets cv_personal and cv_projects partitions by default.
+ * Gracefully returns [] if the engine is unreachable — pipeline continues
+ * with identity.json seed only (no crash, no fake failure).
+ *
+ * Set VECTOR_ENGINE_URL in Netlify env (Functions scope) to activate.
+ * Without it, this is a silent no-op.
+ */
+export async function queryVectorEngine(
+  query: string,
+  partitions: string[] = ['cv_personal', 'cv_projects'],
+  nResults: number = 4
+): Promise<string[]> {
+  const vectorEngineUrl = process.env.VECTOR_ENGINE_URL;
+  if (!vectorEngineUrl || !query?.trim()) return [];
+
+  try {
+    const res = await fetch(`${vectorEngineUrl}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query.trim(), partitions, n_results: nResults }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      console.warn(`[VectorEngine] Query returned ${res.status} — falling back to identity seed only`);
+      return [];
+    }
+    const data = await res.json();
+    const chunks: string[] = data?.context_chunks ?? [];
+    console.log(`[VectorEngine] Retrieved ${chunks.length} chunks from ${partitions.join(', ')}`);
+    return chunks;
+  } catch (err: any) {
+    console.warn('[VectorEngine] Unreachable — using identity seed only:', err?.message);
+    return [];
+  }
+}
+
 export async function fetchIdentityContext(): Promise<IdentityContext> {
   try {
     const res = await fetch(CV_IDENTITY_URL, {
@@ -126,7 +168,8 @@ export async function fetchIdentityContext(): Promise<IdentityContext> {
 export function buildIdentityPrompt(
   identity: IdentityContext,
   producerBrief?: string,
-  platform: 'linkedin' | 'twitter' | 'instagram' | 'narrative' = 'narrative'
+  platform: 'linkedin' | 'twitter' | 'instagram' | 'narrative' = 'narrative',
+  vectorChunks: string[] = []
 ): string {
   const lines = [
     `You are writing on behalf of ${identity.name}, ${identity.title}.`,
@@ -160,6 +203,15 @@ export function buildIdentityPrompt(
     examples.slice(0, 2).forEach((ex, i) => {
       lines.push(`Example ${i + 1} — Opens: "${ex.opening}"`);
       lines.push(`  Body: "${ex.theme}"`);
+    });
+  }
+
+  // Inject vector-retrieved context chunks if available
+  if (vectorChunks.length > 0) {
+    lines.push(``);
+    lines.push(`RETRIEVED CONTEXT (from CV knowledge base — highest relevance to this brief):`);
+    vectorChunks.slice(0, 4).forEach((chunk, i) => {
+      lines.push(`[${i + 1}] ${chunk.trim()}`);
     });
   }
 

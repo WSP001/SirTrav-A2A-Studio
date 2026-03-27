@@ -22,6 +22,7 @@ interface NarrateRequest {
   mood: string;
   sceneCount: number;
   producerBrief?: string;
+  vectorChunks?: string[];
 }
 
 interface Scene {
@@ -80,7 +81,7 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
 
     // Fetch identity context — gives the agent Scott's voice, story, and focus
     const identity = await fetchIdentityContext();
-    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief, 'narrative');
+    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief, 'narrative', request.vectorChunks ?? []);
 
     const prompt = `${identityPrompt}
 
