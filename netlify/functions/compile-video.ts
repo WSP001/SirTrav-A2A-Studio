@@ -159,6 +159,52 @@ function generateFFmpegCommand(request: CompileRequest, duration: number): strin
 }
 
 /**
+ * STORYBOARD FALLBACK — used when Veo 2 is unavailable on current key tier.
+ * Generates a structured JSON storyboard via Gemini Flash so the pipeline
+ * always returns something useful instead of a hard disabled response.
+ */
+async function generateStoryboard(request: CompileRequest, duration: number): Promise<object | null> {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) return null;
+
+  const narrative = request.narrative || `SeaTrace maritime documentary, ${Math.ceil(duration)}s`;
+  const sceneCount = Math.max(2, Math.min(5, Math.ceil(duration / 8)));
+
+  const prompt = `You are a video director. Generate a JSON storyboard for a ${Math.ceil(duration)}-second video.
+Narrative context: "${narrative.substring(0, 400)}"
+Return ONLY valid JSON, no markdown:
+{
+  "title": "short title",
+  "duration_seconds": ${Math.ceil(duration)},
+  "scenes": [
+    { "id": 1, "duration": 8, "shot": "wide|medium|close", "description": "what is shown", "text_overlay": "optional caption" }
+  ],
+  "style": "cinematic|documentary|social",
+  "mood": "one word"
+}
+Generate ${sceneCount} scenes.`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Estimate cost based on video duration and resolution
  */
 function estimateCost(duration: number, resolution: string): number {
@@ -412,18 +458,22 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       }
 
       if (veoResult.veoUnavailable) {
-        console.warn(`⚠️ [Veo] Model not available on this key tier (HTTP ${veoResult.status})`);
+        console.warn(`⚠️ [Veo] Model not available (HTTP ${veoResult.status}) — attempting storyboard fallback`);
+        const storyboard = await generateStoryboard(request, duration);
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            success: false,
-            disabled: true,
+            success: storyboard !== null,
+            disabled: storyboard === null,
             projectId: request.projectId,
-            reason: 'veo_model_not_available',
-            message: `Veo 2 not accessible on this API key tier (HTTP ${veoResult.status}). Enable at: aistudio.google.com`,
-            editor_backend: 'veo2',
+            reason: storyboard ? 'veo_storyboard_fallback' : 'veo_model_not_available',
+            message: storyboard
+              ? 'Veo 2 unavailable on this key tier — storyboard generated instead. Enable Veo 2 at aistudio.google.com'
+              : `Veo 2 not accessible on this API key tier (HTTP ${veoResult.status}). Enable at: aistudio.google.com`,
+            editor_backend: storyboard ? 'gemini_storyboard' : 'none',
             veoStatus: veoResult.status,
+            storyboard: storyboard ?? undefined,
           }),
         };
       }
