@@ -682,6 +682,8 @@ export const handler: Handler = async (event) => {
     const payloadKey: string | undefined = body.payloadKey;
     // 🎯 CC-019 M8: Selective publish targets from UI toggle
     const publishTargets: string[] | undefined = body.publishTargets;
+    // CC-BRIEF: brief.story sent by start-pipeline — extract here so it reaches the writer
+    const briefFromBody: string | undefined = body.brief?.story;
 
     // ─── STEP 0: Write "I'm alive" breadcrumb using ONLY @netlify/blobs ───
     // This is the LIGHTEST possible write — no custom storage wrappers.
@@ -765,6 +767,10 @@ export const handler: Handler = async (event) => {
       if (loadedPayload) {
         payload = loadedPayload as PipelinePayload;
       }
+    }
+    // CC-BRIEF: hydrate producerBrief from body if payload blob didn't carry it
+    if (!payload.producerBrief && briefFromBody) {
+      payload.producerBrief = briefFromBody;
     }
 
     // Get images from payload or use defaults for demo
