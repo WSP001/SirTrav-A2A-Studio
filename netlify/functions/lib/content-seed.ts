@@ -107,18 +107,101 @@ const FALLBACK_IDENTITY: IdentityContext = {
 };
 
 /**
- * VECTOR ENGINE QUERY — Phase 2 retrieval layer.
+ * RETRIEVAL PACK — structured prompt payload assembled before Writer runs.
  *
- * Queries the ChromaDB vector engine (hosted at VECTOR_ENGINE_URL)
- * for context chunks relevant to the producer brief.
+ * Three typed sections from separate ChromaDB partitions:
+ *   cv_identity      — who Scott is, career, expertise
+ *   cv_style_examples — voice patterns, real post examples
+ *   cv_projects      — SeaTrace, SirTrav, Sir James, WAFC project context
  *
- * Targets cv_personal and cv_projects partitions by default.
- * Gracefully returns [] if the engine is unreachable — pipeline continues
- * with identity.json seed only (no crash, no fake failure).
- *
- * Set VECTOR_ENGINE_URL in Netlify env (Functions scope) to activate.
- * Without it, this is a silent no-op.
+ * assembled: pre-built prompt block ready for direct injection.
+ * No loose chunks reach the Writer — one structured payload only.
  */
+export interface RetrievalPack {
+  identity: string[];
+  styleExamples: string[];
+  projects: string[];
+  assembled: string;
+}
+
+const EMPTY_PACK: RetrievalPack = {
+  identity: [],
+  styleExamples: [],
+  projects: [],
+  assembled: '',
+};
+
+/** Single-partition fetch — internal helper. Returns [] on any failure. */
+async function fetchPartition(
+  vectorEngineUrl: string,
+  query: string,
+  partition: string,
+  nResults: number
+): Promise<string[]> {
+  try {
+    const res = await fetch(`${vectorEngineUrl}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, partitions: [partition], n_results: nResults }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.context_chunks ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * ASSEMBLE RETRIEVAL PACK — fan out to 3 partitions in parallel,
+ * return one structured prompt payload for the Writer.
+ *
+ * Gracefully returns EMPTY_PACK if VECTOR_ENGINE_URL is not set
+ * or the engine is unreachable — pipeline continues with identity.json seed.
+ */
+export async function assembleRetrievalPack(
+  query: string,
+  _platform: string = 'narrative'
+): Promise<RetrievalPack> {
+  const vectorEngineUrl = process.env.VECTOR_ENGINE_URL;
+  if (!vectorEngineUrl || !query?.trim()) return EMPTY_PACK;
+
+  const q = query.trim();
+
+  const [identity, styleExamples, projects] = await Promise.all([
+    fetchPartition(vectorEngineUrl, q, 'cv_identity', 3),
+    fetchPartition(vectorEngineUrl, q, 'cv_style_examples', 2),
+    fetchPartition(vectorEngineUrl, q, 'cv_projects', 3),
+  ]);
+
+  const total = identity.length + styleExamples.length + projects.length;
+  if (total === 0) return EMPTY_PACK;
+
+  console.log(`[RetrievalPack] ${identity.length} identity · ${styleExamples.length} style · ${projects.length} project chunks`);
+
+  const sections: string[] = ['RETRIEVED KNOWLEDGE PACK (CV — verified context):'];
+
+  if (identity.length > 0) {
+    sections.push('');
+    sections.push('🧠 IDENTITY:');
+    identity.forEach(c => sections.push(c.trim()));
+  }
+  if (styleExamples.length > 0) {
+    sections.push('');
+    sections.push('✍️ STYLE EXAMPLES:');
+    styleExamples.forEach(c => sections.push(c.trim()));
+  }
+  if (projects.length > 0) {
+    sections.push('');
+    sections.push('🗂️ PROJECTS:');
+    projects.forEach(c => sections.push(c.trim()));
+  }
+
+  return { identity, styleExamples, projects, assembled: sections.join('\n') };
+}
+
+/** Legacy single-partition query — kept for backwards compat. Use assembleRetrievalPack() for new work. */
 export async function queryVectorEngine(
   query: string,
   partitions: string[] = ['cv_personal', 'cv_projects'],
@@ -126,7 +209,6 @@ export async function queryVectorEngine(
 ): Promise<string[]> {
   const vectorEngineUrl = process.env.VECTOR_ENGINE_URL;
   if (!vectorEngineUrl || !query?.trim()) return [];
-
   try {
     const res = await fetch(`${vectorEngineUrl}/query`, {
       method: 'POST',
@@ -134,16 +216,10 @@ export async function queryVectorEngine(
       body: JSON.stringify({ query: query.trim(), partitions, n_results: nResults }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) {
-      console.warn(`[VectorEngine] Query returned ${res.status} — falling back to identity seed only`);
-      return [];
-    }
+    if (!res.ok) return [];
     const data = await res.json();
-    const chunks: string[] = data?.context_chunks ?? [];
-    console.log(`[VectorEngine] Retrieved ${chunks.length} chunks from ${partitions.join(', ')}`);
-    return chunks;
-  } catch (err: any) {
-    console.warn('[VectorEngine] Unreachable — using identity seed only:', err?.message);
+    return data?.context_chunks ?? [];
+  } catch {
     return [];
   }
 }
@@ -176,7 +252,7 @@ export function buildIdentityPrompt(
   identity: IdentityContext,
   producerBrief?: string,
   platform: 'linkedin' | 'twitter' | 'instagram' | 'narrative' = 'narrative',
-  vectorChunks: string[] = []
+  retrievalPack: string = ''
 ): string {
   const producerMode = isProducerBrief(producerBrief);
 
@@ -192,12 +268,9 @@ export function buildIdentityPrompt(
       `STYLE: Short punchy sentences. Hook-first. Producer's perspective — behind the board, not on the mic (unless the brief says otherwise). Paradox openings work well. End with impact, not with a fade.`,
     ];
 
-    if (vectorChunks.length > 0) {
+    if (retrievalPack) {
       producerLines.push(``);
-      producerLines.push(`RETRIEVED CONTEXT (from knowledge base):`);
-      vectorChunks.slice(0, 4).forEach((chunk, i) => {
-        producerLines.push(`[${i + 1}] ${chunk.trim()}`);
-      });
+      producerLines.push(retrievalPack);
     }
 
     producerLines.push(``);
@@ -260,13 +333,10 @@ export function buildIdentityPrompt(
     });
   }
 
-  // Inject vector-retrieved context chunks if available
-  if (vectorChunks.length > 0) {
+  // Inject retrieval pack if assembled
+  if (retrievalPack) {
     lines.push(``);
-    lines.push(`RETRIEVED CONTEXT (from CV knowledge base — highest relevance to this brief):`);
-    vectorChunks.slice(0, 4).forEach((chunk, i) => {
-      lines.push(`[${i + 1}] ${chunk.trim()}`);
-    });
+    lines.push(retrievalPack);
   }
 
   // Platform-specific instructions

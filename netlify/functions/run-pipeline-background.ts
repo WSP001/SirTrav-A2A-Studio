@@ -204,15 +204,13 @@ async function executeWriterAgent(
   try {
     console.log(`✍️ [Writer] Generating narrative...`);
 
-    // Phase 2: Query vector engine for relevant CV context chunks before writing.
-    // Falls back silently to [] if VECTOR_ENGINE_URL is not set or engine is down.
-    const { queryVectorEngine } = await import('./lib/content-seed');
-    const vectorChunks = await queryVectorEngine(
-      producerBrief || projectId,
-      ['cv_personal', 'cv_projects']
-    );
-    if (vectorChunks.length > 0) {
-      console.log(`[Writer] Injecting ${vectorChunks.length} vector context chunks`);
+    // Phase 2: Assemble retrieval pack before writing.
+    // Fan-out to cv_identity + cv_style_examples + cv_projects in parallel.
+    // Returns one structured prompt payload. Falls back silently to empty pack.
+    const { assembleRetrievalPack } = await import('./lib/content-seed');
+    const pack = await assembleRetrievalPack(producerBrief || projectId);
+    if (pack.assembled) {
+      console.log(`[Writer] Retrieval pack ready — identity:${pack.identity.length} style:${pack.styleExamples.length} projects:${pack.projects.length}`);
     }
 
     const mood = curatedMedia?.scenes?.[0]?.dominant_mood || 'reflective';
@@ -227,7 +225,7 @@ async function executeWriterAgent(
         mood,
         sceneCount,
         producerBrief,
-        vectorChunks,
+        retrievalPack: pack.assembled,
       }),
       signal: AbortSignal.timeout(30000),
     });

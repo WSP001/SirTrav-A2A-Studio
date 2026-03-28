@@ -22,7 +22,7 @@ interface NarrateRequest {
   mood: string;
   sceneCount: number;
   producerBrief?: string;
-  vectorChunks?: string[];
+  retrievalPack?: string;
 }
 
 interface Scene {
@@ -81,7 +81,7 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
 
     // Fetch identity context — gives the agent Scott's voice, story, and focus
     const identity = await fetchIdentityContext();
-    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief, 'narrative', request.vectorChunks ?? []);
+    const identityPrompt = buildIdentityPrompt(identity, request.producerBrief, 'narrative', request.retrievalPack ?? '');
 
     const prompt = `${identityPrompt}
 
@@ -214,7 +214,7 @@ function generateFallbackNarrative(request: NarrateRequest): { narrative: string
   return { narrative, scenes };
 }
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   console.log('✍️ WRITER AGENT - Narrate Project');
 
   const headers = {
