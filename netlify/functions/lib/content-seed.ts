@@ -165,12 +165,66 @@ export async function fetchIdentityContext(): Promise<IdentityContext> {
   }
 }
 
+/** Detect whether a producer brief is about music/rap/production rather than SeaTrace/maritime. */
+function isProducerBrief(brief?: string): boolean {
+  if (!brief) return false;
+  const lower = brief.toLowerCase();
+  return /\b(rap|beat|drop|track|verse|hook|bars|producer|music|studio|bpm|sample|mix|master|record|lyric|rhyme|flow|freestyle|album|single|ep|tape|tiktok|reel|sirtrav studio)\b/.test(lower);
+}
+
 export function buildIdentityPrompt(
   identity: IdentityContext,
   producerBrief?: string,
   platform: 'linkedin' | 'twitter' | 'instagram' | 'narrative' = 'narrative',
   vectorChunks: string[] = []
 ): string {
+  const producerMode = isProducerBrief(producerBrief);
+
+  // Producer mode: swap voice and context to SirTrav Studio creative identity
+  if (producerMode) {
+    const producerLines = [
+      `You are writing on behalf of R. Scott Echols — independent rap producer and director at SirTrav Studio.`,
+      ``,
+      `VOICE: First-person, direct, street-credible but cerebral. References production craft (808s, sample chops, layering, director cuts). Speaks as a 35-year practitioner, not a hype man. No filler. No corporate speak. Every line earns its place.`,
+      ``,
+      `CREDIT LINE: Produced by SirTrav | Directed by R. Scott Echols`,
+      ``,
+      `STYLE: Short punchy sentences. Hook-first. Producer's perspective — behind the board, not on the mic (unless the brief says otherwise). Paradox openings work well. End with impact, not with a fade.`,
+    ];
+
+    if (vectorChunks.length > 0) {
+      producerLines.push(``);
+      producerLines.push(`RETRIEVED CONTEXT (from knowledge base):`);
+      vectorChunks.slice(0, 4).forEach((chunk, i) => {
+        producerLines.push(`[${i + 1}] ${chunk.trim()}`);
+      });
+    }
+
+    producerLines.push(``);
+    producerLines.push(`PLATFORM: ${platform.toUpperCase()}`);
+    if (platform === 'instagram' || platform === 'twitter') {
+      producerLines.push(`- 150-220 characters for Instagram. Under 280 for Twitter/X.`);
+      producerLines.push(`- 5-8 hashtags: always #SirTravStudio #ProducedBySirTrav + 3-5 from rotation.`);
+      producerLines.push(`- Hashtag rotation: #RapProducer #DirectorCut #OriginalMusic #BeatMaker #IndependentProducer #AIAssistedProduction`);
+    } else if (platform === 'narrative') {
+      producerLines.push(`- Cinematic director's cut format. 2-3 sentences per scene.`);
+      producerLines.push(`- Speak as the producer/director: what the beat does, what the cut reveals, what the listener feels.`);
+    } else if (platform === 'linkedin') {
+      producerLines.push(`- 200-400 words. Behind-the-scenes producer perspective. What the creative process actually looks like.`);
+      producerLines.push(`- 4-6 hashtags: #SirTravStudio #ProducedBySirTrav #IndependentProducer #OriginalMusic`);
+    }
+
+    producerLines.push(`Write in authentic first-person. No buzzwords. Real craft specifics only.`);
+
+    if (producerBrief?.trim()) {
+      producerLines.push(``);
+      producerLines.push(`PRODUCER BRIEF / DROP TOPIC: ${producerBrief.trim()}`);
+    }
+
+    return producerLines.join('\n');
+  }
+
+  // Default: SeaTrace / maritime voice
   const lines = [
     `You are writing on behalf of ${identity.name}, ${identity.title}.`,
     ``,
@@ -226,6 +280,9 @@ export function buildIdentityPrompt(
   } else if (platform === 'twitter') {
     lines.push(`- Under 280 characters. Punchy, paradox-led, no filler.`);
     lines.push(`- 2-3 hashtags max: always #SeaTrace + one from the rotation.`);
+  } else if (platform === 'instagram') {
+    lines.push(`- 150-220 characters caption. Hook-first, punchy, one strong image in words.`);
+    lines.push(`- 5-7 hashtags: #SeaTrace #IUUFishing + 3-4 from rotation.`);
   } else if (platform === 'narrative') {
     lines.push(`- Cinematic narrative for video/audio. 2-3 sentences per scene.`);
     lines.push(`- Speak as Scott Echols addressing maritime industry leaders and investors.`);
