@@ -76,8 +76,8 @@ async function generateWithGemini(request: NarrateRequest): Promise<string | nul
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-1.5-flash: latest Flash model, fast, cheap, 1M+ context
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // gemini-2.5-flash: current GA Flash model, fast, multimodal reasoning, 1M+ context
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Fetch identity context — gives the agent Scott's voice, story, and focus
     const identity = await fetchIdentityContext();
@@ -134,6 +134,14 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
   }
 
   try {
+    const identity = await fetchIdentityContext();
+    const identityPrompt = buildIdentityPrompt(
+      identity,
+      request.producerBrief,
+      'narrative',
+      request.retrievalPack ?? ''
+    );
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -145,11 +153,11 @@ async function generateWithOpenAI(request: NarrateRequest): Promise<string | nul
         messages: [
           {
             role: 'system',
-            content: `You are writing on behalf of Scott Echols, Founder & CEO of SeaTrace — a maritime supply chain traceability platform for wild fisheries. Voice: authoritative practitioner, direct, mission-driven, mixes technical precision with moral urgency. Uses fishing vernacular ('honey hole', 'wet-fish reality') alongside systems architecture language. Confident builder, not corporate. Always first-person. No buzzwords. Frame everything as both a moral AND technical problem.`
+            content: `${identityPrompt}\n\nAnswer only from the supplied identity and retrieved context. If support is thin, stay conservative and do not invent claims.`
           },
           {
             role: 'user',
-            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences. Write as Scott Echols speaking directly to maritime industry leaders and investors about SeaTrace and fisheries traceability.${request.producerBrief ? `\n\nPOST TOPIC / PRODUCER BRIEF: ${request.producerBrief}` : ''}`
+            content: `Create a ${request.sceneCount}-scene narrative for project "${request.projectId}" with theme "${request.theme}" and mood "${request.mood}". Each scene should be 2-3 sentences. Return grounded first-person narration only.${request.producerBrief ? `\n\nPOST TOPIC / PRODUCER BRIEF: ${request.producerBrief}` : ''}`
           }
         ],
         max_tokens: 1000,

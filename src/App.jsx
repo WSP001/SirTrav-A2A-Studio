@@ -9,6 +9,7 @@ import PlatformToggle from "./components/PlatformToggle";
 // Version for deployment verification
 const APP_VERSION = "v2.1.0";
 const BUILD_DATE = "2026-02-13";
+const CV_SYNC_ENDPOINT = '/.netlify/functions/cv-truth-pack';
 
 // 7-Agent Configuration
 const AGENTS = [
@@ -24,6 +25,9 @@ const AGENTS = [
 function App() {
   const [projectId, setProjectId] = useState(`week${new Date().getWeekNumber()}_recap`);
   const [producerBrief, setProducerBrief] = useState('');
+  const [briefSource, setBriefSource] = useState('manual');
+  const producerBriefRef = useRef('');
+  const briefSourceRef = useRef('manual');
   const [files, setFiles] = useState([]);
   const [pipelineStatus, setPipelineStatus] = useState('idle'); // idle, running, completed, error
   const [agentStates, setAgentStates] = useState({});
@@ -46,6 +50,10 @@ function App() {
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
   const [systemHealth, setSystemHealth] = useState(null); // live health status
   const [heroVisible, setHeroVisible] = useState(false);
+  const [cvSyncStatus, setCvSyncStatus] = useState('idle');
+  const [cvSyncError, setCvSyncError] = useState('');
+  const [cvSuggestedBrief, setCvSuggestedBrief] = useState('');
+  const [cvTruthPack, setCvTruthPack] = useState(null);
   const [selectedPublishTargets, setSelectedPublishTargets] = useState(['x', 'linkedin', 'youtube', 'instagram', 'tiktok']);
   const [publishTargetAvailability, setPublishTargetAvailability] = useState({
     x: true,
@@ -63,6 +71,41 @@ function App() {
       .then(data => setSystemHealth(data))
       .catch(() => setSystemHealth({ status: 'offline' }));
   }, []);
+
+  const loadCvTruthPack = useCallback(async () => {
+    setCvSyncStatus('loading');
+    setCvSyncError('');
+
+    try {
+      const platform = targetPlatform === 'x' ? 'twitter' : targetPlatform;
+      const response = await fetch(`${CV_SYNC_ENDPOINT}?platform=${encodeURIComponent(platform)}`);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || `cv_truth_pack_${response.status}`);
+      }
+
+      const suggestedBrief = data?.socialSeed?.producerBrief || '';
+      setCvTruthPack(data);
+      setCvSuggestedBrief(suggestedBrief);
+      setCvSyncStatus('synced');
+      const shouldApply = !producerBriefRef.current.trim() || briefSourceRef.current === 'cv';
+
+      if (shouldApply) {
+        producerBriefRef.current = suggestedBrief;
+        briefSourceRef.current = suggestedBrief ? 'cv' : 'manual';
+        setProducerBrief(suggestedBrief);
+        setBriefSource(suggestedBrief ? 'cv' : 'manual');
+      }
+    } catch (error) {
+      setCvSyncStatus('error');
+      setCvSyncError(error instanceof Error ? error.message : 'cv_truth_pack_failed');
+    }
+  }, [targetPlatform]);
+
+  useEffect(() => {
+    void loadCvTruthPack();
+  }, [loadCvTruthPack]);
 
   // File drop handler
   const handleDrop = useCallback((e) => {
@@ -111,6 +154,7 @@ function App() {
     setCurrentRunId(newRunId);
     setMetrics({ cost: 0, time: 0 });
     startTimeRef.current = Date.now();  // CX-019: Capture start time in ref for handlePipelineComplete
+    const effectiveStory = producerBrief.trim() || cvSuggestedBrief || `Weekly recap for ${projectId}`;
 
     // Reset agent states
     AGENTS.forEach(agent => {
@@ -173,7 +217,7 @@ function App() {
           brief: {
             mood: 'reflective',
             pace: videoLength === 'short' ? 'fast' : 'medium',
-            story: producerBrief || `Weekly recap for ${projectId}`,
+            story: effectiveStory,
             cta: 'Share your story',
             tone: (targetPlatform === 'linkedin' || targetPlatform === 'twitter') ? 'professional' : 'casual',
             // 🎯 MG-002: Pass U2A Preferences
@@ -725,21 +769,87 @@ function App() {
 
               <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-2">
                 <div>
-                  <label htmlFor="producer-brief" className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">
-                    Producer Brief
-                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor="producer-brief" className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">
+                      Producer Brief
+                    </label>
+                    <span className={`text-[10px] uppercase tracking-wider ${cvSyncStatus === 'synced'
+                      ? 'text-emerald-400'
+                      : cvSyncStatus === 'loading'
+                        ? 'text-amber-400'
+                        : cvSyncStatus === 'error'
+                          ? 'text-red-400'
+                          : 'text-gray-500'
+                      }`}>
+                      CV Truth Pack: {cvSyncStatus}
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    Tell the agents what story to tell this week.
+                    Tell the agents what story to tell this week. The CV site can seed this automatically from the verified public identity pack.
                   </p>
+                  {cvTruthPack?.profile?.title && (
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      Synced identity: {cvTruthPack.profile.displayName} · {cvTruthPack.profile.title}
+                    </p>
+                  )}
+                  {cvTruthPack?.sourceUrl && (
+                    <a
+                      href={cvTruthPack.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-brand-300 hover:text-brand-200 mt-2"
+                    >
+                      View CV truth source
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {cvSyncError && (
+                    <p className="text-[11px] text-red-400 mt-2">
+                      CV sync failed: {cvSyncError}
+                    </p>
+                  )}
                 </div>
                 <textarea
                   id="producer-brief"
                   value={producerBrief}
-                  onChange={(e) => setProducerBrief(e.target.value)}
+                  onChange={(e) => {
+                    producerBriefRef.current = e.target.value;
+                    briefSourceRef.current = 'manual';
+                    setProducerBrief(e.target.value);
+                    setBriefSource('manual');
+                  }}
                   rows={4}
                   placeholder="This week: cormorants near Eagle Lake; focus on Florida boat and fishing shots."
                   className="w-full resize-y bg-gray-900 border border-gray-700 text-white text-sm rounded p-3 focus:ring-1 focus:ring-amber-500 outline-none"
                 />
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-[11px] text-gray-500">
+                    Source mode: {briefSource === 'cv' ? 'CV truth pack' : 'manual'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadCvTruthPack()}
+                      className="px-2.5 py-1.5 rounded border border-gray-700 text-[11px] text-gray-300 hover:text-white hover:border-gray-500"
+                    >
+                      Reload CV Pack
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!cvSuggestedBrief) return;
+                        producerBriefRef.current = cvSuggestedBrief;
+                        briefSourceRef.current = 'cv';
+                        setProducerBrief(cvSuggestedBrief);
+                        setBriefSource('cv');
+                      }}
+                      disabled={!cvSuggestedBrief}
+                      className="px-2.5 py-1.5 rounded border border-amber-600/40 text-[11px] text-amber-300 hover:text-amber-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Use CV Brief
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Music Mode Toggle */}

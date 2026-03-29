@@ -34,6 +34,8 @@ export interface IdentityContext {
 }
 
 const CV_IDENTITY_URL =
+  process.env.CV_TRUTH_PACK_URL ||
+  process.env.CV_IDENTITY_URL ||
   'https://robertoscottecholscv.netlify.app/api/identity.json';
 
 const FALLBACK_IDENTITY: IdentityContext = {
