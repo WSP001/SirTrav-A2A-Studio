@@ -10,6 +10,8 @@ import PlatformToggle from "./components/PlatformToggle";
 const APP_VERSION = "v2.1.0";
 const BUILD_DATE = "2026-02-13";
 const CV_SYNC_ENDPOINT = '/.netlify/functions/cv-truth-pack';
+const STUDIO_DISPLAY_NAME = "A2A Studio";
+const STUDIO_OPERATOR_NAME = "R. Scott Echols";
 
 // 7-Agent Configuration
 const AGENTS = [
@@ -330,7 +332,7 @@ function App() {
         resolution: videoResult.resolution,
         platform: targetPlatform,
       },
-      credits: { platform: 'SirTrav A2A Studio' },
+      credits: { platform: STUDIO_DISPLAY_NAME },
       invoice: videoResult.invoice,
       publishTargets: videoResult.publishTargets,
     }
@@ -339,7 +341,7 @@ function App() {
       projectId: 'test-project-123',
       runId: 'ui-demo-run',
       metadata: { duration: 154, resolution: '1080p', platform: 'TikTok', fileSize: 24500000 },
-      credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: 'SirTrav A2A Studio' },
+      credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: STUDIO_DISPLAY_NAME },
       publishTargets: selectedPublishTargets,
     };
 
@@ -368,7 +370,7 @@ function App() {
             <div className="logo-icon logo-icon-animated" style={{ background: 'none', padding: 0, border: 'none', width: 36, height: 36 }}>
               <img
                 src="/sir-travis-emblem.png"
-                alt="Sir Travis Jennings Emblem"
+                alt="A2A Studio Emblem"
                 style={{
                   width: 36,
                   height: 36,
@@ -379,7 +381,7 @@ function App() {
                 }}
               />
             </div>
-            <span className="text-lg font-semibold text-white">SirTrav A2A Studio</span>
+            <span className="text-lg font-semibold text-white">{STUDIO_DISPLAY_NAME}</span>
             <span className="version-badge">{APP_VERSION}</span>
             {/* Live System Health Indicator */}
             {systemHealth && (
@@ -418,16 +420,16 @@ function App() {
         </div>
 
         <h1 className="hero-title hero-title-premium">
-          <span className="hero-d2a">D2A</span>
-          <span className="hero-word">Video</span>
+          <span className="hero-d2a">A2A</span>
+          <span className="hero-word">Studio</span>
           <span className="hero-word hero-word-accent">Automation</span>
         </h1>
 
         <p className="hero-subtitle">
-          One click. Seven AI agents. Real cinematic video — narrated, scored, credited, and published.
+          One brief. Seven AI agents. CV-grounded social and cinematic production — narrated, scored, credited, and published.
         </p>
 
-        {/* ═══ SirTrav SIGNATURE PLAQUE ═══ */}
+        {/* ═══ Studio Signature Plaque ═══ */}
         <div className="signature-plaque">
           <div className="signature-border">
             <div className="signature-inner">
@@ -440,7 +442,7 @@ function App() {
               }}>
                 <img
                   src="/sir-travis-emblem.png"
-                  alt="Sir Travis Jennings Gold Seal"
+                  alt="A2A Studio Gold Seal"
                   style={{
                     width: 64,
                     height: 64,
@@ -461,8 +463,8 @@ function App() {
                 }} />
               </div>
               <div className="signature-text">
-                <span className="signature-name">Sir Travis Jennings</span>
-                <span className="signature-tagline">For the Commons Good</span>
+                <span className="signature-name">{STUDIO_OPERATOR_NAME}</span>
+                <span className="signature-tagline">{STUDIO_DISPLAY_NAME} · For the Commons Good</span>
               </div>
               <div className="signature-seal">
                 <Shield className="w-4 h-4" />
@@ -785,7 +787,7 @@ function App() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    Tell the agents what story to tell this week. The CV site can seed this automatically from the verified public identity pack.
+                    Start with the subject, what the image shows, the platform, and the outcome you want. The CV site then grounds the brief with verified identity and project context.
                   </p>
                   {cvTruthPack?.profile?.title && (
                     <p className="text-[11px] text-gray-500 mt-2">
@@ -819,9 +821,12 @@ function App() {
                     setBriefSource('manual');
                   }}
                   rows={4}
-                  placeholder="This week: cormorants near Eagle Lake; focus on Florida boat and fishing shots."
+                  placeholder="Subject: advanced mobile robotics. Visuals: attached field photos. Angle: first-person from R. Scott Echols, tied to Solutions Architect / SeaTrace / World Seafood Producers. Output: grounded LinkedIn + X post with a producer-ready visual direction."
                   className="w-full resize-y bg-gray-900 border border-gray-700 text-white text-sm rounded p-3 focus:ring-1 focus:ring-amber-500 outline-none"
                 />
+                <p className="text-[11px] text-gray-500">
+                  Prompt recipe: subject → image cues → platform → desired tone → confirmed CV tie-back. The agents should read first, then write.
+                </p>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <p className="text-[11px] text-gray-500">
                     Source mode: {briefSource === 'cv' ? 'CV truth pack' : 'manual'}
@@ -1138,7 +1143,7 @@ function App() {
         <div className="footer-inner">
           <div className="footer-brand">
             <Zap className="w-4 h-4 text-brand-400" />
-            <span>SirTrav A2A Studio</span>
+            <span>{STUDIO_DISPLAY_NAME}</span>
           </div>
           <div className="footer-meta">
             <span>Build {BUILD_DATE}</span>

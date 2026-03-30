@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================
-   SirTrav A2A Studio - Beautiful UI v1.6.0
+   A2A Studio - Beautiful UI v1.6.0
    Glassmorphism + Animated Gradients + Neon
    ============================================ */
 
@@ -243,7 +243,7 @@ body {
   }
 }
 
-/* ─── 🦅 Sir Travis Jennings Emblem Animations ─── */
+/* ─── 🦅 Gold Emblem Animations ─── */
 
 /* Sweeping gold shimmer — simulates 18k specular highlight */
 @keyframes emblem-shimmer {
@@ -1060,7 +1060,7 @@ body {
 .hero-orb-1 {
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.6), transparent);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.45), transparent);
   top: -50px;
   left: 10%;
   animation: orb-float-1 12s ease-in-out infinite;
@@ -1069,7 +1069,7 @@ body {
 .hero-orb-2 {
   width: 250px;
   height: 250px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.5), transparent);
+  background: radial-gradient(circle, rgba(242, 201, 76, 0.32), transparent);
   top: 20px;
   right: 15%;
   animation: orb-float-2 10s ease-in-out infinite;
@@ -1078,7 +1078,7 @@ body {
 .hero-orb-3 {
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent);
+  background: radial-gradient(circle, rgba(184, 134, 11, 0.24), transparent);
   bottom: -40px;
   left: 40%;
   animation: orb-float-3 14s ease-in-out infinite;
@@ -1144,13 +1144,13 @@ body {
 }
 
 .hero-d2a {
-  background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+  background: linear-gradient(135deg, #d4af37, #f2c94c, #b8860b);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: hero-gradient-flow 6s ease infinite;
-  filter: drop-shadow(0 0 20px rgba(129, 140, 248, 0.4));
+  filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.32));
 }
 
 .hero-word {
@@ -1176,7 +1176,7 @@ body {
   }
 }
 
-/* ═══ SirTrav SIGNATURE PLAQUE ═══ */
+/* ═══ Studio Signature Plaque ═══ */
 .signature-plaque {
   position: relative;
   z-index: 1;
