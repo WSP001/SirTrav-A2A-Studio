@@ -111,10 +111,14 @@ const FALLBACK_IDENTITY: IdentityContext = {
 /**
  * RETRIEVAL PACK — structured prompt payload assembled before Writer runs.
  *
- * Three typed sections from separate ChromaDB partitions:
- *   cv_identity      — who Scott is, career, expertise
- *   cv_style_examples — voice patterns, real post examples
- *   cv_projects      — SeaTrace, SirTrav, Sir James, WAFC project context
+ * Three typed sections from separate vector partitions:
+ *   cv_personal       — who Scott is, career, expertise, voice patterns
+ *   business_seatrace — SeaTrace domain knowledge, style examples
+ *   cv_projects       — SeaTrace, SirTrav, Sir James, WAFC project context
+ *
+ * These partition names MUST match the live ALLOWED_PARTITIONS in
+ * api_server.py on Cloud Run. If you rename partitions there,
+ * update them here too.
  *
  * assembled: pre-built prompt block ready for direct injection.
  * No loose chunks reach the Writer — one structured payload only.
@@ -172,8 +176,8 @@ export async function assembleRetrievalPack(
   const q = query.trim();
 
   const [identity, styleExamples, projects] = await Promise.all([
-    fetchPartition(vectorEngineUrl, q, 'cv_identity', 3),
-    fetchPartition(vectorEngineUrl, q, 'cv_style_examples', 2),
+    fetchPartition(vectorEngineUrl, q, 'cv_personal', 3),
+    fetchPartition(vectorEngineUrl, q, 'business_seatrace', 2),
     fetchPartition(vectorEngineUrl, q, 'cv_projects', 3),
   ]);
 
