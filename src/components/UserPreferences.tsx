@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Film, Mic, Clock, Palette, Check, X } from 'lucide-react';
+import { STUDIO_PERSONA } from '../config/studioPersona';
 
 export interface UserPreferences {
   displayName: string;
@@ -26,7 +27,7 @@ interface UserPreferencesModalProps {
   existingPrefs?: Partial<UserPreferences>;
 }
 
-const STORAGE_KEY = 'sirtrav-user-preferences';
+const STORAGE_KEY = STUDIO_PERSONA.preferencesStorageKey;
 
 const defaultPrefs: UserPreferences = {
   displayName: '',
@@ -45,7 +46,8 @@ export const useUserPreferences = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY)
+      || localStorage.getItem(STUDIO_PERSONA.legacyPreferencesStorageKey);
     if (saved) {
       try {
         setPreferences({ ...defaultPrefs, ...JSON.parse(saved) });
@@ -135,7 +137,7 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <User className="w-5 h-5 text-brand-400" />
-                {step === 1 ? 'Welcome to SirTrav!' : 
+                {step === 1 ? `Welcome to ${STUDIO_PERSONA.displayName}!` : 
                  step === 2 ? 'Your Video Style' :
                  step === 3 ? 'Preferences' : 'Almost Done!'}
               </h2>

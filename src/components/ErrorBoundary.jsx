@@ -1,4 +1,5 @@
 import React from 'react';
+import { STUDIO_PERSONA } from '../config/studioPersona';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -51,7 +52,7 @@ class ErrorBoundary extends React.Component {
                             fontSize: '0.875rem',
                             marginBottom: '16px',
                         }}>
-                            The SirTrav A2A Studio encountered a critical error.
+                            {STUDIO_PERSONA.displayName} encountered a critical error.
                         </p>
                         <pre style={{
                             background: 'rgba(0,0,0,0.4)',
@@ -91,7 +92,7 @@ class ErrorBoundary extends React.Component {
                             fontSize: '0.75rem',
                             color: '#64748b',
                         }}>
-                            Build: v2.0.0 | For the Commons Good 🌍
+                            Build: v2.0.0 | {STUDIO_PERSONA.tagline} 🌍
                         </p>
                     </div>
                 </div>

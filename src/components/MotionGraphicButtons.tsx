@@ -7,6 +7,7 @@
  * PATTERN: Click → Dispatch → Poll → Display
  */
 import React, { useState } from 'react';
+import { STUDIO_PERSONA } from '../config/studioPersona';
 
 // ============================================================================
 // TYPES
@@ -125,7 +126,7 @@ export const MotionGraphicButtons: React.FC<MotionGraphicButtonsProps> = ({
                     platform: 'youtube',
                     forceRegenerate: true,
                     props: {
-                        title: `SirTrav ${new Date().toLocaleDateString()}`,
+                        title: `${STUDIO_PERSONA.motionGraphicTitlePrefix} ${new Date().toLocaleDateString()}`,
                         subtitle: 'Automated Production',
                     },
                 }),

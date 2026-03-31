@@ -1,6 +1,6 @@
 /**
  * Brand Token Source of Truth — 24K Gold Palette
- * SirTrav A2A Studio v1.6.0
+ * SirScott / A2A Studio v1.6.0
  *
  * AGENT RULE: All agents (Codex, Claude, Antigravity, Windsurf) must import
  * from this file for TypeScript usage. CSS vars in App.css must stay in sync.

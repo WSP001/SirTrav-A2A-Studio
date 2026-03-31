@@ -5,13 +5,15 @@ import ResultsPreview from './components/ResultsPreview';
 import PipelineProgress from './components/PipelineProgress';
 import SystemStatusEmblem from "./components/SystemStatusEmblem";
 import PlatformToggle from "./components/PlatformToggle";
+import { STUDIO_PERSONA } from "./config/studioPersona";
 
 // Version for deployment verification
 const APP_VERSION = "v2.1.0";
 const BUILD_DATE = "2026-02-13";
 const CV_SYNC_ENDPOINT = '/.netlify/functions/cv-truth-pack';
-const STUDIO_DISPLAY_NAME = "A2A Studio";
-const STUDIO_OPERATOR_NAME = "R. Scott Echols";
+const STUDIO_DISPLAY_NAME = STUDIO_PERSONA.displayName;
+const STUDIO_SHORT_NAME = STUDIO_PERSONA.shortName;
+const STUDIO_OPERATOR_NAME = STUDIO_PERSONA.operatorName;
 
 // 7-Agent Configuration
 const AGENTS = [
@@ -332,7 +334,7 @@ function App() {
         resolution: videoResult.resolution,
         platform: targetPlatform,
       },
-      credits: { platform: STUDIO_DISPLAY_NAME },
+      credits: { platform: STUDIO_SHORT_NAME },
       invoice: videoResult.invoice,
       publishTargets: videoResult.publishTargets,
     }
@@ -341,7 +343,7 @@ function App() {
       projectId: 'test-project-123',
       runId: 'ui-demo-run',
       metadata: { duration: 154, resolution: '1080p', platform: 'TikTok', fileSize: 24500000 },
-      credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: STUDIO_DISPLAY_NAME },
+      credits: { music: 'Suno AI', voice: 'ElevenLabs', platform: STUDIO_SHORT_NAME },
       publishTargets: selectedPublishTargets,
     };
 
@@ -369,7 +371,7 @@ function App() {
           <div className="flex items-center gap-3">
             <div className="logo-icon logo-icon-animated" style={{ background: 'none', padding: 0, border: 'none', width: 36, height: 36 }}>
               <img
-                src="/sir-travis-emblem.png"
+                src={STUDIO_PERSONA.emblemPath}
                 alt="A2A Studio Emblem"
                 style={{
                   width: 36,
@@ -403,7 +405,7 @@ function App() {
             >
               Preview
             </button>
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="Open GitHub repository">
+            <a href={STUDIO_PERSONA.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="Open GitHub repository">
               <Github className="w-4 h-4" />
             </a>
           </nav>
@@ -441,7 +443,7 @@ function App() {
                 flexShrink: 0,
               }}>
                 <img
-                  src="/sir-travis-emblem.png"
+                  src={STUDIO_PERSONA.emblemPath}
                   alt="A2A Studio Gold Seal"
                   style={{
                     width: 64,
@@ -464,7 +466,7 @@ function App() {
               </div>
               <div className="signature-text">
                 <span className="signature-name">{STUDIO_OPERATOR_NAME}</span>
-                <span className="signature-tagline">{STUDIO_DISPLAY_NAME} · For the Commons Good</span>
+                <span className="signature-tagline">{STUDIO_SHORT_NAME} · {STUDIO_PERSONA.tagline}</span>
               </div>
               <div className="signature-seal">
                 <Shield className="w-4 h-4" />
@@ -1116,7 +1118,7 @@ function App() {
                   <input
                     type="text"
                     readOnly
-                    value={`https://sirtrav.studio/v/${projectId}`}
+                    value={`${STUDIO_PERSONA.publicAppUrl}/v/${projectId}`}
                     className="input-field flex-1 text-sm"
                   />
                   <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
@@ -1150,10 +1152,10 @@ function App() {
             <span className="footer-dot">·</span>
             <span>{APP_VERSION}</span>
             <span className="footer-dot">·</span>
-            <span className="footer-commons">For the Commons Good 🌍</span>
+            <span className="footer-commons">{STUDIO_PERSONA.tagline} 🌍</span>
           </div>
           <div className="footer-links">
-            <a href="https://github.com/WSP001/SirTrav-A2A-Studio" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href={STUDIO_PERSONA.githubRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
             <span className="footer-dot">·</span>
             <a href="#">Docs</a>
           </div>
