@@ -29,7 +29,17 @@
       "Bash(echo:*)",
       "Bash(for f in artifacts/contracts/*.json)",
       "Bash(done)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(git -C \"C:\\\\WSP001\\\\R.-Scott-Echols-CV\" pull origin main)",
+      "Bash(git -C \"C:\\\\WSP001\\\\R.-Scott-Echols-CV\" status -sb)",
+      "Bash(git -C \"C:\\\\WSP001\\\\R.-Scott-Echols-CV\" add AGENT-OPS.md PHASE5_LIVE_STATUS_BOARD.md)",
+      "Bash(git -C:*)",
+      "Bash(Test-Path \"C:\\\\WSP001\\\\SirTrav-A2A-Studio\\\\.claude\\\\worktrees\\\\stupefied-matsumoto\\\\plans\\\\HANDOFF_CODEX2_CX-019.md\")",
+      "Bash(pwsh -NoLogo -Command \"Test-Path ''C:\\\\WSP001\\\\SirTrav-A2A-Studio\\\\.claude\\\\worktrees\\\\stupefied-matsumoto\\\\plans\\\\HANDOFF_CODEX2_CX-019.md''\")",
+      "Bash(pwsh -NoLogo -Command \"Start-Sleep -Seconds 20; Write-Host ''ready''\")",
+      "Bash(pwsh -NoLogo -Command \":*)",
+      "Bash(pwsh -NoLogo -Command \"git -C ''C:\\\\WSP001\\\\R.-Scott-Echols-CV'' push origin main 2>&1\")",
+      "Bash(pwsh -NoLogo -Command \"git -C ''C:\\\\WSP001\\\\R.-Scott-Echols-CV'' log --oneline -3\")"
     ]
   }
 }

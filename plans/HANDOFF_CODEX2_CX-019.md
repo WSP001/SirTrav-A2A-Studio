@@ -4,8 +4,8 @@
 **Agent:** Codex #2 (frontend)
 **Priority:** HIGH — fixes the metrics panel PROTOTYPE gap
 **Created:** 2026-03-04
-**Status:** BLOCKED on CC-M9-METRICS (Claude Code adds runningCost to SSE events)
-**Depends on:** CC-M9-METRICS (Claude Code) + CX-018 (Codex #2, do this first)
+**Status:** READY — CC-M9-METRICS ✅ delivered at `0c37cab9`, merged `face3aee`. Both phases unblocked.
+**Depends on:** ~~CC-M9-METRICS~~ ✅ DONE | CX-018 ✅ DONE at `91faaae4` — proceed to Phase 1 + 2
 
 ---
 
