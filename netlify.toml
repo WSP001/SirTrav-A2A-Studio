@@ -1,5 +1,8 @@
 [build]
-  command = "npm run build"
+  # Gate: sanity-test runs on every Netlify build — fail fast before deploy
+  # Local equivalent: just sanity-test-local (node scripts/sanity-test.mjs --local)
+  # Cost: $0 — no cloud calls, runs against built dist/
+  command = "npm run build && node scripts/sanity-test.mjs --local"
   publish = "dist"
   functions = "netlify/functions"
 

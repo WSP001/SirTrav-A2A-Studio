@@ -1,7 +1,26 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm update:*)"
+      "Bash(npm update:*)",
+      "Bash(just cockpit)",
+      "Bash(just orient-claude-m9)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(node scripts/seed-producer-brief.mjs)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -Command \"Write-Host '--- LANE CHECK ---'; Write-Host 'Worktree: stupefied-matsumoto (Studio repo)'; Write-Host 'Lane: Claude Code → backend only (netlify/functions/, scripts/, plans/)'; Write-Host 'FORBIDDEN: src/ components, JSX, CSS — those are Codex lane'; Write-Host '---'\""
+          }
+        ]
+      }
     ]
   }
 }
+
