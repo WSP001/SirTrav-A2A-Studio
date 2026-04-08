@@ -34,6 +34,9 @@ const USE_LOCAL = args.includes('--local') || modeArg === 'local';
 const MODE = USE_LOCAL ? 'local' : 'cloud';
 const WRITE_REPORT = args.includes('--report');
 const JSON_OUT = args.includes('--json');
+// Build-gate mode: skip all network/function checks when running inside Netlify CI
+// or when --build-gate is passed explicitly. Vite build + static checks still run.
+const BUILD_GATE = args.includes('--build-gate') || process.env.NETLIFY === 'true';
 
 const CLOUD_BASE = 'https://sirtrav-a2a-studio.netlify.app/.netlify/functions';
 const LOCAL_BASE = 'http://localhost:8888/.netlify/functions';
@@ -344,12 +347,17 @@ async function main() {
 
   // Run all test groups
   testAgentFiles();
-  await testFunctionEndpoints();
+  if (BUILD_GATE) {
+    section('2. FUNCTION ENDPOINTS (skipped — build-gate mode)');
+    record('function-endpoints', 'functions', 'skip', 'No dev server during Netlify build — run post-deploy');
+  } else {
+    await testFunctionEndpoints();
+  }
   testCycleGates();
   testBuild();
   testSchemas();
   testEnvKeys();
-  await testSocialDryRun();
+  if (!BUILD_GATE) await testSocialDryRun();
 
   // ── Summary ──
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
