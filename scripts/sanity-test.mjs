@@ -11,9 +11,21 @@
  *   node scripts/sanity-test.mjs --mode cloud      # Explicit cloud mode
  *   node scripts/sanity-test.mjs --local           # Local mode — tests local env keys + localhost
  *   node scripts/sanity-test.mjs --mode local      # Explicit local mode
+ *   node scripts/sanity-test.mjs --build-gate      # Build-gate mode — for Netlify CI (no localhost)
  *   node scripts/sanity-test.mjs --report          # Write artifacts/reports/sanity-YYYY-MM-DD.md
  *   node scripts/sanity-test.mjs --json            # Machine-readable JSON
  *   just sanity-test                                # via justfile (cloud mode)
+ *
+ * Build-gate mode (--build-gate):
+ *   Designed for Netlify CI builds. No dev server is running. Only tests that
+ *   can pass at build time are executed:
+ *     ✅ Agent file existence (group 1)
+ *     ✅ Cycle gates (group 3)
+ *     ✅ Schema validation (group 5)
+ *     ✅ Env key presence (informational — cloud mode behaviour)
+ *     ⏭️  Function endpoints (group 2) — SKIPPED (no server at build time)
+ *     ⏭️  Build check (group 4) — SKIPPED (Netlify already ran npm run build)
+ *     ⏭️  Social dry-runs (group 7) — SKIPPED (need runtime env, not build-time)
  *
  * Exit codes:
  *   0 = all required checks passed (degraded optional services OK)
@@ -31,6 +43,7 @@ const args = process.argv.slice(2);
 const modeIdx = args.indexOf('--mode');
 const modeArg = modeIdx >= 0 ? args[modeIdx + 1] : null;
 const USE_LOCAL = args.includes('--local') || modeArg === 'local';
+const BUILD_GATE = args.includes('--build-gate');  // Netlify CI — no dev server running
 const MODE = USE_LOCAL ? 'local' : 'cloud';
 const WRITE_REPORT = args.includes('--report');
 const JSON_OUT = args.includes('--json');
@@ -120,6 +133,18 @@ function testAgentFiles() {
 // 2. Cloud/Local function health
 async function testFunctionEndpoints() {
   section(`2. FUNCTION ENDPOINTS (${USE_LOCAL ? 'local' : 'cloud'})`);
+
+  // Build-gate: no server running at Netlify build time — skip all endpoint tests
+  if (BUILD_GATE) {
+    record('healthcheck', 'functions', 'skip', 'build-gate: no dev server at build time');
+    record('progress POST', 'functions', 'skip', 'build-gate: no dev server at build time');
+    record('progress GET', 'functions', 'skip', 'build-gate: no dev server at build time');
+    record('evals', 'functions', 'skip', 'build-gate: no dev server at build time');
+    record('mcp', 'functions', 'skip', 'build-gate: no dev server at build time');
+    record('narrate-project (Writer)', 'pipeline', 'skip', 'build-gate: no dev server at build time');
+    record('generate-attribution', 'pipeline', 'skip', 'build-gate: no dev server at build time');
+    return;
+  }
 
   // Healthcheck
   const hc = await fetchJson(`${BASE_URL}/healthcheck`);
@@ -216,6 +241,13 @@ function testCycleGates() {
 // 4. Build check
 function testBuild() {
   section('4. BUILD');
+  // Build-gate: Netlify already ran 'npm run build' before this script
+  if (BUILD_GATE) {
+    const distExists = existsSync(resolve(ROOT, 'dist'));
+    record('Vite build', 'build', distExists ? 'pass' : 'fail',
+      distExists ? 'dist/ present (Netlify built before gate)' : 'dist/ missing — build may have failed');
+    return;
+  }
   const buildOut = run('npm run build 2>&1');
   const ok = buildOut.includes('built in') || buildOut.includes('modules transformed');
   record('Vite build', 'build', ok ? 'pass' : 'fail',
@@ -296,6 +328,14 @@ function testEnvKeys() {
 async function testSocialDryRun() {
   section('7. SOCIAL PUBLISHERS (dry-run)');
 
+  // Build-gate: social publishers require runtime env vars — skip during build
+  if (BUILD_GATE) {
+    record('X/Twitter dry-run', 'social', 'skip', 'build-gate: runtime env required, skip during CI build');
+    record('LinkedIn dry-run', 'social', 'skip', 'build-gate: runtime env required, skip during CI build');
+    record('YouTube dry-run', 'social', 'skip', 'build-gate: runtime env required, skip during CI build');
+    return;
+  }
+
   // X/Twitter dry-run
   const xScript = resolve(ROOT, 'scripts', 'test-x-publish.mjs');
   if (existsSync(xScript)) {
@@ -337,9 +377,12 @@ async function main() {
     console.log('║  SirTrav A2A Studio — Sanity Test                       ║');
     console.log('║  "What Actually Works Right Now"                        ║');
     console.log('╚══════════════════════════════════════════════════════════╝');
-    console.log(`  Target: ${BASE_URL}`);
-    console.log(`  Mode:   ${MODE}`);
+    console.log(`  Target: ${BUILD_GATE ? '(build-gate — no server)' : BASE_URL}`);
+    console.log(`  Mode:   ${BUILD_GATE ? 'build-gate (Netlify CI)' : MODE}`);
     console.log(`  Time:   ${new Date().toISOString()}`);
+    if (BUILD_GATE) {
+      console.log('  Gate:   agent-files + cycle-gates + schemas + env-presence only');
+    }
   }
 
   // Run all test groups

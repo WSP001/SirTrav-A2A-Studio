@@ -1,8 +1,10 @@
 [build]
   # Gate: sanity-test runs on every Netlify build — fail fast before deploy
+  # --build-gate mode: skips function endpoints + social dry-runs (no dev server at build time)
+  # --build-gate checks: agent files, cycle gates, schema validation, env presence
   # Local equivalent: just sanity-test-local (node scripts/sanity-test.mjs --local)
-  # Cost: $0 — no cloud calls, runs against built dist/
-  command = "npm run build && node scripts/sanity-test.mjs --local"
+  # Cost: $0 — no cloud calls, no localhost required
+  command = "npm run build && node scripts/sanity-test.mjs --build-gate"
   publish = "dist"
   functions = "netlify/functions"
 
