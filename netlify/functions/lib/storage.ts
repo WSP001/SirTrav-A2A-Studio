@@ -627,8 +627,10 @@ export function createStorage(storeName?: string) {
   }
 
   if (backend === 'netlify_lm') {
-    console.log('[Storage] Using Netlify Large Media backend');
-    return new NetlifyLMStorage();
+    // netlify_lm fabricates URLs without uploading — not a real production backend.
+    // NoFakeSuccess: fall through to Netlify Blobs instead of returning fake success.
+    console.warn('[Storage] STORAGE_BACKEND=netlify_lm is not production-real; using netlify_blobs instead.');
+    return new NetlifyBlobsStorage(storeName || 'sirtrav-media');
   }
 
   // Default: Netlify Blobs (works out of the box on Netlify!)

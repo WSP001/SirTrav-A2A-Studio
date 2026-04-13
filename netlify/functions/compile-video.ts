@@ -186,7 +186,7 @@ Generate ${sceneCount} scenes.`;
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -408,57 +408,71 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       console.log(`🔊 Audio ducking enabled: -${Math.round(-20 * Math.log10(duckingConfig.narrationVolume))}dB cut`);
     }
 
-    // 🎯 CC-019 M9: Check Remotion AWS env vars before attempting render dispatch
+    // 🎯 PATH A: Veo 2 via GEMINI_API_KEY (primary video renderer)
+    // Veo 2 is the default path — no AWS dependency required.
+    // PATH B: Remotion/FFmpeg as backup if AWS keys eventually land.
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const hasGemini = Boolean(geminiKey);
     const remotionServeUrl = process.env.REMOTION_SERVE_URL;
     const remotionFunctionName = process.env.REMOTION_FUNCTION_NAME;
     const hasRemotionKeys = Boolean(remotionServeUrl && remotionFunctionName);
     const hasFFmpegService = Boolean(process.env.FFMPEG_SERVICE_URL);
 
-    if (!hasRemotionKeys && !hasFFmpegService) {
-      const geminiKey = process.env.GEMINI_API_KEY;
-      const hasGemini = Boolean(geminiKey);
-
-      if (!hasGemini) {
-        // NoFakeSuccess: no renderer configured at all
-        console.warn('⚠️ [CC-019] Editor: No renderer available (no Remotion, FFmpeg, or Gemini key).');
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            disabled: true,
-            projectId: request.projectId,
-            reason: 'no_video_renderer',
-            message: 'Editor disabled: configure REMOTION_SERVE_URL, FFMPEG_SERVICE_URL, or GEMINI_API_KEY',
-            editor_backend: 'none',
-          }),
-        };
-      }
-
-      // PATH B: Genie Pivot — attempt Veo 2 via GEMINI_API_KEY
-      console.log('🧞 [CC-019] Editor: Path B — attempting Veo 2 synthesis via GEMINI_API_KEY...');
+    if (hasGemini) {
+      // PATH A: Veo 2 — primary renderer
+      console.log('🎬 [PATH A] Editor: Veo 2 synthesis via GEMINI_API_KEY...');
 
       let veoResult: VeoDispatchResult;
       try {
         veoResult = await compileWithVeo(request, duration);
       } catch (veoError: any) {
         console.error('❌ [Veo] Dispatch threw:', veoError?.message);
+        // Fall through to PATH B if available
+        if (hasRemotionKeys || hasFFmpegService) {
+          console.log('⚠️ [PATH A] Veo 2 failed, falling through to PATH B (Remotion/FFmpeg)...');
+          veoResult = { dispatch: false, veoUnavailable: true };
+        } else {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              disabled: true,
+              projectId: request.projectId,
+              reason: 'veo_dispatch_failed',
+              message: veoError?.message || 'Veo 2 request threw unexpectedly',
+              editor_backend: 'veo2',
+            }),
+          };
+        }
+      }
+
+      if (veoResult.dispatch && veoResult.operationName) {
+        // Veo job dispatched — return 202 with poll URL
         return {
-          statusCode: 200,
+          statusCode: 202,
           headers,
           body: JSON.stringify({
-            success: false,
-            disabled: true,
+            success: true,
             projectId: request.projectId,
-            reason: 'veo_dispatch_failed',
-            message: veoError?.message || 'Veo 2 request threw unexpectedly',
+            videoUrl: '',
+            duration,
+            resolution: request.resolution,
+            stored: false,
+            placeholder: false,
+            cost: estimateCost(duration, request.resolution),
+            jobId: veoResult.operationName,
+            duckingApplied,
+            status: 'rendering',
             editor_backend: 'veo2',
+            pollUrl: `/.netlify/functions/render-progress?operationName=${encodeURIComponent(veoResult.operationName)}&backend=veo2`,
           }),
         };
       }
 
-      if (veoResult.veoUnavailable) {
-        console.warn(`⚠️ [Veo] Model not available (HTTP ${veoResult.status}) — attempting storyboard fallback`);
+      if (veoResult.veoUnavailable && !(hasRemotionKeys || hasFFmpegService)) {
+        // Veo unavailable and no backup renderer — storyboard fallback
+        console.warn(`⚠️ [Veo] Model not available (HTTP ${veoResult.status}) — storyboard fallback`);
         const storyboard = await generateStoryboard(request, duration);
         return {
           statusCode: 200,
@@ -469,8 +483,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             projectId: request.projectId,
             reason: storyboard ? 'veo_storyboard_fallback' : 'veo_model_not_available',
             message: storyboard
-              ? 'Veo 2 unavailable on this key tier — storyboard generated instead. Enable Veo 2 at aistudio.google.com'
-              : `Veo 2 not accessible on this API key tier (HTTP ${veoResult.status}). Enable at: aistudio.google.com`,
+              ? 'Veo 2 temporarily unavailable — storyboard generated instead'
+              : `Veo 2 not accessible (HTTP ${veoResult.status})`,
             editor_backend: storyboard ? 'gemini_storyboard' : 'none',
             veoStatus: veoResult.status,
             storyboard: storyboard ?? undefined,
@@ -478,43 +492,30 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         };
       }
 
-      if (!veoResult.dispatch || !veoResult.operationName) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            projectId: request.projectId,
-            reason: 'veo_no_operation',
-            message: 'Veo 2 did not return an operation ID',
-            editor_backend: 'veo2',
-          }),
-        };
+      // Veo failed but PATH B (Remotion/FFmpeg) available — fall through
+      if (!veoResult.dispatch) {
+        console.log('⚠️ [PATH A] Veo 2 did not dispatch, trying PATH B (Remotion/FFmpeg)...');
       }
+    }
 
-      // Veo job dispatched — return 202 with poll URL
+    if (!hasGemini && !hasRemotionKeys && !hasFFmpegService) {
+      // NoFakeSuccess: no renderer configured at all
+      console.warn('⚠️ Editor: No renderer available (no Gemini, Remotion, or FFmpeg).');
       return {
-        statusCode: 202,
+        statusCode: 200,
         headers,
         body: JSON.stringify({
-          success: true,
+          success: false,
+          disabled: true,
           projectId: request.projectId,
-          videoUrl: '',
-          duration,
-          resolution: request.resolution,
-          stored: false,
-          placeholder: false,
-          cost: estimateCost(duration, request.resolution),
-          jobId: veoResult.operationName,
-          duckingApplied,
-          status: 'rendering',
-          editor_backend: 'veo2',
-          pollUrl: `/.netlify/functions/render-progress?operationName=${encodeURIComponent(veoResult.operationName)}&backend=veo2`,
+          reason: 'no_video_renderer',
+          message: 'Editor disabled: configure GEMINI_API_KEY, REMOTION_SERVE_URL, or FFMPEG_SERVICE_URL',
+          editor_backend: 'none',
         }),
       };
     }
 
-    // Try Render Dispatcher, fallback to placeholder
+    // PATH B: Remotion/FFmpeg — backup renderer
     const dispatchResult = await compileWithFFmpeg(request, duration);
 
     // Check if we got a dispatcher response (not a Buffer, and has renderId)
