@@ -101,16 +101,20 @@ export default function DiagnosticsPage() {
 
             {data.remotion && (
               <section className="glass-card p-6">
-                <h2 className="section-title mb-4">Render Pipeline (Remotion)</h2>
+                <h2 className="section-title mb-4">Render Fallback (Remotion)</h2>
+                <p className="diag-meta mb-4">
+                  Primary video dispatch now runs through Veo 2 in <code>compile-video.ts</code> when{" "}
+                  <code>GEMINI_API_KEY</code> is present. This panel reports the Remotion fallback path only.
+                </p>
                 <div className="diag-grid-4">
                   <div className="diag-tile">
-                    <p className="diag-label">Mode</p>
+                    <p className="diag-label">Fallback Mode</p>
                     <span className={remotionModeClass(data.remotion.mode)}>
                       {(data.remotion.mode || "unknown").toUpperCase()}
                     </span>
                   </div>
                   <div className="diag-tile">
-                    <p className="diag-label">Configured</p>
+                    <p className="diag-label">Fallback Ready</p>
                     <span className={data.remotion.configured ? "diag-badge diag-green" : "diag-badge diag-red"}>
                       {data.remotion.configured ? "YES" : "NO"}
                     </span>
@@ -138,7 +142,7 @@ export default function DiagnosticsPage() {
                     </span>
                   </div>
                   <div className="diag-tile">
-                    <p className="diag-label">AWS Keys</p>
+                    <p className="diag-label">Fallback AWS Keys</p>
                     <span className={data.remotion.awsKeys ? "diag-badge diag-green" : "diag-badge diag-red"}>
                       {data.remotion.awsKeys ? "PRESENT" : "MISSING"}
                     </span>
