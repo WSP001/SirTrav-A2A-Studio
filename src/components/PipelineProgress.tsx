@@ -12,7 +12,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 interface AgentStatus {
   name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'fallback';
+  status: 'pending' | 'running' | 'dispatched' | 'completed' | 'failed' | 'fallback';
   duration_ms?: number;
   error?: string;
 }
@@ -34,6 +34,23 @@ interface ProgressData {
   status: 'started' | 'running' | 'completed' | 'failed';
   steps: AgentStatus[];
   error?: string;
+}
+
+interface EditorRunData {
+  status?: string;
+  editor_backend?: string;
+  jobId?: string;
+  pollUrl?: string;
+  videoUrl?: string;
+  disabled?: boolean;
+}
+
+interface RunIndexData {
+  agentResults?: {
+    editor?: {
+      data?: EditorRunData;
+    };
+  };
 }
 
 interface PipelineProgressProps {
@@ -58,6 +75,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [showDetails, setShowDetails] = useState(false);
+  const [editorRunData, setEditorRunData] = useState<EditorRunData | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,11 +86,28 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
     completionHandledRef.current = false;
 
+    const fetchRunIndex = async () => {
+      if (!runId) return null;
+      try {
+        const key = encodeURIComponent(`projects/${projectId}/runs/${runId}/index.json`);
+        const res = await fetch(`/.netlify/functions/blob-get?store=runs&key=${key}`);
+        if (!res.ok) return null;
+        const index = await res.json() as RunIndexData;
+        const editorData = index?.agentResults?.editor?.data || null;
+        setEditorRunData(editorData);
+        return editorData;
+      } catch (err) {
+        console.warn('[PipelineProgress] Failed to load run index:', err);
+        return null;
+      }
+    };
+
     const emitCompletion = async () => {
       if (completionHandledRef.current || !runId) return;
       completionHandledRef.current = true;
 
       try {
+        await fetchRunIndex();
         const res = await fetch(`/.netlify/functions/results?projectId=${encodeURIComponent(projectId)}&runId=${encodeURIComponent(runId)}`);
         if (!res.ok) {
           throw new Error(`results_failed_${res.status}`);
@@ -118,6 +153,9 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
               }
               return [...prev, evt];
             });
+            if (evt.agent === 'editor' || evt.agent === 'publisher' || evt.progress >= 75) {
+              void fetchRunIndex();
+            }
             // CX-019 Phase 2: Wire real-time cost updates to parent
             if (evt.runningCost !== undefined) {
               onMetricsUpdate?.({ 
@@ -183,6 +221,9 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
               }
 
               setEvents(data.events);
+              if (data.events.some((evt: ProgressEvent) => evt.agent === 'editor' || evt.agent === 'publisher' || evt.progress >= 75)) {
+                await fetchRunIndex();
+              }
 
               // Check completion from events
               const last = data.events[data.events.length - 1];
@@ -283,6 +324,23 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
     };
   }, [events, projectId]);
 
+  const effectiveSteps = React.useMemo(() => {
+    if (!progress?.steps) return [];
+    return progress.steps.map((step) => {
+      if (step.name !== 'editor' || !editorRunData) return step;
+      if (editorRunData.disabled === true) {
+        return { ...step, status: 'failed' as const };
+      }
+      if (editorRunData.status === 'rendering' && editorRunData.editor_backend === 'veo2') {
+        return { ...step, status: 'dispatched' as const };
+      }
+      if (editorRunData.videoUrl) {
+        return { ...step, status: 'completed' as const };
+      }
+      return step;
+    });
+  }, [progress?.steps, editorRunData]);
+
   // Surface terminal failures even when SSE completes before the custom error event arrives.
   useEffect(() => {
     if (progress?.status === 'failed') {
@@ -300,13 +358,14 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
   // Get status for each agent
   const getAgentStatus = (agentId: string): AgentStatus => {
-    return progress?.steps?.find(s => s.name === agentId) || { name: agentId, status: 'pending' };
+    return effectiveSteps?.find(s => s.name === agentId) || { name: agentId, status: 'pending' };
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]';
       case 'running': return 'bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+      case 'dispatched': return 'bg-sky-500 animate-pulse shadow-[0_0_10px_rgba(14,165,233,0.3)]';
       case 'failed': return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
       case 'fallback': return 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]';
       default: return 'bg-zinc-700';
@@ -317,6 +376,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
     switch (status) {
       case 'completed': return '✅';
       case 'running': return '⏳';
+      case 'dispatched': return '🎞️';
       case 'failed': return '❌';
       case 'fallback': return '⚠️';
       default: return '⏸️';
@@ -366,14 +426,16 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
       <div className="mb-4 flex flex-wrap gap-2">
         {AGENTS.map((agent) => {
-          const status = getAgentStatus(agent.id);
-          return (
+      const status = getAgentStatus(agent.id);
+      return (
             <div
               key={agent.id}
               className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${status.status === 'running'
                 ? 'border-blue-500/50 bg-blue-500/10 text-blue-200'
                 : status.status === 'completed'
                   ? 'border-green-500/50 bg-green-500/10 text-green-200'
+                  : status.status === 'dispatched'
+                    ? 'border-sky-500/50 bg-sky-500/10 text-sky-200'
                   : status.status === 'failed'
                     ? 'border-red-500/50 bg-red-500/10 text-red-200'
                     : status.status === 'fallback'
@@ -411,8 +473,10 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
                   key={agent.id}
                   className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
                     ? 'border-blue-500 bg-blue-500/10'
-                    : status.status === 'completed'
+                  : status.status === 'completed'
                       ? 'border-green-500/50 bg-green-500/5'
+                    : status.status === 'dispatched'
+                      ? 'border-sky-500/50 bg-sky-500/5'
                       : status.status === 'failed'
                         ? 'border-red-500/50 bg-red-500/5'
                         : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
@@ -432,10 +496,28 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
                     <span className="text-xs capitalize text-[var(--color-text-secondary)]">
-                      {status.status}
+                      {status.status === 'dispatched' ? 'rendering' : status.status}
                       {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
                     </span>
                   </div>
+                  {agent.id === 'editor' && status.status === 'dispatched' && editorRunData?.jobId && (
+                    <div className="mt-2 rounded bg-sky-500/10 p-2 text-[11px] text-sky-200">
+                      <div>Rendering video with Veo 2...</div>
+                      <div className="mt-1 break-all text-sky-300/80">
+                        Job {editorRunData.jobId.slice(-8)}
+                      </div>
+                      {editorRunData.pollUrl && (
+                        <a
+                          href={editorRunData.pollUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block text-sky-300 underline"
+                        >
+                          Check progress
+                        </a>
+                      )}
+                    </div>
+                  )}
                   {status.error && (
                     <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
                       {status.error}
@@ -454,8 +536,10 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
                   key={agent.id}
                   className={`p-4 rounded-lg border transition-all duration-300 ${status.status === 'running'
                     ? 'border-blue-500 bg-blue-500/10'
-                    : status.status === 'completed'
+                  : status.status === 'completed'
                       ? 'border-green-500/50 bg-green-500/5'
+                    : status.status === 'dispatched'
+                      ? 'border-sky-500/50 bg-sky-500/5'
                       : status.status === 'failed'
                         ? 'border-red-500/50 bg-red-500/5'
                         : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]'
@@ -475,10 +559,28 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(status.status)}`} />
                     <span className="text-xs capitalize text-[var(--color-text-secondary)]">
-                      {status.status}
+                      {status.status === 'dispatched' ? 'rendering' : status.status}
                       {status.duration_ms && ` (${(status.duration_ms / 1000).toFixed(1)}s)`}
                     </span>
                   </div>
+                  {agent.id === 'editor' && status.status === 'dispatched' && editorRunData?.jobId && (
+                    <div className="mt-2 rounded bg-sky-500/10 p-2 text-[11px] text-sky-200">
+                      <div>Rendering video with Veo 2...</div>
+                      <div className="mt-1 break-all text-sky-300/80">
+                        Job {editorRunData.jobId.slice(-8)}
+                      </div>
+                      {editorRunData.pollUrl && (
+                        <a
+                          href={editorRunData.pollUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block text-sky-300 underline"
+                        >
+                          Check progress
+                        </a>
+                      )}
+                    </div>
+                  )}
                   {status.error && (
                     <p className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded">
                       {status.error}
