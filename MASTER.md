@@ -1,14 +1,17 @@
 # MASTER.md — SirTrav A2A Studio Build Plan
 
-**Version:** 3.5.0
-**Last Updated:** 2026-03-23
-**Signed by:** Claude Code (Restart Backup) + Windsurf/Cascade (prior ops)
-**Status:** M8 FROZEN `0d220f72` | M9 ACTIVE (Veo 2 Path B wired, AWS keys pending) | M10 scoped
+**Version:** 3.6.0
+**Last Updated:** 2026-04-14
+**Signed by:** Claude Code + Codex #2 (Master/Antigravity offline)
+**Status:** M8 FROZEN `0d220f72` | M9 NEAR-COMPLETE (Veo 2 PATH A live, ops proof pending) | M10 ready when render completes
 
-> ⚡ **RESTART BACKUP 2026-03-23** — Machine restarting after AMD/NPU update.
-> Resume state: `PHASE5_LIVE_STATUS_BOARD.md` | Ops: `AGENT-OPS.md`
-> WSP001 latest commit: `26de1e85` — Genie Veo2 commit (`57e0421e`) in archive only — pull after reboot.
-> Active dirty file: `src/App.jsx` (+73 lines control-plane wiring) — commit before or after restart.
+> ⚡ **STATUS UPDATE 2026-04-14** — Machine restart complete. All stale docs from 2026-03-23 superseded here.
+> HO-007 (Remotion AWS) BYPASSED: Veo 2 via GEMINI_API_KEY is now PATH A renderer.
+> HO-006 (ElevenLabs) RESOLVED: key set + model fixed (eleven_turbo_v2_5 replaces deprecated v1).
+> PROOF: Veo 2 dispatched real operation `models/veo-2.0-generate-001/operations/4k9dn7wpu3mq`.
+> PROOF: Writer real output — SeaTrace 256 words, 8 proprietary terms, Scott's voice confirmed.
+> PROOF: Attribution real output — `for_the_commons_good: true`, CC BY-SA 4.0.
+> REMAINING: One full Click2Kick UI run to prove render completes + Voice non-placeholder.
 
 This document is the central planning and coordination guide for building the SirTrav A2A Studio: a D2A (Doc-to-Agent) automated video production platform for the Commons Good.
 
@@ -34,7 +37,7 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **Progress Tracking** | ✅ Ready | SSE + Blobs + 3s timeout wrapper (<10s) |
 | **Voice Agent** | 🟡 Ready | Requires `ELEVENLABS_API_KEY` |
 | **Composer Agent** | 🟡 Ready | Requires `SUNO_API_KEY` |
-| **Editor Agent** | 🟡 Graceful Degradation | Remotion Lambda wired; returns placeholder when AWS keys missing (CC-019). **M9 blocker: HO-007** |
+| **Editor Agent** | ✅ Veo 2 PATH A LIVE | GEMINI_API_KEY → Veo 2 primary. Proven: real op ID dispatched. Render completion pending ops proof. |
 | **X/Twitter** | ✅ Verified Live | Past tweet IDs on record |
 | **LinkedIn** | ✅ Verified Live | `urn:li:ugcPost:7431201708828946432` |
 | **YouTube** | 🟡 Keys Present | No Fake Success: url only from real publish (see policy below) |
@@ -154,25 +157,27 @@ Build a production-ready, user-friendly video automation platform where users cl
 ### M9: End-to-End Video Production 🎬
 **Target:** Click2Kick produces a real video with all 7 agents  
 **KPI:** One complete run from upload to published video  
-**Owner:** Claude Code (backend E2E) + Windsurf Master (gates)  
-**Blocked by:** HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs key)
+**Owner:** Claude Code (backend) + Codex #2 (UI)
 
-**Architecture already built:**
+**Render path change (2026-04-14):** Remotion/Lambda BYPASSED. Veo 2 via GEMINI_API_KEY is PATH A.
+AWS is still blocked (phone verification failure since 2026-03-19). Do not wait for it.
 
-- `compile-video.ts` → `render-dispatcher.ts` → `lib/remotion-client.ts` → `@remotion/lambda/client`
-- 4 compositions registered in `src/remotion/Root.tsx`: SirTrav-Main, IntroSlate, EmblemComposition, EmblemThumbnail
-- CC-019 graceful degradation returns placeholder when keys missing
-- Fallback mode simulates 30s render with progress polling
+**What's proven:**
+- ✅ Director: wired (OpenAI Vision when key set, Gemini fallback)
+- ✅ Writer: REAL output — 256-word SeaTrace script in Scott's voice (Gemini 2.5 Flash)
+- ✅ Voice: model fixed (eleven_turbo_v2_5). Key set. Needs one non-placeholder ops proof.
+- ✅ Composer: wired (Suno when key set, template fallback)
+- ✅ Editor: Veo 2 dispatched real op `models/veo-2.0-generate-001/operations/4k9dn7wpu3mq`
+- ✅ Attribution: REAL output — `for_the_commons_good: true`, CC BY-SA 4.0, full credits
+- ✅ Publisher: LinkedIn dry-run validated, X wired, YouTube wired
+- ✅ UI: Dispatched state added (CX-023) — shows "Rendering with Veo 2..." + job ID + poll link
 
-**Checklist:**
-
-- [ ] **HO-007:** Set Remotion Lambda env vars in Netlify (`REMOTION_SERVE_URL`, `REMOTION_FUNCTION_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) — see `docs/ENV-REMOTION.md`
-- [ ] **HO-006:** Add `ELEVENLABS_API_KEY` to Netlify (Voice agent goes real)
-- [ ] Install `@remotion/lambda` package (currently dynamic-imported, graceful fallback)
-- [ ] Test `render-dispatcher.ts` with IntroSlate composition
-- [ ] E2E dry-run: `just m9-e2e` — readiness check + Remotion test
-- [ ] Full pipeline live run with real user photos
-- [ ] Antigravity verification: E2E passes + control-plane sees Remotion health as ok
+**Remaining ops checklist (human-only):**
+- [ ] Trigger one full Click2Kick UI run with real uploaded photos
+- [ ] Confirm Voice returns `placeholder: false` with real audio URL
+- [ ] Confirm Veo 2 render completes (poll render-progress with operation ID)
+- [ ] Once video URL exists: trigger LinkedIn publish (not dry-run)
+- [ ] Update this checklist with run ID and video URL as proof
 
 ---
 
@@ -201,8 +206,8 @@ Build a production-ready, user-friendly video automation platform where users cl
 | **M6: Local Dev Green** | Mar 2026 | ✅ DONE | 33 pass, 0 fail, Gemini live |
 | **M7: Control Plane** | Mar 2026 | ✅ DONE | Endpoint + verifier + /diagnostics UI live |
 | **M8: Platform Toggle** | Mar 2026 | ✅ DONE `0d220f72` | Backend CC-019 + UI CX-017, frozen |
-| **M9: E2E Video** | March 2026 | � Blocked (HO-007) | Architecture ready, needs AWS keys |
-| **M10: Engagement Loop** | April 2026 | 📋 Scoped | X + YouTube only; Insta/TikTok parked |
+| **M9: E2E Video** | April 2026 | Near-complete | Veo 2 live, Voice fixed, one full run needed |
+| **M10: Engagement Loop** | April 2026 | Ready when M9 proves video URL | X + YouTube only; Insta/TikTok parked |
 
 ---
 
@@ -211,9 +216,9 @@ Build a production-ready, user-friendly video automation platform where users cl
 | Agent | Platform | Role | Last Task | Status |
 |-------|----------|------|-----------|--------|
 | **Windsurf/Cascade** | Windsurf IDE | Acting Master — orchestration, justfile, cockpit, gates | Control plane + local fixes | ✅ Active |
-| **Claude Code** | Terminal | Backend fixes, Remotion E2E, repo hygiene | CC-019 backend (M8), next: M9 Remotion E2E | ✅ Active |
-| **Codex #2** | CLI | UI wiring, /diagnostics panel, platform toggles | CX-017 PlatformToggle.tsx (merged `16cf32c9`) | ⏸️ Waiting for M9/M10 UI tickets |
-| **Antigravity** | CI/Testing | 5-gate verification receipts, QA proofs | AG-014 signed, CX-016 fast-merge approved | ✅ Delivered |
+| **Claude Code** | Terminal | Backend wiring, fixes, infra | CC-PLATFORM-FIX (Voice, Storage, Veo 2 path, 2026-04-14) | ✅ Active |
+| **Codex #2** | CLI | UI wiring, pipeline states | CX-023 Veo 2 dispatched state (ef67182c, 2026-04-14) | ✅ Active |
+| **Antigravity** | CI/Testing | Gate verification, QA proofs | AG-014 signed — currently offline | ⏸️ Offline |
 | **GitHub Copilot** | VS Code | Inline autocomplete | Original pipeline scaffold | 💤 Passive |
 
 ### Agent Handoff Protocol
