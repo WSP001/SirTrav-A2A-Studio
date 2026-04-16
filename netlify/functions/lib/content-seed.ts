@@ -127,6 +127,7 @@ export interface RetrievalPack {
   identity: string[];
   styleExamples: string[];
   projects: string[];
+  linkedinHistory: string[];
   assembled: string;
 }
 
@@ -134,6 +135,7 @@ const EMPTY_PACK: RetrievalPack = {
   identity: [],
   styleExamples: [],
   projects: [],
+  linkedinHistory: [],
   assembled: '',
 };
 
@@ -175,19 +177,25 @@ export async function assembleRetrievalPack(
 
   const q = query.trim();
 
-  const [identity, styleExamples, projects] = await Promise.all([
+  const [identity, styleExamples, projects, linkedinHistory] = await Promise.all([
     fetchPartition(vectorEngineUrl, q, 'cv_personal', 3),
     fetchPartition(vectorEngineUrl, q, 'business_seatrace', 2),
     fetchPartition(vectorEngineUrl, q, 'cv_projects', 3),
+    fetchPartition(vectorEngineUrl, q, 'linkedin_history', 5),
   ]);
 
-  const total = identity.length + styleExamples.length + projects.length;
+  const total = identity.length + styleExamples.length + projects.length + linkedinHistory.length;
   if (total === 0) return EMPTY_PACK;
 
-  console.log(`[RetrievalPack] ${identity.length} identity · ${styleExamples.length} style · ${projects.length} project chunks`);
+  console.log(`[RetrievalPack] ${identity.length} identity · ${styleExamples.length} style · ${projects.length} project · ${linkedinHistory.length} linkedin chunks`);
 
   const sections: string[] = ['RETRIEVED KNOWLEDGE PACK (CV — verified context):'];
 
+  if (linkedinHistory.length > 0) {
+    sections.push('');
+    sections.push('📱 SCOTT\'S REAL LINKEDIN POSTS (study these — match this voice and structure):');
+    linkedinHistory.forEach(c => sections.push(c.trim()));
+  }
   if (identity.length > 0) {
     sections.push('');
     sections.push('🧠 IDENTITY:');
@@ -204,7 +212,7 @@ export async function assembleRetrievalPack(
     projects.forEach(c => sections.push(c.trim()));
   }
 
-  return { identity, styleExamples, projects, assembled: sections.join('\n') };
+  return { identity, styleExamples, projects, linkedinHistory, assembled: sections.join('\n') };
 }
 
 /** Legacy single-partition query — kept for backwards compat. Use assembleRetrievalPack() for new work. */

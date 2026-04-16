@@ -77,7 +77,11 @@ async function generateWithElevenLabs(text: string, voiceId: string): Promise<Bu
       voice_settings: { stability: 0.5, similarity_boost: 0.75 },
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '(no body)');
+    console.error(`[Voice] ElevenLabs API error ${res.status}: ${errBody}`);
+    return null;
+  }
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }

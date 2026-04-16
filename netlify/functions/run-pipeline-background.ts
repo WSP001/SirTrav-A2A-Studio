@@ -611,8 +611,43 @@ async function executeSocialPublishingAgent(
 
   console.log(`🚀 [Publisher] Publishing to ${platformCalls.length} platform(s): ${platformCalls.map(c => c.platform).join(', ')}`);
 
+  // Run YouTube first so we can capture the youtubeUrl for LinkedIn's description
+  const youtubeCall = platformCalls.find(c => c.platform === 'youtube');
+  const linkedinCall = platformCalls.find(c => c.platform === 'linkedin');
+  let youtubeVideoUrl: string | null = null;
+
+  if (youtubeCall) {
+    try {
+      const ytRes = await fetch(youtubeCall.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(youtubeCall.body),
+      });
+      const ytData = await ytRes.json();
+      if (ytData.success && ytData.youtubeId) {
+        // Add UTM tracking for LinkedIn → YouTube attribution
+        youtubeVideoUrl = `https://youtube.com/watch?v=${ytData.youtubeId}?utm_source=linkedin&utm_medium=social&utm_campaign=seatrace-reel&utm_content=${projectId}`;
+        results[`publisher_youtube`] = { success: true, data: ytData, fallback: false };
+        console.log(`✅ [Publisher] YouTube: ${ytData.youtubeUrl}`);
+
+        // Inject YouTube link into LinkedIn description if both targets exist
+        if (linkedinCall) {
+          const ytLink = `\n\n🎬 Watch the full reel: ${youtubeVideoUrl}`;
+          linkedinCall.body.description = (linkedinCall.body.description || '').substring(0, 400) + ytLink;
+        }
+      } else {
+        results[`publisher_youtube`] = { success: false, data: ytData, fallback: true };
+      }
+    } catch (err: any) {
+      results[`publisher_youtube`] = { success: false, data: { error: err?.message }, fallback: true };
+    }
+  }
+
+  // Filter out YouTube from remaining calls (already handled above)
+  const remainingCalls = platformCalls.filter(c => c.platform !== 'youtube');
+
   const settlements = await Promise.allSettled(
-    platformCalls.map(async ({ platform, url, body }) => {
+    remainingCalls.map(async ({ platform, url, body }) => {
       const startTime = Date.now();
       try {
         const response = await fetch(url, {
