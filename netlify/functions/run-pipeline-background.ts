@@ -53,6 +53,17 @@ interface AgentResult {
   fallback?: boolean;
 }
 
+interface PipelineBrief {
+  mood?: string;
+  pace?: string;
+  story?: string;
+  cta?: string;
+  tone?: string;
+  source?: string;
+  platform?: string;
+  identityContext?: string;
+}
+
 function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
 }
@@ -741,8 +752,9 @@ export const handler: Handler = async (event) => {
     const payloadKey: string | undefined = body.payloadKey;
     // 🎯 CC-019 M8: Selective publish targets from UI toggle
     const publishTargets: string[] | undefined = body.publishTargets;
+    const brief: PipelineBrief = body.brief && typeof body.brief === 'object' ? body.brief : {};
     // CC-BRIEF: brief.story sent by start-pipeline — extract here so it reaches the writer
-    const briefFromBody: string | undefined = body.brief?.story;
+    const briefFromBody: string | undefined = brief.story;
 
     // ─── STEP 0: Write "I'm alive" breadcrumb using ONLY @netlify/blobs ───
     // This is the LIGHTEST possible write — no custom storage wrappers.
