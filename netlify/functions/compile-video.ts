@@ -17,6 +17,7 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { videoStore, audioStore } from "./lib/storage";
+import { buildFunctionUrl, getEventBaseUrl, normalizeBaseUrl } from "./lib/request-origin";
 import {
   generateDuckingFilterChain,
   generateVolumeKeyframes,
@@ -40,6 +41,8 @@ interface ImageAsset {
 
 interface CompileRequest {
   projectId: string;
+  runId?: string;
+  baseUrl?: string;
   images: ImageAsset[];
   narrationUrl?: string;
   musicUrl?: string;
@@ -204,6 +207,42 @@ Generate ${sceneCount} scenes.`;
   }
 }
 
+async function resolveReferenceImage(request: CompileRequest, baseUrl: string): Promise<{ bytesBase64Encoded: string; mimeType: string } | null> {
+  const firstImage = request.images?.find((img: any) => img?.base64 || img?.url);
+  if (!firstImage) return null;
+
+  if ((firstImage as any).base64) {
+    return {
+      bytesBase64Encoded: (firstImage as any).base64,
+      mimeType: 'image/jpeg',
+    };
+  }
+
+  if (!firstImage.url) return null;
+
+  const sourceUrl = firstImage.url.startsWith('http')
+    ? firstImage.url
+    : new URL(firstImage.url, baseUrl).toString();
+
+  try {
+    const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) {
+      console.warn(`⚠️ [Veo] Reference image fetch failed: ${response.status} ${sourceUrl}`);
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      bytesBase64Encoded: Buffer.from(arrayBuffer).toString('base64'),
+      mimeType: contentType,
+    };
+  } catch (error) {
+    console.warn('⚠️ [Veo] Reference image fetch threw:', error);
+    return null;
+  }
+}
+
 /**
  * Estimate cost based on video duration and resolution
  */
@@ -219,7 +258,7 @@ function estimateCost(duration: number, resolution: string): number {
  * Returns the operation name for polling via render-progress.
  * NoFakeSuccess: all failure paths return veoUnavailable or error — never a placeholder.
  */
-async function compileWithVeo(request: CompileRequest, duration: number): Promise<VeoDispatchResult> {
+async function compileWithVeo(request: CompileRequest, duration: number, baseUrl: string): Promise<VeoDispatchResult> {
   const geminiKey = process.env.GEMINI_API_KEY!;
 
   const clipSeconds = Math.min(Math.ceil(duration), 8); // Veo max ~8s per clip
@@ -232,11 +271,11 @@ async function compileWithVeo(request: CompileRequest, duration: number): Promis
   const instance: Record<string, any> = { prompt };
 
   // Attach first base64 image as visual reference
-  const imageWithBase64 = request.images?.find((img: any) => img.base64);
-  if (imageWithBase64?.base64) {
+  const referenceImage = await resolveReferenceImage(request, baseUrl);
+  if (referenceImage) {
     instance.image = {
-      bytesBase64Encoded: imageWithBase64.base64,
-      mimeType: 'image/jpeg',
+      bytesBase64Encoded: referenceImage.bytesBase64Encoded,
+      mimeType: referenceImage.mimeType,
     };
   }
 
@@ -285,19 +324,18 @@ async function compileWithVeo(request: CompileRequest, duration: number): Promis
  * - AWS Lambda with FFmpeg layer
  * - Dedicated video processing service (Mux, Cloudinary, etc.)
  */
-async function compileWithFFmpeg(request: CompileRequest, duration: number): Promise<any> {
-  const baseUrl = process.env.URL || 'http://localhost:8888';
-
+async function compileWithFFmpeg(request: CompileRequest, duration: number, baseUrl: string): Promise<any> {
   try {
-    console.log(`🎬 Calling Render Dispatcher: ${baseUrl}/.netlify/functions/render-dispatcher`);
+    console.log(`🎬 Calling Render Dispatcher: ${buildFunctionUrl(baseUrl, 'render-dispatcher')}`);
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/render-dispatcher`, {
+    const response = await fetch(buildFunctionUrl(baseUrl, 'render-dispatcher'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         projectId: request.projectId,
+        runId: request.runId,
         compositionId: 'FinalVideo', // Default composition
         inputProps: {
           images: request.images,
@@ -372,6 +410,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
   const processCompilation = async () => {
     const request: CompileRequest = JSON.parse(event.body || '{}');
+    const baseUrl = normalizeBaseUrl(request.baseUrl) || getEventBaseUrl(event);
 
     if (!request.projectId) {
       throw { statusCode: 400, message: 'projectId is required' };
@@ -424,11 +463,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       let veoResult: VeoDispatchResult;
       try {
-        veoResult = await compileWithVeo(request, duration);
+        veoResult = await compileWithVeo(request, duration, baseUrl);
       } catch (veoError: any) {
         console.error('❌ [Veo] Dispatch threw:', veoError?.message);
         // Fall through to PATH B if available
-        if (hasRemotionLambda || hasFFmpegService) {
+        if (hasRemotionKeys || hasFFmpegService) {
           console.log('⚠️ [PATH A] Veo 2 failed, falling through to PATH B (Remotion/FFmpeg)...');
           veoResult = { dispatch: false, veoUnavailable: true };
         } else {
@@ -470,7 +509,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         };
       }
 
-      if (veoResult.veoUnavailable && !(hasRemotionLambda || hasFFmpegService)) {
+      if (veoResult.veoUnavailable && !(hasRemotionKeys || hasFFmpegService)) {
         // Veo unavailable and no backup renderer — storyboard fallback
         console.warn(`⚠️ [Veo] Model not available (HTTP ${veoResult.status}) — storyboard fallback`);
         const storyboard = await generateStoryboard(request, duration);
@@ -498,7 +537,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       }
     }
 
-    if (!hasGemini && !hasRemotionLambda && !hasFFmpegService) {
+    if (!hasGemini && !hasRemotionKeys && !hasFFmpegService) {
       // NoFakeSuccess: no renderer configured at all
       console.warn('⚠️ Editor: No renderer available (no Gemini, Remotion, or FFmpeg).');
       return {
@@ -516,7 +555,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // PATH B: Remotion/FFmpeg — backup renderer
-    const dispatchResult = await compileWithFFmpeg(request, duration);
+    const dispatchResult = await compileWithFFmpeg(request, duration, baseUrl);
 
     // Check if we got a dispatcher response (not a Buffer, and has renderId)
     if (dispatchResult && dispatchResult.dispatch && dispatchResult.renderId) {
@@ -546,49 +585,44 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    // If dispatchResult is null or not a dispatch object, treat as failure/placeholder
-    // (Existing placeholder logic)
+    // If dispatchResult is null or not a dispatch object, treat as failure
     const videoBuffer = (dispatchResult instanceof Buffer) ? dispatchResult : null;
-    const isPlaceholder = !videoBuffer;
 
     let videoUrl: string;
     let stored = false;
     let fileSize: string | undefined;
 
-    if (videoBuffer) {
-      // REAL: Store video in Netlify Blobs
-      const videoKey = `${request.projectId}/final.mp4`;
-      try {
-        const uploadResult = await videoStore.uploadData(videoKey, videoBuffer, {
-          contentType: 'video/mp4',
-          metadata: {
-            projectId: request.projectId,
-            resolution: request.resolution,
-            duration: String(duration),
-            fps: String(request.fps),
-            imageCount: String(request.images.length),
-            duckingApplied: String(duckingApplied),
-          },
-        });
+    if (!videoBuffer) {
+      throw { statusCode: 503, message: 'Render dispatcher did not return a completed video buffer' };
+    }
 
-        if (uploadResult.ok && uploadResult.publicUrl) {
-          videoUrl = uploadResult.publicUrl;
-          stored = true;
-          fileSize = `${(videoBuffer.length / (1024 * 1024)).toFixed(1)} MB`;
-          console.log(`📦 Stored video to Netlify Blobs: ${videoKey}`);
-        } else {
-          console.error('[compile-video] Storage upload failed:', uploadResult.error);
-          // Graceful fallback: still return success with placeholder
-          videoUrl = `/test-assets/test-video.mp4`;
-        }
-      } catch (storageError: any) {
-        console.error('[compile-video] Storage exception:', storageError?.message);
-        // Graceful fallback: don't crash the function
-        videoUrl = `/test-assets/test-video.mp4`;
+    // REAL: Store video in Netlify Blobs
+    const videoKey = `${request.projectId}/${request.runId || 'final'}.mp4`;
+    try {
+      const uploadResult = await videoStore.uploadData(videoKey, videoBuffer, {
+        contentType: 'video/mp4',
+        metadata: {
+          projectId: request.projectId,
+          resolution: request.resolution,
+          duration: String(duration),
+          fps: String(request.fps),
+          imageCount: String(request.images.length),
+          duckingApplied: String(duckingApplied),
+          url: `${baseUrl}/.netlify/blobs/sirtrav-videos/${videoKey}`,
+        },
+      });
+
+      if (!uploadResult.ok) {
+        throw new Error(uploadResult.error || 'Storage upload failed');
       }
-    } else {
-      // Placeholder mode - return test video URL
-      videoUrl = `/test-assets/test-video.mp4`;
+
+      videoUrl = `${baseUrl}/.netlify/blobs/sirtrav-videos/${videoKey}`;
+      stored = true;
+      fileSize = `${(videoBuffer.length / (1024 * 1024)).toFixed(1)} MB`;
+      console.log(`📦 Stored video to Netlify Blobs: ${videoKey}`);
+    } catch (storageError: any) {
+      console.error('[compile-video] Storage exception:', storageError?.message);
+      throw { statusCode: 502, message: storageError?.message || 'Failed to store compiled video' };
     }
 
     const cost = estimateCost(duration, request.resolution);
@@ -601,14 +635,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       resolution: request.resolution,
       fileSize,
       stored,
-      placeholder: isPlaceholder,
+      placeholder: false,
       cost,
       duckingApplied,
-      // Include FFmpeg command in placeholder mode for debugging
-      ffmpegCommand: isPlaceholder ? generateFFmpegCommand(request, duration) : undefined,
     };
 
-    console.log(`✅ Editor Agent: ${isPlaceholder ? 'Placeholder' : 'Compiled'} ${duration}s video @ ${request.resolution}, ducking: ${duckingApplied}, stored: ${stored}`);
+    console.log(`✅ Editor Agent: Compiled ${duration}s video @ ${request.resolution}, ducking: ${duckingApplied}, stored: ${stored}`);
 
     return {
       statusCode: 200,

@@ -6,6 +6,7 @@
 import type { Handler } from '@netlify/functions';
 import { runsStore } from './lib/storage';
 import { updateRunIndex } from './lib/runIndex';
+import { buildFunctionUrl, getEventBaseUrl } from './lib/request-origin';
 
 type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -154,11 +155,11 @@ export const handler: Handler = async (event) => {
     });
 
     // Trigger background worker with platform + brief context
-    const baseUrl = process.env.URL || 'http://localhost:8888';
-    const invokeUrl = `${baseUrl}/.netlify/functions/run-pipeline-background`;
+    const baseUrl = getEventBaseUrl(event);
+    const invokeUrl = buildFunctionUrl(baseUrl, 'run-pipeline-background');
 
     console.log(`[start-pipeline] Invoking background worker at: ${invokeUrl}`);
-    console.log(`[start-pipeline] process.env.URL = ${process.env.URL || '(not set)'}`);
+    console.log(`[start-pipeline] request-derived base URL = ${baseUrl}`);
 
     let bgStatus = 'unknown';
     let bgError: string | undefined;
@@ -170,6 +171,7 @@ export const handler: Handler = async (event) => {
           projectId,
           runId,
           payloadKey,
+          baseUrl,
           platform,
           brief,
           publishTargets,

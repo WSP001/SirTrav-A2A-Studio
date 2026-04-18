@@ -19,6 +19,11 @@ export interface RunArtifacts {
   videoUrl?: string;
   creditsUrl?: string;
   pipelineMode?: string;
+  placeholder?: boolean;
+  pollUrl?: string;
+  editorStatus?: string;
+  editorBackend?: string;
+  agentResults?: Record<string, unknown>;
   publishTargets?: string[];  // CX-019 M8: Social platform targets
   invoice?: Manifest;
   step?: string;

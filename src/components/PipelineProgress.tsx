@@ -78,6 +78,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   const [editorRunData, setEditorRunData] = useState<EditorRunData | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const renderPollRef = useRef<NodeJS.Timeout | null>(null);
 
   const completionHandledRef = useRef(false);
   useEffect(() => {
@@ -261,8 +262,63 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      if (renderPollRef.current) {
+        clearTimeout(renderPollRef.current);
+      }
     };
   }, [projectId, runId, onComplete, onError, onMetricsUpdate]);
+
+  useEffect(() => {
+    if (!editorRunData?.pollUrl || editorRunData.status !== 'rendering') {
+      if (renderPollRef.current) {
+        clearTimeout(renderPollRef.current);
+        renderPollRef.current = null;
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    const pollRender = async () => {
+      try {
+        const response = await fetch(editorRunData.pollUrl);
+        if (!response.ok) {
+          throw new Error(`render_progress_${response.status}`);
+        }
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        if (data.done && data.outputFile) {
+          setEditorRunData((prev) => ({
+            ...(prev || {}),
+            status: 'completed',
+            videoUrl: data.outputFile,
+          }));
+          return;
+        }
+
+        if (data.done && data.error) {
+          onError?.(data.error);
+          return;
+        }
+      } catch (err) {
+        console.warn('[PipelineProgress] Render progress poll failed:', err);
+      }
+
+      renderPollRef.current = setTimeout(pollRender, 8000);
+    };
+
+    void pollRender();
+
+    return () => {
+      cancelled = true;
+      if (renderPollRef.current) {
+        clearTimeout(renderPollRef.current);
+        renderPollRef.current = null;
+      }
+    };
+  }, [editorRunData?.pollUrl, editorRunData?.status, onError]);
 
   // Aggregate events into ProgressStatus
   const progress: ProgressData | null = React.useMemo(() => {

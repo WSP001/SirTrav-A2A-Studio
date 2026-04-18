@@ -14,6 +14,7 @@
  * - DEMO: Test mode with placeholder video
  */
 import type { Handler } from '@netlify/functions';
+import { buildFunctionUrl, getEventBaseUrl, normalizeBaseUrl } from './lib/request-origin';
 // ⚠️ NO OTHER IMPORTS AT TOP LEVEL — everything else loaded dynamically
 // inside the handler to prevent cold-start crashes in Lambda.
 
@@ -64,6 +65,10 @@ interface PipelineBrief {
   identityContext?: string;
 }
 
+interface AgentCallContext {
+  baseUrl: string;
+}
+
 function makeRunKey(projectId: string, runId: string) {
   return `${projectId}/${runId}.json`;
 }
@@ -97,6 +102,10 @@ async function updateRun(
     status: (next.status as RunStatus) || 'running',
   };
 
+  if (patch.step) indexPatch.step = patch.step;
+  if (patch.message) indexPatch.message = patch.message;
+  if (patch.agentResults) indexPatch.agentResults = patch.agentResults;
+
   // Forward artifacts to the index if present
   if (patch.artifacts) {
     if (patch.artifacts.videoUrl) indexPatch.videoUrl = patch.artifacts.videoUrl;
@@ -108,6 +117,9 @@ async function updateRun(
     if ((patch.artifacts as any).publishTargets) indexPatch.publishTargets = (patch.artifacts as any).publishTargets;
     if ((patch.artifacts as any).publishResults) indexPatch.publishResults = (patch.artifacts as any).publishResults;
     if ((patch.artifacts as any).qualityGate) indexPatch.qualityGate = (patch.artifacts as any).qualityGate;
+    if ((patch.artifacts as any).pollUrl) indexPatch.pollUrl = (patch.artifacts as any).pollUrl;
+    if ((patch.artifacts as any).editorStatus) indexPatch.editorStatus = (patch.artifacts as any).editorStatus;
+    if ((patch.artifacts as any).editorBackend) indexPatch.editorBackend = (patch.artifacts as any).editorBackend;
   }
 
   await updateRunIndex(projectId, runId, indexPatch);
@@ -157,17 +169,17 @@ async function updateRun(
  * DIRECTOR AGENT - Curate Media with OpenAI Vision
  */
 async function executeDirectorAgent(
+  context: AgentCallContext,
   projectId: string,
   images: Array<{ id: string; url: string; base64?: string }>,
   projectMode: string
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`🎬 [Director] Starting with ${images.length} images...`);
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/curate-media`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'curate-media'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -209,6 +221,7 @@ async function executeDirectorAgent(
  * WRITER AGENT - Generate Narrative Script with GPT-4
  */
 async function executeWriterAgent(
+  context: AgentCallContext,
   projectId: string,
   curatedMedia: any,
   producerBrief?: string,
@@ -216,7 +229,6 @@ async function executeWriterAgent(
   cvTruthPack?: PipelinePayload['cvTruthPack']
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`✍️ [Writer] Generating narrative...`);
@@ -233,7 +245,7 @@ async function executeWriterAgent(
     const mood = curatedMedia?.scenes?.[0]?.dominant_mood || 'reflective';
     const sceneCount = curatedMedia?.scenes?.length || 3;
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/narrate-project`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'narrate-project'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -284,19 +296,19 @@ async function executeWriterAgent(
  * VOICE AGENT - Text-to-Speech with ElevenLabs
  */
 async function executeVoiceAgent(
+  context: AgentCallContext,
   projectId: string,
   runId: string,
   narrative: any
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`🎙️ [Voice] Synthesizing narration...`);
 
     const text = narrative?.narrative || narrative?.scenes?.map((s: any) => s.text).join(' ') || 'Welcome to your memories.';
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/text-to-speech`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'text-to-speech'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -337,13 +349,13 @@ async function executeVoiceAgent(
  * COMPOSER AGENT - Generate Music with Suno/Templates
  */
 async function executeComposerAgent(
+  context: AgentCallContext,
   projectId: string,
   runId: string,
   mood: string,
   themePreference?: any
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`🎵 [Composer] Generating soundtrack...`);
@@ -362,7 +374,7 @@ async function executeComposerAgent(
       };
     }
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/generate-music`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'generate-music'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -404,6 +416,7 @@ async function executeComposerAgent(
  * EDITOR AGENT - Compile Video with FFmpeg
  */
 async function executeEditorAgent(
+  context: AgentCallContext,
   projectId: string,
   runId: string,
   curatedMedia: any,
@@ -413,7 +426,6 @@ async function executeEditorAgent(
   writerData?: any
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`🎞️ [Editor] Compiling video...`);
@@ -427,12 +439,13 @@ async function executeEditorAgent(
       }))
     );
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/compile-video`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'compile-video'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId,
         runId,
+        baseUrl: context.baseUrl,
         images: images.length > 0 ? images : undefined,
         narrationUrl: voiceResult?.data?.audioUrl,
         musicUrl: musicResult?.data?.musicUrl,
@@ -475,13 +488,7 @@ async function executeEditorAgent(
   } catch (error) {
     console.error('🎞️ [Editor] Error:', error);
     return {
-      success: true,
-      data: {
-        videoUrl: '/test-assets/test-video.mp4',
-        duration: 30,
-        placeholder: true,
-        mode: 'fallback',
-      },
+      success: false,
       error: error instanceof Error ? error.message : 'Editor agent failed',
       duration_ms: Date.now() - startTime,
       fallback: true,
@@ -493,17 +500,17 @@ async function executeEditorAgent(
  * ATTRIBUTION AGENT - Generate Commons Good Credits
  */
 async function executeAttributionAgent(
+  context: AgentCallContext,
   projectId: string,
   runId: string,
   agentResults: Record<string, AgentResult>
 ): Promise<AgentResult> {
   const startTime = Date.now();
-  const baseUrl = process.env.URL || 'http://localhost:8888';
 
   try {
     console.log(`📜 [Attribution] Generating credits...`);
 
-    const response = await fetch(`${baseUrl}/.netlify/functions/generate-attribution`, {
+    const response = await fetch(buildFunctionUrl(context.baseUrl, 'generate-attribution'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -567,6 +574,7 @@ function determinePipelineMode(agentResults: Record<string, AgentResult>): strin
  * Individual platform failures do NOT fail the pipeline.
  */
 async function executeSocialPublishingAgent(
+  context: AgentCallContext,
   projectId: string,
   runId: string,
   publishTargets: string[],
@@ -575,7 +583,6 @@ async function executeSocialPublishingAgent(
   attributionData: any,
   imageUrls?: string[]
 ): Promise<Record<string, AgentResult>> {
-  const baseUrl = process.env.URL || 'http://localhost:8888';
   const results: Record<string, AgentResult> = {};
 
   if (!publishTargets || publishTargets.length === 0) {
@@ -592,7 +599,7 @@ async function executeSocialPublishingAgent(
         : narrative;
       platformCalls.push({
         platform: 'x',
-        url: `${baseUrl}/.netlify/functions/publish-x`,
+        url: buildFunctionUrl(context.baseUrl, 'publish-x'),
         body: {
           text,
           dryRun: false,
@@ -603,7 +610,7 @@ async function executeSocialPublishingAgent(
     } else if (target === 'linkedin') {
       platformCalls.push({
         platform: 'linkedin',
-        url: `${baseUrl}/.netlify/functions/publish-linkedin`,
+        url: buildFunctionUrl(context.baseUrl, 'publish-linkedin'),
         body: {
           projectId,
           runId,
@@ -618,7 +625,7 @@ async function executeSocialPublishingAgent(
     } else if (target === 'youtube') {
       platformCalls.push({
         platform: 'youtube',
-        url: `${baseUrl}/.netlify/functions/publish-youtube`,
+        url: buildFunctionUrl(context.baseUrl, 'publish-youtube'),
         body: {
           projectId,
           videoUrl,
@@ -750,6 +757,8 @@ export const handler: Handler = async (event) => {
     projectId = body.projectId;
     runId = body.runId;
     const payloadKey: string | undefined = body.payloadKey;
+    const requestBaseUrl = normalizeBaseUrl(body.baseUrl) || getEventBaseUrl(event);
+    const agentContext: AgentCallContext = { baseUrl: requestBaseUrl };
     // 🎯 CC-019 M8: Selective publish targets from UI toggle
     const publishTargets: string[] | undefined = body.publishTargets;
     const brief: PipelineBrief = body.brief && typeof body.brief === 'object' ? body.brief : {};
@@ -870,6 +879,7 @@ export const handler: Handler = async (event) => {
     });
 
     agentResults.director = await executeDirectorAgent(
+      agentContext,
       projectId,
       images,
       payload.projectMode || 'commons_public'
@@ -899,6 +909,7 @@ export const handler: Handler = async (event) => {
     });
 
     agentResults.writer = await executeWriterAgent(
+      agentContext,
       projectId,
       agentResults.director.data,
       payload.producerBrief,
@@ -934,8 +945,8 @@ export const handler: Handler = async (event) => {
 
     // ⚡ PARALLEL EXECUTION
     const [voiceResult, composerResult] = await Promise.all([
-      executeVoiceAgent(projectId, runId, agentResults.writer.data),
-      executeComposerAgent(projectId, runId, mood, payload.themePreference)
+      executeVoiceAgent(agentContext, projectId, runId, agentResults.writer.data),
+      executeComposerAgent(agentContext, projectId, runId, mood, payload.themePreference)
     ]);
 
     agentResults.voice = voiceResult;
@@ -966,6 +977,7 @@ export const handler: Handler = async (event) => {
     });
 
     agentResults.editor = await executeEditorAgent(
+      agentContext,
       projectId,
       runId,
       agentResults.director.data,
@@ -997,7 +1009,7 @@ export const handler: Handler = async (event) => {
       message: '📜 Attribution generating credits...'
     });
 
-    agentResults.attribution = await executeAttributionAgent(projectId, runId, agentResults);
+    agentResults.attribution = await executeAttributionAgent(agentContext, projectId, runId, agentResults);
 
     // 💰 RECORD COST: Attribution (Data Processing)
     manifest.addEntry('Attribution', 'Commons Good Audit', 0.01);
@@ -1048,10 +1060,47 @@ export const handler: Handler = async (event) => {
       };
     }
 
+    const editorData = agentResults.editor?.data || {};
+    const editorIsRendering = editorData.status === 'rendering' && editorData.editor_backend === 'veo2';
+    if (editorIsRendering) {
+      await updateRun(projectId, runId, {
+        status: 'running',
+        progress: 96,
+        step: 'editor',
+        message: '🎞️ Editor dispatched Veo render and is waiting for completion...',
+        artifacts: {
+          qualityGate: qualityCheck,
+          pollUrl: editorData.pollUrl,
+          editorStatus: editorData.status,
+          editorBackend: editorData.editor_backend,
+        },
+        agentResults,
+        runningCost: manifest.getRunningTotal().totalDue,
+        elapsedMs: Date.now() - startTime,
+      });
+
+      return {
+        statusCode: 202,
+        body: JSON.stringify({
+          ok: true,
+          projectId,
+          runId,
+          status: 'rendering',
+          pollUrl: editorData.pollUrl,
+          editorJobId: editorData.jobId,
+          editorBackend: editorData.editor_backend,
+          qualityGate: qualityCheck,
+        }),
+      };
+    }
+
     // ========================================================================
     // STEP 7: PUBLISHER AGENT (Social Distribution — best-effort)
     // ========================================================================
-    const rawVideoUrl = agentResults.editor.data?.videoUrl || '/test-assets/test-video.mp4';
+    const rawVideoUrl = agentResults.editor.data?.videoUrl;
+    if (!rawVideoUrl) {
+      throw new Error('Editor completed without a videoUrl');
+    }
     const narrative = agentResults.writer?.data?.narrative || '';
     const effectiveTargets = publishTargets || [];
 
@@ -1070,6 +1119,7 @@ export const handler: Handler = async (event) => {
       });
 
       publisherResults = await executeSocialPublishingAgent(
+        agentContext,
         projectId,
         runId,
         effectiveTargets,
