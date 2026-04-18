@@ -30,9 +30,17 @@ export async function inspectOutput(artifacts: {
     scriptText?: string;
     audioUrl?: string;
     videoUrl?: string;
+    editorJobId?: string;
+    editorStatus?: string;
+    editorBackend?: string;
+    pollUrl?: string;
     images?: Array<{ url: string }>;
 }): Promise<QualityCheckResult> {
     const items: QualityCheckItem[] = [];
+    const asyncVeoRender =
+        artifacts.editorBackend === 'veo2'
+        && artifacts.editorStatus === 'rendering'
+        && !!(artifacts.editorJobId || artifacts.pollUrl);
 
     // Check 1: Script exists and has minimum length
     const scriptLen = artifacts.scriptText?.length || 0;
@@ -92,11 +100,13 @@ export async function inspectOutput(artifacts: {
     // Check 5: Video output exists
     items.push({
         check: 'video_output',
-        passed: !!artifacts.videoUrl,
-        severity: 'error',
+        passed: !!artifacts.videoUrl || asyncVeoRender,
+        severity: asyncVeoRender ? 'warning' : 'error',
         message: artifacts.videoUrl
             ? 'Video output generated'
-            : 'No video output generated — Editor agent may have failed',
+            : asyncVeoRender
+                ? `Veo 2 render dispatched asynchronously (${artifacts.editorJobId || 'poll pending'})`
+                : 'No video output generated — Editor agent may have failed',
     });
 
     // Derive backward-compatible fields

@@ -428,12 +428,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       } catch (veoError: any) {
         console.error('❌ [Veo] Dispatch threw:', veoError?.message);
         // Fall through to PATH B if available
-        if (hasRemotionKeys || hasFFmpegService) {
+        if (hasRemotionLambda || hasFFmpegService) {
           console.log('⚠️ [PATH A] Veo 2 failed, falling through to PATH B (Remotion/FFmpeg)...');
           veoResult = { dispatch: false, veoUnavailable: true };
         } else {
           return {
-            statusCode: 200,
+            statusCode: 503,
             headers,
             body: JSON.stringify({
               success: false,
@@ -465,17 +465,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             duckingApplied,
             status: 'rendering',
             editor_backend: 'veo2',
-            pollUrl: `/.netlify/functions/render-progress?operationName=${encodeURIComponent(veoResult.operationName)}&backend=veo2`,
+            pollUrl: `/.netlify/functions/render-progress?projectId=${encodeURIComponent(request.projectId)}&runId=${encodeURIComponent(request.runId || '')}&operationName=${encodeURIComponent(veoResult.operationName)}&backend=veo2`,
           }),
         };
       }
 
-      if (veoResult.veoUnavailable && !(hasRemotionKeys || hasFFmpegService)) {
+      if (veoResult.veoUnavailable && !(hasRemotionLambda || hasFFmpegService)) {
         // Veo unavailable and no backup renderer — storyboard fallback
         console.warn(`⚠️ [Veo] Model not available (HTTP ${veoResult.status}) — storyboard fallback`);
         const storyboard = await generateStoryboard(request, duration);
         return {
-          statusCode: 200,
+          statusCode: 503,
           headers,
           body: JSON.stringify({
             success: storyboard !== null,
@@ -498,11 +498,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       }
     }
 
-    if (!hasGemini && !hasRemotionKeys && !hasFFmpegService) {
+    if (!hasGemini && !hasRemotionLambda && !hasFFmpegService) {
       // NoFakeSuccess: no renderer configured at all
       console.warn('⚠️ Editor: No renderer available (no Gemini, Remotion, or FFmpeg).');
       return {
-        statusCode: 200,
+        statusCode: 503,
         headers,
         body: JSON.stringify({
           success: false,

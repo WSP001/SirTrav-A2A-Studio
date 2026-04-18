@@ -92,7 +92,11 @@ async function updateRun(
     if (patch.artifacts.creditsUrl) indexPatch.creditsUrl = patch.artifacts.creditsUrl;
     if (patch.artifacts.pipelineMode) indexPatch.pipelineMode = patch.artifacts.pipelineMode;
     if ((patch.artifacts as any).invoice) indexPatch.invoice = (patch.artifacts as any).invoice;
+    if ((patch.artifacts as any).duration) indexPatch.duration = (patch.artifacts as any).duration;
+    if ((patch.artifacts as any).placeholder !== undefined) indexPatch.placeholder = (patch.artifacts as any).placeholder;
     if ((patch.artifacts as any).publishTargets) indexPatch.publishTargets = (patch.artifacts as any).publishTargets;
+    if ((patch.artifacts as any).publishResults) indexPatch.publishResults = (patch.artifacts as any).publishResults;
+    if ((patch.artifacts as any).qualityGate) indexPatch.qualityGate = (patch.artifacts as any).qualityGate;
   }
 
   await updateRunIndex(projectId, runId, indexPatch);
@@ -196,7 +200,9 @@ async function executeDirectorAgent(
 async function executeWriterAgent(
   projectId: string,
   curatedMedia: any,
-  producerBrief?: string
+  producerBrief?: string,
+  brief?: PipelineBrief,
+  cvTruthPack?: PipelinePayload['cvTruthPack']
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const baseUrl = process.env.URL || 'http://localhost:8888';
@@ -226,6 +232,14 @@ async function executeWriterAgent(
         sceneCount,
         producerBrief,
         retrievalPack: pack.assembled,
+        platform: brief?.platform,
+        tone: brief?.tone,
+        storySeed: brief?.story || cvTruthPack?.socialSeed?.producerBrief,
+        identityContext: brief?.identityContext || [
+          cvTruthPack?.profile?.displayName,
+          cvTruthPack?.profile?.title,
+          (cvTruthPack?.profile?.currentFocus || []).slice(0, 3).join(', '),
+        ].filter(Boolean).join(' | '),
       }),
       signal: AbortSignal.timeout(30000),
     });
@@ -872,7 +886,13 @@ export const handler: Handler = async (event) => {
       message: '✍️ Writer crafting narrative...'
     });
 
-    agentResults.writer = await executeWriterAgent(projectId, agentResults.director.data, payload.producerBrief);
+    agentResults.writer = await executeWriterAgent(
+      projectId,
+      agentResults.director.data,
+      payload.producerBrief,
+      brief,
+      payload.cvTruthPack
+    );
 
     // 💰 RECORD COST: Writer (GPT-4)
     // Base Cost: ~500 tokens = $0.03
@@ -987,6 +1007,10 @@ export const handler: Handler = async (event) => {
       scriptText: agentResults.writer?.data?.narrative,
       audioUrl: agentResults.voice?.data?.audioUrl,
       videoUrl: agentResults.editor?.data?.videoUrl,
+      editorJobId: agentResults.editor?.data?.jobId,
+      editorStatus: agentResults.editor?.data?.status,
+      editorBackend: agentResults.editor?.data?.editor_backend,
+      pollUrl: agentResults.editor?.data?.pollUrl,
       images: agentResults.director?.data?.scenes?.flatMap((s: any) => s.assets || [])
     });
 
@@ -1086,6 +1110,7 @@ export const handler: Handler = async (event) => {
       expiresAt: secureVideo.expiresAt,
       creditsUrl: '/test-assets/credits.json',
       duration: agentResults.editor.data?.duration || 30,
+      placeholder: agentResults.editor.data?.placeholder === true,
       agentResults,
       pipelineMode: determinePipelineMode(agentResults),
       invoice: manifest.generate(runId),
