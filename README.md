@@ -16,7 +16,7 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 | 2 | **Writer** | Drafts reflective first-person script (GPT-4 + Gemini fallback) | ✅ Complete | `narrate-project.ts` |
 | 3 | **Voice** | Synthesizes narration via ElevenLabs TTS (Adam voice) | ✅ Complete | `text-to-speech.ts` |
 | 4 | **Composer** | Generates soundtrack and beat grid via Suno AI | ✅ Complete | `generate-music.ts` |
-| 5 | **Editor** | Assembles final video via Remotion Lambda (render-dispatcher) | ⚠️ In Progress | `compile-video.ts` → `render-dispatcher.ts` |
+| 5 | **Editor** | Dispatches and finalizes Gemini Veo renders with honest async status | ✅ Live | `compile-video.ts` → `render-progress.ts` |
 | 6 | **Attribution** | Compiles Commons Good credits for all AI services | ✅ Complete | `generate-attribution.ts` |
 | 7 | **Publisher** | Posts to X/Twitter, YouTube, LinkedIn, Instagram, TikTok | ⚠️ Partial | `publish.ts` → `publish-x.ts`, etc. |
 
@@ -46,7 +46,44 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 | **Memory** | EGO-Prompt learning from feedback | `memory_index.json`, `lib/memory.ts` |
 | **Quality** | LUFS audio gates, cost manifest, quality gate | `lib/quality-gate.ts`, `lib/cost-manifest.ts` |
 | **Observability** | OpenTelemetry tracing + SSE progress | `lib/tracing.ts`, `progress.ts` |
-| **Rendering** | Remotion Lambda (replaces local FFmpeg) | `render-dispatcher.ts`, `lib/remotion-client.ts` |
+| **Rendering** | Gemini Veo async render pipeline with Netlify Blobs finalization | `compile-video.ts`, `render-progress.ts` |
+
+---
+
+## 📍 Canonical Workspace
+
+This is the only repo the team should use for the live SirTrav Netlify app:
+
+- Workspace: `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio`
+- GitHub: `WSP001/SirTrav-A2A-Studio`
+- Netlify site: `sirtrav-a2a-studio`
+
+Do not use these as the deployment workspace for this app:
+
+- `C:\Users\Roberto002\OneDrive\Documents\WSP2AGENT`
+- `C:\Users\Roberto002\OneDrive\DevHub\WSP2agent`
+
+Those are separate or non-canonical folders.
+
+---
+
+## ✅ Current Proof Status
+
+As of `2026-04-18`, the current Gemini-first pipeline proof is real:
+
+- Preview and production no longer cross-wire.
+- `start-pipeline` now invokes the background worker on the same origin that received the request.
+- Veo renders stay in `rendering` until a real video artifact exists.
+- `render-progress` downloads the completed Veo output and stores it in Netlify Blobs.
+- The pipeline no longer reports fake success with `/test-assets/test-video.mp4`.
+
+Latest proof preview:
+
+- Preview deploy: `69e3cbbecfc8b9e2eca1c9f9`
+- Preview URL: `https://69e3cbbecfc8b9e2eca1c9f9--sirtrav-a2a-studio.netlify.app`
+- Proof run: `codex-proof2-1776536587354`
+- Run ID: `run-1776536585029`
+- Result: `completed`
 
 ---
 
@@ -71,13 +108,16 @@ netlify dev
 
 # 6. Build production bundle
 npm run build
+
+# 7. Run a Netlify production-style build gate
+npx netlify build
 ```
 
 ---
 
 ## 🔑 Local Key Setup (Git Bash, Exact Commands)
 
-Use these exact commands from `C:\WSP001\SirTrav-A2A-Studio` in Git Bash.
+Use these exact commands from `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio` in Git Bash or PowerShell.
 
 ```bash
 # Session-only keys (quick test; lasts until terminal closes)
@@ -156,6 +196,57 @@ The sanity test checks:
 
 ---
 
+## 🧪 Team Command Flow
+
+Use this order for teammates before they touch code or deploy:
+
+```bash
+# 1. Go to the canonical repo
+cd "C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio"
+
+# 2. Sync and install
+git pull origin main
+npm install
+
+# 3. Build the client
+npm run build
+
+# 4. Run Netlify's full build path
+npx netlify build
+
+# 5. Run a cheap smoke verification
+npm run practice:test
+
+# 6. Preview deploy when testing cloud behavior
+npx netlify deploy
+```
+
+For cloud proof runs, prefer:
+
+- one real image
+- `publishTargets: []`
+- Gemini key present
+- no assumption that Remotion or AWS exists
+
+---
+
+## 🚫 Not Required For This Deploy Path
+
+These are not required for the current live Netlify + Gemini renderer flow:
+
+- Microsoft Edge Origin Trial tokens
+- Browser experimental feature flags
+- Local NPU drivers for Netlify Functions
+- AWS Lambda / Remotion for the default render path
+
+Notes:
+
+- Origin trials are only relevant if the frontend intentionally adopts a browser-experimental API. This app does not currently require that.
+- The Windows NPU/driver setup can matter for separate local AI experiments, but Netlify Functions run in the cloud and do not use your local NPU.
+- Remotion/AWS remains optional backup infrastructure, not the primary renderer.
+
+---
+
 ## ✅ SirTrav Sanity Script — Team Ready
 
 Use this as the minimum team gate:
@@ -198,7 +289,7 @@ just validate-env
 | `OPENAI_API_KEY` | **Yes** | core-ai | GPT-4 + Vision for Director & Writer |
 | `ELEVENLABS_API_KEY` | Optional | core-ai | Voice synthesis (has fallback mode) |
 | `SUNO_API_KEY` | Optional | core-ai | Music generation (has fallback mode) |
-| `GEMINI_API_KEY` | Optional | core-ai | Alternative LLM for narration |
+| `GEMINI_API_KEY` | **Yes** | core-ai | Gemini/Veo renderer + narration fallback |
 | `TWITTER_API_KEY` | Optional | social | X/Twitter publishing |
 | `LINKEDIN_CLIENT_ID` | Optional | social | LinkedIn OAuth |
 | `YOUTUBE_CLIENT_ID` | Optional | social | YouTube uploads |
@@ -340,7 +431,7 @@ just build                # Build for production
 
 | Issue | Status | Path Forward |
 |-------|--------|--------------|
-| Editor requires Remotion Lambda | In Progress | `render-dispatcher.ts` wired, needs AWS env vars in Netlify |
+| Async publish resume after Veo completion | In Progress | No-publish flow is proven; publisher resume for async renders still needs explicit resume handling |
 | Instagram/TikTok | Missing Keys | Human operator must complete OAuth + add keys |
 | LinkedIn secrets exposed | 🔴 CRITICAL | Must rotate `LINKEDIN_CLIENT_SECRET` + `LINKEDIN_ACCESS_TOKEN` |
 | 9 npm audit vulnerabilities | Medium | Tracked in `tasks/SEC-001-npm-audit-fix.md` |
