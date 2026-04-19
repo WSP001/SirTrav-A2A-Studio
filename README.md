@@ -54,7 +54,7 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 
 This is the only repo the team should use for the live SirTrav Netlify app:
 
-- Workspace: `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio`
+- Workspace: `C:\WSP001\SirTrav-A2A-Studio`
 - GitHub: `WSP001/SirTrav-A2A-Studio`
 - Netlify site: `sirtrav-a2a-studio`
 
@@ -64,6 +64,35 @@ Do not use these as the deployment workspace for this app:
 - `C:\Users\Roberto002\OneDrive\DevHub\WSP2agent`
 
 Those are separate or non-canonical folders.
+
+## 🧭 Operational Spine
+
+These are the names and files that should anchor team context before any work starts:
+
+- `MASTER.md` — north star for milestones, rules, and architecture
+- `AGENTS.md` — current team registry and lane ownership
+- `AGENT-OPS.md` — operating rules and boundaries
+- `plans/AGENT_ASSIGNMENTS.md` — task ownership source of truth
+- `justfile` — official command entrypoints
+
+Core agent names in current use:
+
+- `Windsurf/Cascade` — master orchestration, gates, merges
+- `Claude Code` — backend and function wiring
+- `Codex #2` — frontend and UI lane
+- `Antigravity` — QA, truth checks, verifier gate
+- `Netlify Agent` — deploy and cloud verification
+- `Human-Ops` — keys, dashboard actions, approvals
+
+Preferred orientation commands:
+
+- `just orient-claude-m9`
+- `just orient-codex-m9`
+- `just orient-antigravity-m9`
+- `just orient-netlify`
+- `just orient-human-m9`
+
+Rule of thumb: agents should read the operational spine first, then enter through the matching `just orient-*` command, then work only inside the canonical workspace.
 
 ---
 
@@ -470,3 +499,5 @@ MIT License — See LICENSE file for details.
 ---
 
 **For the Commons Good** 🎬
+
+
