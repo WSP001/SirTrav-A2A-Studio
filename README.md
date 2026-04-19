@@ -231,7 +231,7 @@ Use this order for teammates before they touch code or deploy:
 
 ```bash
 # 1. Go to the canonical repo
-cd "C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio"
+cd "C:\WSP001\SirTrav-A2A-Studio"
 
 # 2. Sync and install
 git pull origin main
