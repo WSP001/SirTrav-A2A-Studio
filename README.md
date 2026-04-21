@@ -24,6 +24,25 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 
 ---
 
+## 🔄 Universal Handoff Payload
+
+Every agent in the chain receives the same run-scoped state object and appends its own results instead of inventing a new format at each step.
+
+Core fields that must survive the entire run:
+
+- `projectId` — top-level project identity
+- `runId` — trace thread for every step, artifact, and log event
+- `retrievalPackHash` — proof that Writer/Director context came from approved upstream memory inputs
+- `brief` — operator intent, audience, and creative constraints
+- `agentResults` — the accumulated output from Director, Writer, Voice, Composer, Editor, Attribution, and Publisher
+- `publishTargets` — explicit platform list for publisher routing
+- `costManifest` — accumulated API and processing cost record
+- `confidence` — optional per-step quality signal for Antigravity and Human-Ops review
+
+Rule of thumb: agents extend the shared payload, preserve prior fields, and fail honestly rather than replacing upstream context with ad hoc output.
+
+---
+
 ## 📱 Social Media Integration Matrix
 
 | Platform | Status | Evidence / Notes |
@@ -47,6 +66,23 @@ A D2A (Doc-to-Agent) automated video production platform built for the Commons G
 | **Quality** | LUFS audio gates, cost manifest, quality gate | `lib/quality-gate.ts`, `lib/cost-manifest.ts` |
 | **Observability** | OpenTelemetry tracing + SSE progress | `lib/tracing.ts`, `progress.ts` |
 | **Rendering** | Gemini Veo async render pipeline with Netlify Blobs finalization | `compile-video.ts`, `render-progress.ts` |
+
+---
+
+## 🧠 Brain To Hands
+
+The Studio app is downstream of Roberto Scott Echols' Smart CV / retrieval system.
+
+- The Smart CV app is the upstream memory brain: identity, CV truth, project history, tone, and approved source material.
+- The Studio app is the downstream execution layer: Director, Writer, Voice, Composer, Editor, Attribution, and Publisher.
+- The bridge between them is the retrieval pack used during pipeline runs, sourced through approved memory endpoints and environment wiring such as `VECTOR_ENGINE_URL`.
+
+Operational rule:
+
+- The brain thinks; the studio acts.
+- Public posting keys belong only to Studio.
+- Identity and retrieval keys belong to the app that actually serves memory.
+- Agents should write from retrieval-backed truth, not freestyle biography.
 
 ---
 
@@ -146,7 +182,7 @@ npx netlify build
 
 ## 🔑 Local Key Setup (Git Bash, Exact Commands)
 
-Use these exact commands from `C:\Users\Roberto002\Documents\GitHub\SirTrav-A2A-Studio` in Git Bash or PowerShell.
+Use these exact commands from `C:\WSP001\SirTrav-A2A-Studio` in Git Bash or PowerShell.
 
 ```bash
 # Session-only keys (quick test; lasts until terminal closes)
