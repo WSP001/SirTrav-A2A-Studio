@@ -31,16 +31,15 @@ const KEYS = [
   { name: 'SUNO_API_KEY',            importance: 'optional', group: 'core-ai',        note: 'Composer music generation' },
   { name: 'GEMINI_API_KEY',          importance: 'optional', group: 'core-ai',        note: 'Gemini narration (alternative LLM)' },
 
+  // CV Identity Wire (Limited License — inner circle access to CV truth pack)
+  { name: 'CV_IDENTITY_URL',         importance: 'required', group: 'cv-wire',        note: 'CV identity.json endpoint (Wire 2 reverse feed)' },
+  { name: 'CV_TRUTH_PACK_URL',       importance: 'optional', group: 'cv-wire',        note: 'Full CV truth pack endpoint' },
+  { name: 'VECTOR_ENGINE_URL',       importance: 'optional', group: 'cv-wire',        note: 'pgvector Cloud Run retrieval endpoint' },
+
   // Infrastructure
   { name: 'LINEAR_API_KEY',          importance: 'optional', group: 'infra',          note: 'Linear project management API' },
   { name: 'MCP_SECRET_TOKEN',        importance: 'optional', group: 'infra',          note: 'MCP gateway auth token' },
   { name: 'SHARE_SECRET',            importance: 'optional', group: 'infra',          note: 'HMAC share link signing' },
-
-  // Remotion Lambda
-  { name: 'REMOTION_SERVE_URL',      importance: 'optional', group: 'remotion',       note: 'Deployed Remotion bundle URL' },
-  { name: 'REMOTION_REGION',         importance: 'optional', group: 'remotion',       note: 'AWS region for Lambda (canonical; REMOTION_AWS_REGION deprecated)' },
-  { name: 'AWS_ACCESS_KEY_ID',       importance: 'optional', group: 'remotion',       note: 'AWS credentials for S3/Lambda' },
-  { name: 'AWS_SECRET_ACCESS_KEY',   importance: 'optional', group: 'remotion',       note: 'AWS credentials for S3/Lambda' },
 
   // X / Twitter
   { name: 'TWITTER_API_KEY',         importance: 'optional', group: 'social-x',       note: 'Consumer API key' },
