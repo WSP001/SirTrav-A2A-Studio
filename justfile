@@ -2162,6 +2162,15 @@ validate-env:
 validate-env-json:
     node scripts/validate-env.mjs --json
 
+# Cloud env audit (Netlify site env only)
+validate-cloud-env:
+    @echo "☁️ Running cloud env key audit..."
+    node scripts/validate-cloud-env.mjs
+
+# Cloud env audit (JSON output)
+validate-cloud-env-json:
+    node scripts/validate-cloud-env.mjs --json
+
 # Generate masked env snapshot (names only, no values)
 env-snapshot out="out/sirtrav_env_snapshot.json":
     @echo "🧾 Generating masked env snapshot..."
