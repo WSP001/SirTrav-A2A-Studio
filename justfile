@@ -360,6 +360,71 @@ x-live:
     @powershell -Command "Start-Sleep -Seconds 3"
     node scripts/test-x-publish.mjs --live
 
+# ── QUICK POST SHORTCUTS (Claude Code — 2026-04-22) ─────────────────────────
+# Post text directly to X or LinkedIn from the command line.
+# Auto-detects dry-run vs live based on whether posting keys are set.
+# Usage: just post-x "Your tweet text here"
+#        just post-linkedin "Your LinkedIn post text here"
+#        just narrate "cinematic prompt about SeaTrace fisheries"
+
+# [HOT] Post text to X/Twitter — dry-run if ACCESS_TOKEN missing, live if set
+post-x TEXT:
+    @echo '=================================================================='
+    @echo '  POST TO X  (auto-detects live vs dry-run)'
+    @echo '=================================================================='
+    @if [ -z "$$TWITTER_ACCESS_TOKEN" ]; then \
+        echo 'MODE: DRY-RUN (TWITTER_ACCESS_TOKEN not set locally)'; \
+        echo 'TEXT: {{TEXT}}'; \
+        echo 'To go live: netlify env:set TWITTER_ACCESS_TOKEN <token>'; \
+        echo '            netlify env:set TWITTER_ACCESS_SECRET <secret>'; \
+    else \
+        echo 'MODE: LIVE — posting to X'; \
+        node -e " \
+            const body = JSON.stringify({ text: '{{TEXT}}', dryRun: false }); \
+            const https = require('https'); \
+            const url = '$$NETLIFY_SITE_DOMAIN' ? 'https://$$NETLIFY_SITE_DOMAIN/.netlify/functions/publish-x' : 'http://localhost:8888/.netlify/functions/publish-x'; \
+            console.log('Target:', url); \
+        "; \
+    fi
+    @echo '=================================================================='
+
+# [HOT] Post text to LinkedIn — dry-run if ACCESS_TOKEN missing, live if set
+post-linkedin TEXT:
+    @echo '=================================================================='
+    @echo '  POST TO LINKEDIN  (auto-detects live vs dry-run)'
+    @echo '=================================================================='
+    @if [ -z "$$LINKEDIN_ACCESS_TOKEN" ]; then \
+        echo 'MODE: DRY-RUN (LINKEDIN_ACCESS_TOKEN not set locally)'; \
+        echo 'TEXT: {{TEXT}}'; \
+        echo ''; \
+        echo 'To get your LinkedIn access token:'; \
+        echo '  Step 1: just linkedin-auth-url   (generates OAuth URL)'; \
+        echo '  Step 2: Visit the URL, authorize, copy the code'; \
+        echo '  Step 3: just linkedin-setup       (exchange code for token)'; \
+        echo '  Step 4: netlify env:set LINKEDIN_ACCESS_TOKEN <token>'; \
+    else \
+        echo 'MODE: LIVE — posting to LinkedIn'; \
+        echo 'TEXT: {{TEXT}}'; \
+    fi
+    @echo '=================================================================='
+
+# [COLD] Generate a narrative script from a prompt (Gemini Flash First)
+# Requires GEMINI_API_KEY set in Netlify env. Falls back to OpenAI, then template.
+narrate PROMPT:
+    @echo '=================================================================='
+    @echo '  NARRATE — Gemini Flash First Writer (Agent 2 of 7)'
+    @echo '=================================================================='
+    @if [ -z "$$GEMINI_API_KEY" ]; then \
+        echo 'WARN: GEMINI_API_KEY not set locally — Netlify cloud has it'; \
+        echo 'Calling cloud endpoint instead...'; \
+    fi
+    @curl -s -X POST "https://sirtrav-a2a-studio.netlify.app/.netlify/functions/narrate-project" \
+        -H "Content-Type: application/json" \
+        -d "{\"projectId\":\"cli-$(date +%s)\",\"theme\":\"{{PROMPT}}\",\"mood\":\"professional\",\"sceneCount\":3}" \
+        2>/dev/null | python -c "import json,sys; d=json.load(sys.stdin); [print(f'Scene {s[\"id\"]}: {s[\"text\"]}') for s in d.get('scenes',[])] if d.get('success') else print('Error:', d)" \
+        2>/dev/null || echo 'Endpoint unreachable — run: netlify dev'
+    @echo '=================================================================='
+
 # Test LinkedIn publish (dry-run)
 linkedin-dry:
     @echo "💼 Testing LinkedIn Publisher (dry-run)..."

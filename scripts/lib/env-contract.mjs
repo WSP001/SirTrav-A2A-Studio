@@ -1,9 +1,9 @@
 export const KEYS = [
-  { name: 'OPENAI_API_KEY', importance: 'required', group: 'core-ai', note: 'Director/Writer GPT-4 Vision' },
+  { name: 'GEMINI_API_KEY', importance: 'required', group: 'core-ai', note: 'Flash First — narrate-project.ts primary model (gemini-2.5-flash)' },
+  { name: 'OPENAI_API_KEY', importance: 'optional', group: 'core-ai', note: 'Fallback Writer/Director (GPT-4 Vision)' },
   { name: 'ELEVENLABS_API_KEY', importance: 'optional', group: 'core-ai', note: 'Voice agent narration' },
   { name: 'SUNO_API_KEY', importance: 'optional', group: 'core-ai', note: 'Composer music generation' },
-  { name: 'GEMINI_API_KEY', importance: 'optional', group: 'core-ai', note: 'Gemini narration (alternative LLM)' },
-  { name: 'CV_IDENTITY_URL', importance: 'required', group: 'cv-wire', note: 'CV identity.json endpoint (Wire 2 reverse feed)' },
+  { name: 'CV_IDENTITY_URL', importance: 'optional', group: 'cv-wire', note: 'CV identity endpoint — has hardcoded fallback, not a blocker' },
   { name: 'CV_TRUTH_PACK_URL', importance: 'optional', group: 'cv-wire', note: 'Full CV truth pack endpoint' },
   { name: 'VECTOR_ENGINE_URL', importance: 'optional', group: 'cv-wire', note: 'pgvector Cloud Run retrieval endpoint' },
   { name: 'LINEAR_API_KEY', importance: 'optional', group: 'infra', note: 'Linear project management API' },
