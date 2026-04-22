@@ -182,6 +182,9 @@ npx netlify build
 
 ## 🔑 Local Key Setup (Git Bash, Exact Commands)
 
+Netlify site environment variables are the canonical runtime secret source of truth for shared cloud runs.
+Use local keys only when you intentionally need `netlify dev` or local-only debugging.
+
 Use these exact commands from `C:\WSP001\SirTrav-A2A-Studio` in Git Bash or PowerShell.
 
 ```bash
@@ -292,6 +295,12 @@ For cloud proof runs, prefer:
 - `publishTargets: []`
 - Gemini key present
 - no assumption that Remotion or AWS exists
+
+Netlify-first rule:
+
+- Shared proof runs should rely on Netlify site env, not ad hoc local `.env` files.
+- Use `just validate-env` to audit the current local shell only.
+- Use local key injection only when intentionally debugging with `netlify dev`.
 
 ---
 

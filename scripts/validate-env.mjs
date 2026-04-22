@@ -2,8 +2,16 @@
 /**
  * validate-env.mjs — SirTrav A2A Studio Environment Key Audit
  *
- * Validates all env keys, classifies as required vs optional,
- * shows masked previews, and exits 1 if any required key is missing.
+ * Validates env keys visible to the current process, classifies them as
+ * required vs optional, shows masked previews, and exits 1 if any required
+ * key is missing.
+ *
+ * IMPORTANT:
+ *   This script audits the current local shell/.env/runtime context only.
+ *   It does NOT pull secrets from the Netlify dashboard by itself.
+ *   Use it to verify local dev or a shell that already has env injected.
+ *   For real cloud proof runs, Netlify site environment variables remain
+ *   the canonical runtime secret source of truth.
  *
  * Usage:
  *   node scripts/validate-env.mjs           # Table + summary
@@ -194,6 +202,7 @@ if (JSON_OUT) {
   }, null, 2));
   process.exit(reqMissing > 0 ? 1 : 0);
 } else {
+  console.log('🔎 Audit scope: current shell + local .env only (not Netlify dashboard)');
   printTable(rows);
   const missing = printSummary(rows);
   process.exit(missing > 0 ? 1 : 0);
