@@ -90,4 +90,9 @@ The E2E test will attempt a real Remotion Lambda render.
 
 *This file is HUMAN-ONLY documentation. No agent should modify env vars directly.*
 
+## Related: Gemini + YouTube Google Project Alignment
+
+For Gemini+YouTube production flow, keep the Gemini API key and YouTube OAuth client in the same Google Cloud project.
+See `docs/GOOGLE-FLOW.md` for the setup and refresh-token helper.
+
 **For the Commons Good** 🎬

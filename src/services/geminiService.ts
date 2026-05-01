@@ -1,53 +1,54 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+type GeminiGenerateOptions = {
+    model?: 'gemini-2.5-flash' | 'gemini-2.5-pro';
+    imageBase64?: string;
+    mimeType?: string;
+};
 
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
-const PROJECT_ID = "gen-lang-client-0770554704"; // Your configured Project ID
+const DEFAULT_MODEL: GeminiGenerateOptions['model'] = 'gemini-2.5-flash';
 
-if (!API_KEY) {
-    console.warn("Missing VITE_GOOGLE_API_KEY in environment variables");
+async function requestGemini(prompt: string, options: GeminiGenerateOptions = {}) {
+    const response = await fetch('/.netlify/functions/gemini-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt,
+            model: options.model || DEFAULT_MODEL,
+            imageBase64: options.imageBase64,
+            mimeType: options.mimeType,
+        }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `Gemini request failed (${response.status})`);
+    }
+
+    return data.text || '';
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
-
 export const geminiService = {
-    // Get the Generative Model
-    getModel: (modelName: string = "gemini-pro") => {
-        return genAI.getGenerativeModel({ model: modelName });
+    getModel: (modelName: GeminiGenerateOptions['model'] = DEFAULT_MODEL) => ({
+        generateContent: async (input: string | Array<string | { text?: string }>) => {
+            const prompt = Array.isArray(input)
+                ? input.map((part) => typeof part === 'string' ? part : part.text || '').join('\n')
+                : input;
+            const text = await requestGemini(prompt, { model: modelName });
+            return { response: { text: () => text } };
+        },
+    }),
+
+    generateText: async (prompt: string, model: GeminiGenerateOptions['model'] = DEFAULT_MODEL) => {
+        return requestGemini(prompt, { model });
     },
 
-    // Generate content from text
-    generateText: async (prompt: string) => {
-        try {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            console.error("Gemini Generate Text Error:", error);
-            throw error;
-        }
+    generateFromImage: async (
+        prompt: string,
+        imageBase64: string,
+        mimeType: string = 'image/jpeg',
+        model: GeminiGenerateOptions['model'] = DEFAULT_MODEL,
+    ) => {
+        return requestGemini(prompt, { model, imageBase64, mimeType });
     },
 
-    // Generate content from text and images (multimodal)
-    generateFromImage: async (prompt: string, imageBase64: string, mimeType: string = "image/jpeg") => {
-        try {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-            const imagePart = {
-                inlineData: {
-                    data: imageBase64,
-                    mimeType
-                },
-            };
-
-            const result = await model.generateContent([prompt, imagePart]);
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            console.error("Gemini Vision Error:", error);
-            throw error;
-        }
-    },
-
-    // Project ID Accessor
-    getProjectId: () => PROJECT_ID
+    getProjectId: () => 'server-side-netlify-gemini',
 };

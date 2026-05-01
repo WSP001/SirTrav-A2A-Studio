@@ -63,9 +63,18 @@ function verifyNetlifyConfig() {
   }
 
   const toml = readFileSync(tomlPath, 'utf8');
+  const buildCommand = toml.match(/^\s*command\s*=\s*"([^"]+)"/m)?.[1] || '';
+  const allowedBuildCommands = new Set([
+    'npm run build',
+    'npm run build && node scripts/sanity-test.mjs --build-gate',
+  ]);
 
   checks.push({ name: 'netlify.toml exists', pass: true, detail: 'Present at repo root' });
-  checks.push({ name: '[build] command', pass: toml.includes('command = "npm run build"'), detail: toml.includes('command = "npm run build"') ? 'npm run build' : 'UNEXPECTED or missing' });
+  checks.push({
+    name: '[build] command',
+    pass: allowedBuildCommands.has(buildCommand),
+    detail: allowedBuildCommands.has(buildCommand) ? buildCommand : 'UNEXPECTED or missing',
+  });
   checks.push({ name: '[build] publish', pass: toml.includes('publish = "dist"'), detail: toml.includes('publish = "dist"') ? 'dist/' : 'UNEXPECTED' });
   checks.push({ name: '[build] functions', pass: toml.includes('functions = "netlify/functions"'), detail: toml.includes('functions = "netlify/functions"') ? 'netlify/functions/' : 'UNEXPECTED' });
   checks.push({ name: 'SPA redirect', pass: toml.includes('from = "/*"') && toml.includes('to = "/index.html"'), detail: toml.includes('from = "/*"') ? '/* → /index.html 200' : 'MISSING' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * PipelineProgress - Real-time dashboard showing 7-agent pipeline status
@@ -46,6 +46,11 @@ interface EditorRunData {
 }
 
 interface RunIndexData {
+  status?: string;
+  videoUrl?: string;
+  pollUrl?: string;
+  editorStatus?: string;
+  editorBackend?: string;
   agentResults?: {
     editor?: {
       data?: EditorRunData;
@@ -71,6 +76,22 @@ const AGENTS = [
   { id: 'publisher', name: 'Publisher', icon: '🚀', description: 'Uploads to storage' }
 ];
 
+function getRendererLabel(backend?: string) {
+  if (backend === 'veo2') return 'Veo 2';
+  if (backend === 'gemini_storyboard') return 'Storyboard';
+  if (backend === 'remotion') return 'Remotion';
+  if (backend === 'none') return 'Disabled';
+  return backend || 'Pending';
+}
+
+function getRendererTone(backend?: string) {
+  if (backend === 'veo2') return 'border-sky-500/50 bg-sky-500/10 text-sky-200';
+  if (backend === 'gemini_storyboard') return 'border-amber-500/50 bg-amber-500/10 text-amber-200';
+  if (backend === 'remotion') return 'border-violet-500/50 bg-violet-500/10 text-violet-200';
+  if (backend === 'none') return 'border-red-500/50 bg-red-500/10 text-red-200';
+  return 'border-[var(--color-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]';
+}
+
 export default function PipelineProgress({ projectId, runId, onComplete, onError, onMetricsUpdate }: PipelineProgressProps) {
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
@@ -81,49 +102,58 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   const renderPollRef = useRef<NodeJS.Timeout | null>(null);
 
   const completionHandledRef = useRef(false);
+
+  const fetchRunIndex = useCallback(async (): Promise<RunIndexData | null> => {
+    if (!runId) return null;
+    try {
+      const key = encodeURIComponent(`projects/${projectId}/runs/${runId}/index.json`);
+      const res = await fetch(`/.netlify/functions/blob-get?store=runs&key=${key}`);
+      if (!res.ok) return null;
+      const index = await res.json() as RunIndexData;
+      const nestedEditorData = index?.agentResults?.editor?.data || {};
+      const editorData = {
+        ...nestedEditorData,
+        status: nestedEditorData.status || index.editorStatus,
+        editor_backend: nestedEditorData.editor_backend || index.editorBackend,
+        pollUrl: nestedEditorData.pollUrl || index.pollUrl,
+        videoUrl: nestedEditorData.videoUrl || index.videoUrl,
+      };
+      setEditorRunData(Object.keys(editorData).length > 0 ? editorData : null);
+      return index;
+    } catch (err) {
+      console.warn('[PipelineProgress] Failed to load run index:', err);
+      return null;
+    }
+  }, [projectId, runId]);
+
+  const emitCompletion = useCallback(async () => {
+    if (completionHandledRef.current || !runId) return;
+    completionHandledRef.current = true;
+
+    try {
+      await fetchRunIndex();
+      const res = await fetch(`/.netlify/functions/results?projectId=${encodeURIComponent(projectId)}&runId=${encodeURIComponent(runId)}`);
+      if (!res.ok) {
+        throw new Error(`results_failed_${res.status}`);
+      }
+      const result = await res.json();
+      onComplete?.(result);
+    } catch (err) {
+      console.error('[PipelineProgress] Failed to load final results:', err);
+      onComplete?.({
+        projectId,
+        status: 'completed',
+        steps: [],
+      });
+    }
+  }, [fetchRunIndex, onComplete, projectId, runId]);
+
   useEffect(() => {
     if (!projectId) return;
 
 
     completionHandledRef.current = false;
 
-    const fetchRunIndex = async () => {
-      if (!runId) return null;
-      try {
-        const key = encodeURIComponent(`projects/${projectId}/runs/${runId}/index.json`);
-        const res = await fetch(`/.netlify/functions/blob-get?store=runs&key=${key}`);
-        if (!res.ok) return null;
-        const index = await res.json() as RunIndexData;
-        const editorData = index?.agentResults?.editor?.data || null;
-        setEditorRunData(editorData);
-        return editorData;
-      } catch (err) {
-        console.warn('[PipelineProgress] Failed to load run index:', err);
-        return null;
-      }
-    };
-
-    const emitCompletion = async () => {
-      if (completionHandledRef.current || !runId) return;
-      completionHandledRef.current = true;
-
-      try {
-        await fetchRunIndex();
-        const res = await fetch(`/.netlify/functions/results?projectId=${encodeURIComponent(projectId)}&runId=${encodeURIComponent(runId)}`);
-        if (!res.ok) {
-          throw new Error(`results_failed_${res.status}`);
-        }
-        const result = await res.json();
-        onComplete?.(result);
-      } catch (err) {
-        console.error('[PipelineProgress] Failed to load final results:', err);
-        onComplete?.({
-          projectId,
-          status: 'completed',
-          steps: [],
-        });
-      }
-    };
     // Try SSE first, fall back to polling
     const connectSSE = () => {
       // Add runId if available to filter stream
@@ -266,10 +296,11 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         clearTimeout(renderPollRef.current);
       }
     };
-  }, [projectId, runId, onComplete, onError, onMetricsUpdate]);
+  }, [projectId, runId, onError, onMetricsUpdate, fetchRunIndex, emitCompletion]);
 
   useEffect(() => {
-    if (!editorRunData?.pollUrl || editorRunData.status !== 'rendering') {
+    const pollUrl = editorRunData?.pollUrl;
+    if (!pollUrl || editorRunData.status !== 'rendering') {
       if (renderPollRef.current) {
         clearTimeout(renderPollRef.current);
         renderPollRef.current = null;
@@ -281,7 +312,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
 
     const pollRender = async () => {
       try {
-        const response = await fetch(editorRunData.pollUrl);
+        const response = await fetch(pollUrl);
         if (!response.ok) {
           throw new Error(`render_progress_${response.status}`);
         }
@@ -294,7 +325,12 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
             ...(prev || {}),
             status: 'completed',
             videoUrl: data.outputFile,
+            editor_backend: data.backend || prev?.editor_backend,
           }));
+          const index = await fetchRunIndex();
+          if (index?.status === 'completed') {
+            await emitCompletion();
+          }
           return;
         }
 
@@ -318,7 +354,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
         renderPollRef.current = null;
       }
     };
-  }, [editorRunData?.pollUrl, editorRunData?.status, onError]);
+  }, [editorRunData?.pollUrl, editorRunData?.status, onError, fetchRunIndex, emitCompletion]);
 
   // Aggregate events into ProgressStatus
   const progress: ProgressData | null = React.useMemo(() => {
@@ -370,7 +406,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
       return s === 'completed' || s === 'fallback'; // fallback treated as success
     });
 
-    if (allCompleted && pipelineStatus !== 'failed') pipelineStatus = 'completed';
+    if (allCompleted && !error) pipelineStatus = 'completed';
 
     return {
       projectId,
@@ -411,6 +447,7 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
   const totalSteps = AGENTS.length;
   const progressPercent = Math.round((completedSteps / totalSteps) * 100);
   const hasRealAgentState = progress?.steps?.some(s => s.status !== 'pending') || false;
+  const rendererBackend = editorRunData?.editor_backend;
 
   // Get status for each agent
   const getAgentStatus = (agentId: string): AgentStatus => {
@@ -455,6 +492,19 @@ export default function PipelineProgress({ projectId, runId, onComplete, onError
           }`}>
           {connectionStatus === 'connected' ? '● Live' : connectionStatus === 'error' ? '● Disconnected' : '● Connecting...'}
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${getRendererTone(rendererBackend)}`}>
+          <span>Renderer</span>
+          <span className="font-medium">{getRendererLabel(rendererBackend)}</span>
+        </span>
+        {editorRunData?.status && (
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)]">
+            <span>Editor</span>
+            <span className="font-medium">{editorRunData.status}</span>
+          </span>
+        )}
       </div>
 
       {/* Progress Bar */}

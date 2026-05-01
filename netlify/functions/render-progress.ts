@@ -37,6 +37,8 @@ import { updateRunIndex } from './lib/runIndex';
 import { appendProgress } from './lib/progress-store';
 import { getProgress, RenderProgressResult } from './lib/remotion-client';
 import { getEventBaseUrl } from './lib/request-origin';
+import { publishVideo } from './lib/publish';
+import { executeSocialPublishingAgent, SocialPublishResult } from './lib/social-publisher';
 
 interface RenderRecord {
   projectId: string;
@@ -81,7 +83,7 @@ async function updateRunState(
   const runKey = `${projectId}/${runId}.json`;
   const now = new Date().toISOString();
   const existing = await store.get(runKey, { type: 'json' }) as Record<string, any> | null;
-  const next = {
+  const next: Record<string, any> = {
     ...(existing || { projectId, runId, createdAt: now }),
     ...patch,
     updatedAt: now,
@@ -120,6 +122,65 @@ function extractVideoUri(operation: VeoOperationResponse): string | null {
     || operation.response?.generated_videos?.[0]?.video?.uri
     || legacySampleUri
     || null;
+}
+
+function determinePipelineMode(agentResults: Record<string, any>): string {
+  const results = Object.values(agentResults || {});
+  const realAgents = results.filter((result: any) => !result?.fallback).length;
+  const totalAgents = results.length;
+
+  if (totalAgents === 0) return 'UNKNOWN';
+  if (realAgents === totalAgents) return 'FULL';
+  if (realAgents >= 3) return 'ENHANCED';
+  if (realAgents >= 1) return 'SIMPLE';
+  return 'DEMO';
+}
+
+function extractImageUrls(agentResults: Record<string, any>): string[] {
+  const scenes = agentResults?.director?.data?.scenes || [];
+  return scenes
+    .flatMap((scene: any) => scene?.assets || [])
+    .map((asset: any) => asset?.url)
+    .filter((url: unknown): url is string => typeof url === 'string' && url.length > 0);
+}
+
+function appendPublisherCosts(invoice: any, runId: string, publisherResults: Record<string, SocialPublishResult>) {
+  const items = Array.isArray(invoice?.items) ? [...invoice.items] : [];
+  const existingTasks = new Set(items.map((item: any) => `${item.agent}:${item.task}`));
+
+  for (const [key, result] of Object.entries(publisherResults)) {
+    if (!result.success) continue;
+    const platform = key.replace('publisher_', '');
+    const task = `Social: ${platform}`;
+    const marker = `Publisher:${task}`;
+    if (existingTasks.has(marker)) continue;
+
+    const baseCost = 0.01;
+    const markup = Number((baseCost * 0.2).toFixed(4));
+    items.push({
+      agent: 'Publisher',
+      task,
+      baseCost,
+      markup,
+      total: Number((baseCost + markup).toFixed(4)),
+    });
+  }
+
+  const subtotal = items.reduce((sum: number, item: any) => sum + Number(item.baseCost || 0), 0);
+  const markupTotal = items.reduce((sum: number, item: any) => sum + Number(item.markup || 0), 0);
+  const totalDue = items.reduce((sum: number, item: any) => sum + Number(item.total || 0), 0);
+
+  return {
+    jobId: invoice?.jobId || runId,
+    timestamp: invoice?.timestamp || new Date().toISOString(),
+    items,
+    subtotal: Number(subtotal.toFixed(4)),
+    markupTotal: Number(markupTotal.toFixed(4)),
+    totalDue: Number(totalDue.toFixed(4)),
+    currency: invoice?.currency || 'USD',
+    verified: invoice?.verified ?? true,
+    commonsGoodContribution: invoice?.commonsGoodContribution ?? true,
+  };
 }
 
 async function persistVeoVideo(projectId: string, runId: string, videoUri: string, baseUrl: string, geminiKey: string): Promise<string> {
@@ -298,78 +359,177 @@ export const handler: Handler = async (event: HandlerEvent) => {
         };
       }
 
-      const outputFile = projectId && runId
-        ? await persistVeoVideo(projectId, runId, videoUri, baseUrl, geminiKey)
-        : `${videoUri}${videoUri.includes('?') ? '&' : '?'}key=${geminiKey}`;
+      if (!projectId || !runId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            ok: false,
+            backend: 'veo2',
+            operationName,
+            done: true,
+            phase: 'error',
+            error: 'projectId and runId are required to persist Veo output without exposing credentials',
+          }),
+        };
+      }
+
+      let outputFile = '';
 
       if (projectId && runId) {
         const store = runsStore();
-        const existing = await store.get(`${projectId}/${runId}.json`, { type: 'json' }) as Record<string, any> | null;
-        const existingAgentResults = existing?.agentResults || {};
-        const updatedEditor = {
-          ...(existingAgentResults.editor || {}),
-          success: true,
-          data: {
-            ...(existingAgentResults.editor?.data || {}),
-            status: 'completed',
-            videoUrl: outputFile,
-            placeholder: false,
-            stored: true,
-            editor_backend: 'veo2',
-          },
-          fallback: false,
-        };
-        const publishTargets = Array.isArray(existing?.publishTargets) ? existing.publishTargets : [];
-        const isPublishPending = publishTargets.length > 0;
+        const existingBefore = await store.get(`${projectId}/${runId}.json`, { type: 'json' }) as Record<string, any> | null;
+        const completedUrl = existingBefore?.status === 'completed'
+          ? existingBefore?.artifacts?.videoUrl || existingBefore?.agentResults?.editor?.data?.videoUrl
+          : null;
 
-        await updateRunState(
-          projectId,
-          runId,
-          {
-            status: isPublishPending ? 'running' : 'completed',
-            progress: isPublishPending ? 98 : 100,
-            step: isPublishPending ? 'publisher' : 'completed',
-            message: isPublishPending
-              ? '✅ Video render finished. Publisher resume is still required for async renders.'
-              : '✅ Pipeline execution finished successfully',
-            artifacts: {
-              ...(existing?.artifacts || {}),
+        if (completedUrl) {
+          outputFile = completedUrl;
+        } else {
+          outputFile = await persistVeoVideo(projectId, runId, videoUri, baseUrl, geminiKey);
+          const existing = await store.get(`${projectId}/${runId}.json`, { type: 'json' }) as Record<string, any> | null;
+          const existingAgentResults = existing?.agentResults || {};
+          const updatedEditor = {
+            ...(existingAgentResults.editor || {}),
+            success: true,
+            data: {
+              ...(existingAgentResults.editor?.data || {}),
+              status: 'completed',
               videoUrl: outputFile,
-              duration: updatedEditor.data.duration,
               placeholder: false,
+              stored: true,
+              editor_backend: 'veo2',
+            },
+            fallback: false,
+          };
+
+          const publishTargets = Array.isArray(existing?.publishTargets)
+            ? existing.publishTargets
+            : Array.isArray(existing?.artifacts?.publishTargets)
+              ? existing.artifacts.publishTargets
+              : [];
+
+          let publisherResults: Record<string, SocialPublishResult> = {};
+          if (publishTargets.length > 0) {
+            await updateRunState(
+              projectId,
+              runId,
+              {
+                status: 'running',
+                progress: 98,
+                step: 'publisher',
+                message: `Video render finished. Publishing to ${publishTargets.join(', ')}...`,
+                artifacts: {
+                  ...(existing?.artifacts || {}),
+                  videoUrl: outputFile,
+                  duration: updatedEditor.data.duration,
+                  placeholder: false,
+                  editorStatus: 'completed',
+                  editorBackend: 'veo2',
+                },
+                agentResults: {
+                  ...existingAgentResults,
+                  editor: updatedEditor,
+                },
+              },
+              {
+                status: 'running',
+                videoUrl: outputFile,
+                placeholder: false,
+                pollUrl: undefined,
+                editorStatus: 'completed',
+                editorBackend: 'veo2',
+                agentResults: {
+                  ...existingAgentResults,
+                  editor: updatedEditor,
+                },
+                message: `Video render finished. Publishing to ${publishTargets.join(', ')}...`,
+                step: 'publisher',
+              },
+              [
+                { agent: 'editor', status: 'completed', message: 'Video render finished', progress: 97 },
+                { agent: 'publisher', status: 'running', message: `Publishing to ${publishTargets.join(', ')}`, progress: 98 },
+              ],
+            );
+
+            publisherResults = await executeSocialPublishingAgent({
+              baseUrl,
+              projectId,
+              runId,
+              publishTargets,
+              videoUrl: outputFile,
+              narrative: existingAgentResults.writer?.data?.narrative || '',
+              attributionData: existingAgentResults.attribution?.data,
+              imageUrls: extractImageUrls(existingAgentResults),
+            });
+          }
+
+          const nextAgentResults = {
+            ...existingAgentResults,
+            editor: updatedEditor,
+            ...publisherResults,
+          };
+          const successCount = Object.values(publisherResults).filter((result) => result.success).length;
+          const signedVideo = await publishVideo(outputFile, 24);
+          const invoice = appendPublisherCosts(existing?.artifacts?.invoice || existing?.invoice, runId, publisherResults);
+          const finalArtifacts = {
+            ...(existing?.artifacts || {}),
+            videoUrl: signedVideo.signedUrl,
+            expiresAt: signedVideo.expiresAt,
+            creditsUrl: existing?.artifacts?.creditsUrl || '/test-assets/credits.json',
+            duration: updatedEditor.data.duration || existing?.artifacts?.duration || 30,
+            placeholder: false,
+            agentResults: nextAgentResults,
+            pipelineMode: existing?.artifacts?.pipelineMode || determinePipelineMode(nextAgentResults),
+            invoice,
+            exchangeMode: signedVideo.mode,
+            publishTargets,
+            publishResults: {
+              attempted: publishTargets,
+              results: publisherResults,
+              successCount,
+              totalCount: Object.keys(publisherResults).length,
+            },
+          };
+
+          await updateRunState(
+            projectId,
+            runId,
+            {
+              status: 'completed',
+              progress: 100,
+              step: 'completed',
+              message: publishTargets.length > 0
+                ? `Pipeline completed after async render (${successCount}/${Object.keys(publisherResults).length} publishers succeeded)`
+                : 'Pipeline execution finished successfully',
+              artifacts: finalArtifacts,
+              agentResults: nextAgentResults,
+            },
+            {
+              status: 'completed',
+              videoUrl: signedVideo.signedUrl,
+              creditsUrl: finalArtifacts.creditsUrl,
+              pipelineMode: finalArtifacts.pipelineMode,
+              placeholder: false,
+              pollUrl: undefined,
               editorStatus: 'completed',
               editorBackend: 'veo2',
+              agentResults: nextAgentResults,
+              invoice,
+              publishTargets,
+              message: 'Pipeline execution finished successfully',
+              step: 'completed',
             },
-            agentResults: {
-              ...existingAgentResults,
-              editor: updatedEditor,
-            },
-          },
-          {
-            status: isPublishPending ? 'running' : 'completed',
-            videoUrl: outputFile,
-            placeholder: false,
-            pollUrl: undefined,
-            editorStatus: 'completed',
-            editorBackend: 'veo2',
-            agentResults: {
-              ...existingAgentResults,
-              editor: updatedEditor,
-            },
-            message: isPublishPending
-              ? '✅ Video render finished. Publisher resume is still required for async renders.'
-              : '✅ Pipeline execution finished successfully',
-            step: isPublishPending ? 'publisher' : 'completed',
-          },
-          isPublishPending
-            ? [
-                { agent: 'editor', status: 'completed', message: '✅ Video render finished', progress: 97 },
-              ]
-            : [
-                { agent: 'editor', status: 'completed', message: '✅ Video render finished', progress: 97 },
-                { agent: 'completed', status: 'completed', message: '✅ Pipeline execution finished successfully', progress: 100 },
-              ],
-        );
+            [
+              ...(publishTargets.length > 0
+                ? [{ agent: 'publisher' as const, status: 'completed' as const, message: `Publishing complete (${successCount}/${Object.keys(publisherResults).length} succeeded)`, progress: 99 }]
+                : [{ agent: 'editor' as const, status: 'completed' as const, message: 'Video render finished', progress: 97 }]),
+              { agent: 'completed', status: 'completed', message: 'Pipeline execution finished successfully', progress: 100 },
+            ],
+          );
+
+          outputFile = signedVideo.signedUrl;
+        }
       }
 
       return {

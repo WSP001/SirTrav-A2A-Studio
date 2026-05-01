@@ -658,7 +658,7 @@ async function executeSocialPublishingAgent(
       const ytData = await ytRes.json();
       if (ytData.success && ytData.youtubeId) {
         // Add UTM tracking for LinkedIn → YouTube attribution
-        youtubeVideoUrl = `https://youtube.com/watch?v=${ytData.youtubeId}?utm_source=linkedin&utm_medium=social&utm_campaign=seatrace-reel&utm_content=${projectId}`;
+        youtubeVideoUrl = `https://youtube.com/watch?v=${ytData.youtubeId}&utm_source=linkedin&utm_medium=social&utm_campaign=seatrace-reel&utm_content=${projectId}`;
         results[`publisher_youtube`] = { success: true, data: ytData, fallback: false };
         console.log(`✅ [Publisher] YouTube: ${ytData.youtubeUrl}`);
 
@@ -1073,6 +1073,9 @@ export const handler: Handler = async (event) => {
           pollUrl: editorData.pollUrl,
           editorStatus: editorData.status,
           editorBackend: editorData.editor_backend,
+          duration: editorData.duration,
+          invoice: manifest.generate(runId),
+          publishTargets: publishTargets || [],
         },
         agentResults,
         runningCost: manifest.getRunningTotal().totalDue,

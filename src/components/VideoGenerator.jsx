@@ -1,133 +1,123 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Play, AlertCircle, CheckCircle, Loader2, Key, Plus, Trash2, Film, Settings } from "lucide-react";
-
-const STORAGE_KEY = "sirtrav-video-api-keys";
+import React, { useEffect, useState } from "react";
+import { Play, AlertCircle, CheckCircle, Loader2, Film, ExternalLink } from "lucide-react";
 
 const STATUS = {
   idle: { label: "Ready to Generate", tone: "text-gray-500", icon: Film },
-  preparing: { label: "Validating request...", tone: "text-blue-500", icon: Loader2 },
-  generating: { label: "Generating Video...", tone: "text-purple-500", icon: Loader2 },
-  processing: { label: "Processing Assets...", tone: "text-indigo-500", icon: Loader2 },
+  preparing: { label: "Dispatching Renderer", tone: "text-blue-500", icon: Loader2 },
+  generating: { label: "Rendering Video", tone: "text-sky-500", icon: Loader2 },
   completed: { label: "Generation Complete", tone: "text-green-500", icon: CheckCircle },
   error: { label: "Generation Failed", tone: "text-red-500", icon: AlertCircle },
 };
 
-const maskKey = (value) => {
-  if (!value) return "";
-  const tail = value.slice(-4);
-  return `${"*".repeat(Math.max(value.length - 4, 0))}${tail}`;
+const rendererLabel = (backend) => {
+  if (backend === "veo2") return "Veo 2";
+  if (backend === "gemini_storyboard") return "Gemini Storyboard";
+  if (backend === "remotion") return "Remotion";
+  if (backend === "none") return "Disabled";
+  return backend || "Unknown";
 };
 
-const generateId = () => {
-  try {
-    if (typeof globalThis !== "undefined" && typeof globalThis.crypto?.randomUUID === "function") {
-      return globalThis.crypto.randomUUID();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function pollRender(pollUrl) {
+  for (let attempt = 0; attempt < 90; attempt += 1) {
+    const response = await fetch(pollUrl);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `Render progress failed (${response.status})`);
     }
-  } catch (err) {
-    // Fallback
+
+    if (data.done && data.outputFile) {
+      return data;
+    }
+
+    if (data.done && data.error) {
+      throw new Error(data.error);
+    }
+
+    await sleep(8000);
   }
-  return `key-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-};
+
+  throw new Error("Render did not finish before the polling window expired.");
+}
 
 function VideoGenerator({ projectId }) {
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
-  const [apiKeys, setApiKeys] = useState([]);
-  const [selectedKeyId, setSelectedKeyId] = useState("");
-  const [newKeyValue, setNewKeyValue] = useState("");
-  const [newKeyLabel, setNewKeyLabel] = useState("");
-  const [showKeyManager, setShowKeyManager] = useState(false);
 
-  // Load API Keys
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setApiKeys(parsed);
-          if (parsed[0]?.id) setSelectedKeyId(parsed[0].id);
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to read stored API keys", err);
-    }
-  }, []);
-
-  // Save API Keys
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(apiKeys));
-    } catch (err) {
-      console.warn("Failed to persist API keys", err);
-    }
-  }, [apiKeys]);
-
-  // Auto-fill prompt from projectId if available and prompt is empty
   useEffect(() => {
     if (projectId && !prompt) {
       setPrompt(`Generate a travel memory video for project: ${projectId}`);
     }
-  }, [projectId]);
-
-  const selectedKey = useMemo(
-    () => apiKeys.find((item) => item.id === selectedKeyId),
-    [apiKeys, selectedKeyId]
-  );
-
-  const handleSaveKey = () => {
-    const trimmedValue = newKeyValue.trim();
-    if (!trimmedValue) {
-      setError("Provide an API key value before saving.");
-      return;
-    }
-    const id = generateId();
-    const label = newKeyLabel.trim() || `Key ${apiKeys.length + 1}`;
-    const newKey = { id, label, value: trimmedValue, created: Date.now() };
-    
-    setApiKeys((prev) => [...prev, newKey]);
-    setSelectedKeyId(id);
-    setNewKeyValue("");
-    setNewKeyLabel("");
-    setError("");
-    setShowKeyManager(false);
-  };
-
-  const handleDeleteKey = (id) => {
-    setApiKeys((prev) => prev.filter((k) => k.id !== id));
-    if (selectedKeyId === id) setSelectedKeyId("");
-  };
+  }, [projectId, prompt]);
 
   const handleGenerate = async () => {
-    if (!selectedKey) {
-      setError("Please select or add a valid API Key.");
+    const narrative = prompt.trim();
+    if (!narrative) {
+      setError("Enter a video prompt before dispatching the renderer.");
       return;
     }
-    if (!prompt.trim()) {
-      setError("Please enter a prompt for the video.");
-      return;
-    }
+
+    const effectiveProjectId = projectId || `video-${Date.now()}`;
+    const runId = `video-${Date.now()}`;
 
     setError("");
     setStatus("preparing");
     setResult(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setStatus("generating");
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setStatus("processing");
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      const response = await fetch("/.netlify/functions/compile-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: effectiveProjectId,
+          runId,
+          narrative,
+          resolution: "1080p",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 202) {
+        throw new Error(data.message || data.error || data.reason || `Renderer failed (${response.status})`);
+      }
+
+      if (data.disabled === true || data.editor_backend === "gemini_storyboard") {
+        throw new Error(data.message || data.reason || "Renderer did not produce a video file.");
+      }
+
+      if (data.status === "rendering" && data.pollUrl) {
+        setStatus("generating");
+        setResult({
+          runId,
+          pollUrl: data.pollUrl,
+          renderer: rendererLabel(data.editor_backend),
+          jobId: data.jobId,
+        });
+        const done = await pollRender(data.pollUrl);
+        setResult({
+          runId,
+          url: done.outputFile,
+          renderer: rendererLabel(done.backend || data.editor_backend),
+          jobId: data.jobId || done.operationName,
+          duration: data.duration,
+        });
+        setStatus("completed");
+        return;
+      }
+
+      if (!data.videoUrl) {
+        throw new Error("Renderer returned without a videoUrl or pollUrl.");
+      }
+
       setResult({
-        url: "https://example.com/video.mp4", // Mock URL
-        thumbnail: "https://placehold.co/600x400/1a1a1a/purple?text=Video+Preview",
-        duration: "00:15"
+        runId,
+        url: data.videoUrl,
+        renderer: rendererLabel(data.editor_backend),
+        duration: data.duration,
       });
       setStatus("completed");
     } catch (err) {
@@ -137,89 +127,11 @@ function VideoGenerator({ projectId }) {
   };
 
   const StatusIcon = STATUS[status].icon;
+  const busy = status === "preparing" || status === "generating";
 
   return (
     <div className="bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)] shadow-sm overflow-hidden">
       <div className="p-6 space-y-6">
-        
-        {/* API Key Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)] flex items-center gap-2">
-              <Key className="w-4 h-4" /> API Configuration
-            </label>
-            <button 
-              onClick={() => setShowKeyManager(!showKeyManager)}
-              className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1"
-            >
-              <Settings className="w-3 h-3" />
-              {showKeyManager ? "Hide Manager" : "Manage Keys"}
-            </button>
-          </div>
-
-          {showKeyManager ? (
-            <div className="p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] space-y-4 animate-in fade-in slide-in-from-top-2">
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Key Label (e.g. Production Key)"
-                  value={newKeyLabel}
-                  onChange={(e) => setNewKeyLabel(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder="sk-..."
-                    value={newKeyValue}
-                    onChange={(e) => setNewKeyValue(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  />
-                  <button
-                    onClick={handleSaveKey}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" /> Add
-                  </button>
-                </div>
-              </div>
-              
-              {apiKeys.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
-                  {apiKeys.map((key) => (
-                    <div key={key.id} className="flex items-center justify-between p-2 hover:bg-[var(--color-bg-secondary)] rounded-md group">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{key.label}</span>
-                        <span className="text-xs text-[var(--color-text-secondary)] font-mono">{maskKey(key.value)}</span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteKey(key.id)}
-                        className="p-1 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <select
-              value={selectedKeyId}
-              onChange={(e) => setSelectedKeyId(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            >
-              <option value="">Select an API Key...</option>
-              {apiKeys.map((key) => (
-                <option key={key.id} value={key.id}>
-                  {key.label} ({maskKey(key.value)})
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* Prompt Section */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-[var(--color-text-secondary)]">
             Video Prompt
@@ -228,17 +140,16 @@ function VideoGenerator({ projectId }) {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the video you want to generate..."
-            className="w-full h-32 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+            className="w-full h-32 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none"
           />
           {projectId && (
             <p className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="w-2 h-2 rounded-full bg-green-500" />
               Linked to Project: <span className="font-mono text-[var(--color-text-primary)]">{projectId}</span>
             </p>
           )}
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-sm text-red-400">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -246,53 +157,63 @@ function VideoGenerator({ projectId }) {
           </div>
         )}
 
-        {/* Generate Button */}
         <button
           onClick={handleGenerate}
-          disabled={status !== "idle" && status !== "completed" && status !== "error"}
+          disabled={busy}
           className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
-            status === "idle" || status === "completed" || status === "error"
-              ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20"
-              : "bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed"
+            busy
+              ? "bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed"
+              : "bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-500/20"
           }`}
         >
-          {status === "idle" || status === "completed" || status === "error" ? (
+          {busy ? (
             <>
-              <Play className="w-4 h-4 fill-current" /> Generate Video
+              <Loader2 className="w-4 h-4 animate-spin" /> {STATUS[status].label}
             </>
           ) : (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" /> {STATUS[status].label}
+              <Play className="w-4 h-4 fill-current" /> Generate Video
             </>
           )}
         </button>
 
-        {/* Result Preview */}
         {(status !== "idle" || result) && (
           <div className="pt-6 border-t border-[var(--color-border)] animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`p-2 rounded-full ${status === "completed" ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}>
-                <StatusIcon className={`w-5 h-5 ${status === "generating" || status === "processing" || status === "preparing" ? "animate-spin" : ""}`} />
+              <div className={`p-2 rounded-full ${status === "completed" ? "bg-green-500/10 text-green-500" : "bg-sky-500/10 text-sky-500"}`}>
+                <StatusIcon className={`w-5 h-5 ${busy ? "animate-spin" : ""}`} />
               </div>
               <div>
                 <h3 className="font-medium">{STATUS[status].label}</h3>
                 <p className="text-xs text-[var(--color-text-secondary)]">
-                  {status === "completed" ? "Video is ready to view" : "Please wait while we process your request"}
+                  {result?.renderer ? `Renderer: ${result.renderer}` : "Waiting for renderer response"}
                 </p>
               </div>
             </div>
 
-            {result && status === "completed" && (
-              <div className="relative aspect-video bg-black rounded-lg overflow-hidden group border border-[var(--color-border)]">
-                <img src={result.thumbnail} alt="Video Preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Play className="w-8 h-8 text-white fill-white ml-1" />
-                  </button>
-                </div>
-                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs font-mono text-white">
-                  {result.duration}
-                </div>
+            {result?.jobId && (
+              <div className="mb-4 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] p-3 text-xs">
+                <span className="text-[var(--color-text-secondary)]">Job:</span>{" "}
+                <span className="font-mono break-all">{result.jobId}</span>
+              </div>
+            )}
+
+            {result?.url && status === "completed" && (
+              <div className="space-y-3">
+                <video
+                  src={result.url}
+                  controls
+                  className="w-full aspect-video bg-black rounded-lg border border-[var(--color-border)]"
+                />
+                <a
+                  href={result.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open rendered video
+                </a>
               </div>
             )}
           </div>

@@ -30,6 +30,7 @@ interface ServiceStatus {
   status: ServiceState;
   latency_ms?: number;
   error?: string;
+  details?: Record<string, unknown>;
 }
 
 interface PublisherStatus {
@@ -129,15 +130,93 @@ async function checkStorage(): Promise<ServiceStatus> {
   }
 }
 
-function checkAIServices(): ServiceStatus {
+type VeoProbeResult = {
+  reachable: boolean;
+  reason: string;
+  checkedAt?: string;
+  modelCount?: number;
+};
+
+let veoProbeCache: { expiresAt: number; result: VeoProbeResult } | null = null;
+const VEO_PROBE_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function checkVeoReachability(): Promise<VeoProbeResult> {
+  const now = Date.now();
+  if (veoProbeCache && veoProbeCache.expiresAt > now) {
+    return veoProbeCache.result;
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    return { reachable: false, reason: 'GEMINI_API_KEY missing' };
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      const result = {
+        reachable: false,
+        reason: `models.list failed: HTTP ${response.status}${body ? ` ${body.slice(0, 120)}` : ''}`,
+        checkedAt: new Date(now).toISOString(),
+      };
+      veoProbeCache = { expiresAt: now + VEO_PROBE_TTL_MS, result };
+      return result;
+    }
+
+    const data = await response.json() as { models?: Array<{ name?: string }> };
+    const models = Array.isArray(data.models) ? data.models : [];
+    const reachable = models.some((model) => model.name?.includes('veo-2.0-generate-001'));
+    const result = {
+      reachable,
+      reason: reachable ? 'Veo 2 model listed for this key' : 'Veo 2 model not listed for this key tier',
+      checkedAt: new Date(now).toISOString(),
+      modelCount: models.length,
+    };
+    veoProbeCache = { expiresAt: now + VEO_PROBE_TTL_MS, result };
+    return result;
+  } catch (error: any) {
+    const result = {
+      reachable: false,
+      reason: error?.message || 'Veo reachability probe failed',
+      checkedAt: new Date(now).toISOString(),
+    };
+    veoProbeCache = { expiresAt: now + VEO_PROBE_TTL_MS, result };
+    return result;
+  }
+}
+
+async function checkAIServices(): Promise<ServiceStatus> {
   const hasGemini = !!process.env.GEMINI_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   const hasElevenLabs = !!process.env.ELEVENLABS_API_KEY;
   if (hasGemini || hasOpenAI) {
+    const veo = hasGemini
+      ? await checkVeoReachability()
+      : { reachable: false, reason: 'GEMINI_API_KEY missing; OpenAI fallback only', checkedAt: undefined, modelCount: undefined };
+    const warnings = [
+      hasElevenLabs ? null : 'ELEVENLABS_API_KEY missing (voice degraded)',
+      hasGemini && !veo.reachable ? `Veo 2 not reachable (${veo.reason})` : null,
+      !hasGemini ? 'GEMINI_API_KEY missing (Veo disabled)' : null,
+    ].filter(Boolean);
+
     return {
       name: 'ai_services',
-      status: hasElevenLabs ? 'ok' : 'degraded',
-      error: hasElevenLabs ? undefined : 'ELEVENLABS_API_KEY missing (voice degraded)',
+      status: warnings.length === 0 ? 'ok' : 'degraded',
+      error: warnings.length > 0 ? warnings.join('; ') : undefined,
+      details: {
+        gemini_present: hasGemini,
+        openai_present: hasOpenAI,
+        elevenlabs_present: hasElevenLabs,
+        veo2_reachable: veo.reachable,
+        veo2_reason: veo.reason,
+        veo2_checked_at: veo.checkedAt,
+        veo2_model_count: veo.modelCount,
+      },
     };
   }
   return { name: 'ai_services', status: 'down', error: 'No AI keys (GEMINI or OPENAI) present' };
@@ -350,7 +429,7 @@ export default async (req: Request) => {
   try {
     const pipeline = checkPipeline();
     const storageStatus = await checkStorage();
-    const aiStatus = checkAIServices();
+    const aiStatus = await checkAIServices();
     const progressStatus = checkProgress();
     const socialStatus = checkSocial();
     const services = [storageStatus, aiStatus, progressStatus, socialStatus];

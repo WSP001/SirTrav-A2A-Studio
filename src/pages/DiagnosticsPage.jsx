@@ -21,6 +21,10 @@ function remotionModeClass(mode) {
   return "diag-badge diag-gray";
 }
 
+function presenceBadge(value) {
+  return value ? "diag-badge diag-green" : "diag-badge diag-red";
+}
+
 export default function DiagnosticsPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -58,6 +62,12 @@ export default function DiagnosticsPage() {
     const agents = data?.pipeline?.agents || {};
     return Object.entries(agents).map(([name, wired]) => ({ name, wired: !!wired }));
   }, [data]);
+
+  const aiService = useMemo(() => {
+    return (data?.services || []).find((svc) => svc.name === "ai_services") || null;
+  }, [data]);
+
+  const aiDetails = aiService?.details || {};
 
   return (
     <div className="app min-h-screen relative">
@@ -101,7 +111,34 @@ export default function DiagnosticsPage() {
 
             {data.remotion && (
               <section className="glass-card p-6">
-                <h2 className="section-title mb-4">Render Fallback (Remotion)</h2>
+                <h2 className="section-title mb-4">Render Pipeline</h2>
+                <div className="diag-grid-4 mb-4">
+                  <div className="diag-tile">
+                    <p className="diag-label">Gemini Key</p>
+                    <span className={presenceBadge(aiDetails.gemini_present)}>
+                      {aiDetails.gemini_present ? "PRESENT" : "MISSING"}
+                    </span>
+                  </div>
+                  <div className="diag-tile">
+                    <p className="diag-label">Veo 2 Reachable</p>
+                    <span className={presenceBadge(aiDetails.veo2_reachable)}>
+                      {aiDetails.veo2_reachable ? "YES" : "NO"}
+                    </span>
+                    {aiDetails.veo2_reason ? <p className="diag-meta mt-2">{aiDetails.veo2_reason}</p> : null}
+                  </div>
+                  <div className="diag-tile">
+                    <p className="diag-label">OpenAI Fallback</p>
+                    <span className={presenceBadge(aiDetails.openai_present)}>
+                      {aiDetails.openai_present ? "PRESENT" : "MISSING"}
+                    </span>
+                  </div>
+                  <div className="diag-tile">
+                    <p className="diag-label">Voice Key</p>
+                    <span className={presenceBadge(aiDetails.elevenlabs_present)}>
+                      {aiDetails.elevenlabs_present ? "PRESENT" : "MISSING"}
+                    </span>
+                  </div>
+                </div>
                 <p className="diag-meta mb-4">
                   Primary video dispatch now runs through Veo 2 in <code>compile-video.ts</code> when{" "}
                   <code>GEMINI_API_KEY</code> is present. This panel reports the Remotion fallback path only.
