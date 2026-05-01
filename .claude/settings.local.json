@@ -39,7 +39,10 @@
       "Bash(pwsh -NoLogo -Command \"Start-Sleep -Seconds 20; Write-Host ''ready''\")",
       "Bash(pwsh -NoLogo -Command \":*)",
       "Bash(pwsh -NoLogo -Command \"git -C ''C:\\\\WSP001\\\\R.-Scott-Echols-CV'' push origin main 2>&1\")",
-      "Bash(pwsh -NoLogo -Command \"git -C ''C:\\\\WSP001\\\\R.-Scott-Echols-CV'' log --oneline -3\")"
+      "Bash(pwsh -NoLogo -Command \"git -C ''C:\\\\WSP001\\\\R.-Scott-Echols-CV'' log --oneline -3\")",
+      "PowerShell($PSVersionTable.PSVersion)",
+      "PowerShell(pwsh -NoProfile -Command \". 'C:\\\\Users\\\\Roberto002\\\\Documents\\\\PowerShell\\\\Microsoft.PowerShell_profile.ps1'; Write-Host 'Profile loaded OK'\" 2>&1 | Select-Object -First 10)",
+      "Bash(grep -n \"^# ===\\\\|^[a-z].*:$\\\\|^[a-z].*:  #\" \"C:\\\\WSP001\\\\SirTrav-A2A-Studio\\\\.claude\\\\worktrees\\\\intelligent-mendel-066fb6\\\\justfile\")"
     ]
   }
 }

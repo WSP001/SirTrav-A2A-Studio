@@ -10,7 +10,7 @@
 # - Commons Good: 20% markup tracking
 
 # Use PowerShell on Windows
-set shell := ["powershell", "-NoProfile", "-Command"]
+set shell := ["pwsh", "-NoProfile", "-Command"]
 
 # Default: show all available commands
 default:
@@ -2349,4 +2349,49 @@ env-diff:
         console.log('  💡 Cloud values sourced from: node scripts/master-cockpit.mjs --json'); \
         console.log('  💡 For authoritative key management: Netlify Dashboard > Site > Environment variables'); \
     "
+
+# ============================================
+# 🤖 MULTI-AGENT CLI PLAYBOOK
+# ============================================
+# 4-role loop: Plan → Execute → Verify → Handoff
+# Agent A plans. Agent B executes. Agent C verifies. Human approves.
+# Requires: gh copilot CLI installed (ghcs/ghce aliases in PS7 profile)
+# ============================================
+
+# PLAN: Copilot read-only planning pass — define task, acceptance criteria, affected files
+# Usage: just plan task="add loading skeleton to DiagnosticsPage"
+plan task="":
+    @echo "📋 PLAN — Copilot read-only planning pass"
+    @echo "Task: {{task}}"
+    @gh copilot suggest "Create a concise implementation plan for: {{task}}. Include: (1) files likely affected, (2) acceptance criteria, (3) tests to run, (4) risks. Do not change files."
+
+# DELEGATE: Hand task to Copilot cloud agent — creates branch + draft PR
+# Usage: just delegate task="add loading skeleton to DiagnosticsPage"
+delegate task="":
+    @echo "🚀 DELEGATE — Copilot cloud agent (creates branch + draft PR)"
+    @echo "Task: {{task}}"
+    @gh copilot suggest "/delegate {{task}} — open a draft PR with implementation summary and test results"
+
+# VERIFY: Independent verification pass — does NOT trust the executor
+# Usage: just verify task="loading skeleton on DiagnosticsPage"
+verify task="":
+    @echo "🔍 VERIFY — Independent read-only verification pass"
+    @echo "Checking: {{task}}"
+    @gh copilot suggest "Review the current working tree and verify whether the following was completed correctly: {{task}}. List gaps, missing tests, edge cases, and scope creep only. Do not modify files."
+
+# HANDOFF: Generate handoff note for current branch — portable between agents
+handoff:
+    @echo "📝 HANDOFF — Generating agent handoff summary"
+    @gh copilot explain "Summarize the current branch changes as a handoff note. Include: changed files, what was done, why, how to verify it, and what remains uncertain or incomplete."
+
+# TRIAGE: Read-only risk ranking of backend functions — run before sprint
+triage:
+    @echo "🔬 TRIAGE — Read-only risk analysis of netlify/functions/"
+    @gh copilot suggest "Analyze netlify/functions/ and netlify/functions/lib/ and rank the top 5 risky code paths by severity. One-line reason per item. Do not modify files."
+
+# EXPLAIN: Ask Copilot to explain a file or concept to another agent
+# Usage: just explain target="run-pipeline-background.ts"
+explain target="":
+    @echo "💬 EXPLAIN — Copilot code explanation"
+    @gh copilot explain "Explain what {{target}} does and how it fits into the pipeline. Focus on entry points, side effects, and what could break."
 
