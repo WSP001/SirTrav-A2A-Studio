@@ -574,7 +574,12 @@ function App() {
                             <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB • Ready for Agents</p>
                           </div>
                         </div>
-                        <button onClick={() => removeFile(idx)} className="text-gray-500 hover:text-red-400">
+                        <button
+                          type="button"
+                          onClick={() => removeFile(idx)}
+                          className="text-gray-500 hover:text-red-400"
+                          aria-label={`Remove ${file.name}`}
+                        >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
@@ -585,6 +590,7 @@ function App() {
 
               {/* Weekly Recap Template */}
               <button
+                type="button"
                 onClick={() => {
                   setFiles([
                     new File(["(dummy content)"], "journal_entry_day1.txt", { type: "text/plain" }),
@@ -594,6 +600,7 @@ function App() {
                   setProjectId(`week${new Date().getWeekNumber()}_recap_demo`);
                 }}
                 className="btn-template mt-4 w-full"
+                aria-label="Use weekly recap demo template"
               >
                 <span>📅</span> Use Weekly Recap Template
               </button>
@@ -686,9 +693,12 @@ function App() {
                   { id: 'linkedin', label: 'LinkedIn', icon: '💼', ratio: '16:9' }
                 ].map(p => (
                   <button
+                    type="button"
                     key={p.id}
                     onClick={() => setTargetPlatform(p.id)}
                     disabled={files.length === 0 || pipelineStatus === 'running'}
+                    aria-pressed={targetPlatform === p.id}
+                    aria-label={`Select ${p.label} output format`}
                     className={`relative p-3 rounded-lg border text-left transition-all ${targetPlatform === p.id
                       ? 'bg-amber-900/40 border-amber-500 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
                       : 'bg-gray-900/50 border-gray-700 hover:bg-gray-800'
@@ -709,6 +719,7 @@ function App() {
 
                 {/* 🐦 SPECIAL X AGENT TOGGLE (MG-008 Polish) */}
                 <button
+                  type="button"
                   onClick={() => {
                     if (targetPlatform !== 'twitter') {
                       setTargetPlatform('twitter');
@@ -716,6 +727,8 @@ function App() {
                     }
                   }}
                   disabled={files.length === 0 || pipelineStatus === 'running'}
+                  aria-pressed={targetPlatform === 'twitter'}
+                  aria-label="Select X Twitter output format"
                   className={`relative p-3 rounded-lg border text-left transition-all group overflow-hidden ${targetPlatform === 'twitter'
                     ? 'bg-[#1DA1F2]/20 border-[#1DA1F2] shadow-[0_0_15px_rgba(29,161,242,0.4)]'
                     : 'bg-gray-900/50 border-gray-700 hover:border-[#1DA1F2]/50'
@@ -744,8 +757,9 @@ function App() {
                 <div className="grid grid-cols-2 gap-3">
                   {/* Voice Style */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Voice Style</label>
+                    <label htmlFor="voice-style" className="text-xs text-gray-400">Voice Style</label>
                     <select
+                      id="voice-style"
                       value={voiceStyle}
                       onChange={(e) => setVoiceStyle(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
@@ -758,8 +772,9 @@ function App() {
 
                   {/* Video Length */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Length</label>
+                    <label htmlFor="video-length" className="text-xs text-gray-400">Length</label>
                     <select
+                      id="video-length"
                       value={videoLength}
                       onChange={(e) => setVideoLength(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 text-white text-xs rounded p-2 focus:ring-1 focus:ring-amber-500 outline-none"
@@ -862,20 +877,24 @@ function App() {
               {/* Music Mode Toggle */}
               <div className="mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Audio Engine</label>
+                  <span id="audio-engine-label" className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Audio Engine</span>
                   <span className="text-[10px] text-gray-400">{musicMode === 'suno' ? 'AI Generated (Requires API)' : 'Local File Fallback'}</span>
                 </div>
-                <div className="flex bg-gray-900 rounded p-0.5">
+                <div className="flex bg-gray-900 rounded p-0.5" role="group" aria-labelledby="audio-engine-label">
                   <button
+                    type="button"
                     onClick={() => setMusicMode('suno')}
                     disabled={files.length === 0}
+                    aria-pressed={musicMode === 'suno'}
                     className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'suno' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                   >
                     Suno AI
                   </button>
                   <button
+                    type="button"
                     onClick={() => setMusicMode('manual')}
                     disabled={files.length === 0}
+                    aria-pressed={musicMode === 'manual'}
                     className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${musicMode === 'manual' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                   >
                     Manual Mode
@@ -901,8 +920,10 @@ function App() {
 
               {/* Big Launch Button */}
               <button
+                type="button"
                 onClick={runPipeline}
                 disabled={files.length === 0 || pipelineStatus === 'running'}
+                aria-label={`Launch ${targetPlatform.replace('_', ' ')} agent pipeline`}
                 className={`w-full py-3 rounded-lg font-bold text-white text-sm flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${pipelineStatus === 'running'
                   ? 'bg-gray-700 cursor-wait'
                   : files.length > 0
@@ -1015,13 +1036,17 @@ function App() {
                 <div className="flex items-center justify-center gap-4 p-4 bg-white/5 rounded-xl">
                   <span className="text-sm text-gray-400">Rate this output:</span>
                   <button
+                    type="button"
                     onClick={() => handleFeedback('good')}
+                    aria-label="Rate this output good"
                     className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 transition-colors"
                   >
                     <ThumbsUp className="w-4 h-4" /> Good
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleFeedback('bad')}
+                    aria-label="Rate this output bad"
                     className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
                   >
                     <ThumbsDown className="w-4 h-4" /> Bad
@@ -1038,21 +1063,27 @@ function App() {
                   <label className="text-xs text-gray-500 uppercase tracking-wide">Visibility</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
+                      type="button"
                       onClick={() => setPublishMode('private')}
+                      aria-pressed={publishMode === 'private'}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'private' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
                       <Lock className="w-4 h-4" />
                       <span className="text-xs">Private</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPublishMode('unlisted')}
+                      aria-pressed={publishMode === 'unlisted'}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'unlisted' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
                       <Share2 className="w-4 h-4" />
                       <span className="text-xs">Unlisted</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPublishMode('public')}
+                      aria-pressed={publishMode === 'public'}
                       className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${publishMode === 'public' ? 'bg-brand-500/20 border-brand-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                     >
                       <Globe className="w-4 h-4" />
@@ -1076,35 +1107,35 @@ function App() {
                   <label className="text-xs text-gray-500 uppercase tracking-wide">Publish to Social Media</label>
                   <div className="grid grid-cols-2 gap-2">
                     {activePublishTargets.includes('youtube') && (
-                      <button className="social-btn youtube">
+                      <button type="button" className="social-btn youtube" aria-label="Publish to YouTube">
                         <Youtube className="w-5 h-5" />
                         <span>YouTube</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                       </button>
                     )}
                     {activePublishTargets.includes('tiktok') && (
-                      <button className="social-btn tiktok">
+                      <button type="button" className="social-btn tiktok" aria-label="Publish to TikTok">
                         <span className="text-lg">📱</span>
                         <span>TikTok</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                       </button>
                     )}
                     {activePublishTargets.includes('instagram') && (
-                      <button className="social-btn instagram">
+                      <button type="button" className="social-btn instagram" aria-label="Publish to Instagram">
                         <Instagram className="w-5 h-5" />
                         <span>Instagram</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                       </button>
                     )}
                     {activePublishTargets.includes('x') && (
-                      <button className="social-btn twitter">
+                      <button type="button" className="social-btn twitter" aria-label="Publish to X Twitter">
                         <Twitter className="w-5 h-5" />
                         <span>X (Twitter)</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                       </button>
                     )}
                     {activePublishTargets.includes('linkedin') && (
-                      <button className="social-btn linkedin">
+                      <button type="button" className="social-btn linkedin" aria-label="Publish to LinkedIn">
                         <span className="text-lg">💼</span>
                         <span>LinkedIn</span>
                         <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
@@ -1121,7 +1152,11 @@ function App() {
                     value={`${STUDIO_PERSONA.publicAppUrl}/v/${projectId}`}
                     className="input-field flex-1 text-sm"
                   />
-                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+                    aria-label="Copy public video link"
+                  >
                     Copy
                   </button>
                 </div>
