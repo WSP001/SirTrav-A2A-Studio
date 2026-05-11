@@ -9,7 +9,8 @@
 # - Click2Kick: Read before execute
 # - Commons Good: 20% markup tracking
 
-# Use PowerShell on Windows
+# Use PowerShell 7 (pwsh) — requires pwsh 7+ installed. See https://aka.ms/powershell
+# Note: legacy @powershell inline calls in this file still target Windows PowerShell 5.1.
 set shell := ["pwsh", "-NoProfile", "-Command"]
 
 # Default: show all available commands
@@ -2360,24 +2361,24 @@ env-diff:
 
 # PLAN: Copilot read-only planning pass — define task, acceptance criteria, affected files
 # Usage: just plan task="add loading skeleton to DiagnosticsPage"
-plan task="":
+plan task:
     @echo "📋 PLAN — Copilot read-only planning pass"
     @echo "Task: {{task}}"
-    @gh copilot suggest "Create a concise implementation plan for: {{task}}. Include: (1) files likely affected, (2) acceptance criteria, (3) tests to run, (4) risks. Do not change files."
+    @gh copilot suggest "Create a concise implementation plan for: '{{task}}'. Include: (1) files likely affected, (2) acceptance criteria, (3) tests to run, (4) risks. Do not change files."
 
 # DELEGATE: Hand task to Copilot cloud agent — creates branch + draft PR
 # Usage: just delegate task="add loading skeleton to DiagnosticsPage"
-delegate task="":
+delegate task:
     @echo "🚀 DELEGATE — Copilot cloud agent (creates branch + draft PR)"
     @echo "Task: {{task}}"
-    @gh copilot suggest "/delegate {{task}} — open a draft PR with implementation summary and test results"
+    @gh copilot suggest "/delegate '{{task}}' — open a draft PR with implementation summary and test results"
 
 # VERIFY: Independent verification pass — does NOT trust the executor
 # Usage: just verify task="loading skeleton on DiagnosticsPage"
-verify task="":
+verify task:
     @echo "🔍 VERIFY — Independent read-only verification pass"
     @echo "Checking: {{task}}"
-    @gh copilot suggest "Review the current working tree and verify whether the following was completed correctly: {{task}}. List gaps, missing tests, edge cases, and scope creep only. Do not modify files."
+    @gh copilot suggest "Review the current working tree and verify whether the following was completed correctly: '{{task}}'. List gaps, missing tests, edge cases, and scope creep only. Do not modify files."
 
 # HANDOFF: Generate handoff note for current branch — portable between agents
 handoff:
@@ -2391,7 +2392,7 @@ triage:
 
 # EXPLAIN: Ask Copilot to explain a file or concept to another agent
 # Usage: just explain target="run-pipeline-background.ts"
-explain target="":
+explain target:
     @echo "💬 EXPLAIN — Copilot code explanation"
-    @gh copilot explain "Explain what {{target}} does and how it fits into the pipeline. Focus on entry points, side effects, and what could break."
+    @gh copilot explain "Explain what '{{target}}' does and how it fits into the pipeline. Focus on entry points, side effects, and what could break."
 
