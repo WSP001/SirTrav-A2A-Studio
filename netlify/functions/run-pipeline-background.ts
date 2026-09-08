@@ -239,7 +239,9 @@ async function executeWriterAgent(
     const { assembleRetrievalPack } = await import('./lib/content-seed');
     const pack = await assembleRetrievalPack(producerBrief || projectId);
     if (pack.assembled) {
-      console.log(`[Writer] Retrieval pack ready — identity:${pack.identity.length} style:${pack.styleExamples.length} projects:${pack.projects.length}`);
+      console.log(`[Writer] Retrieval pack ready — status:${pack.status} identity:${pack.identity.length} style:${pack.styleExamples.length} projects:${pack.projects.length} linkedin:${pack.linkedinHistory.length}`);
+    } else {
+      console.warn(`[Writer] Retrieval pack EMPTY — status:${pack.status}. Writing from identity seed only. partitions=${JSON.stringify(pack.partitions)}`);
     }
 
     const mood = curatedMedia?.scenes?.[0]?.dominant_mood || 'reflective';

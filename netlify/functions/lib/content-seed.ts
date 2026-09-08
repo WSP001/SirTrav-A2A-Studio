@@ -123,12 +123,45 @@ const FALLBACK_IDENTITY: IdentityContext = {
  * assembled: pre-built prompt block ready for direct injection.
  * No loose chunks reach the Writer — one structured payload only.
  */
+/**
+ * Retrieval observability — same contract as the CV chatbot's RagStatus
+ * (R.-Scott-Echols-CV netlify/edge-functions/chat.ts). Every outcome that is
+ * not 'ok' is distinguishable in logs, so a dead partition, a 502 from Cloud
+ * Run, an unset VECTOR_ENGINE_URL and a genuinely empty result no longer look
+ * identical. The 2026-09 linkedin_history outage went unnoticed for months
+ * because they did.
+ *
+ *   disabled        VECTOR_ENGINE_URL unset (or blank query)
+ *   ok              >=1 chunk returned
+ *   empty           HTTP 200, zero chunks — also what /query returns for a
+ *                   partition that is NOT in api_server.py ALLOWED_PARTITIONS
+ *   upstream_error  HTTP 5xx
+ *   rejected        HTTP 4xx (non-retryable)
+ *   malformed       body was not { context_chunks: string[] }
+ *   timeout         AbortSignal fired (5 s)
+ *   unreachable     network / DNS failure
+ */
+export type RetrievalStatus =
+  | 'disabled' | 'ok' | 'empty' | 'upstream_error' | 'rejected' | 'malformed' | 'timeout' | 'unreachable';
+
+export interface PartitionOutcome {
+  partition: string;
+  status: RetrievalStatus;
+  chunks: string[];
+  http?: number;
+  detail?: string;
+}
+
 export interface RetrievalPack {
   identity: string[];
   styleExamples: string[];
   projects: string[];
   linkedinHistory: string[];
   assembled: string;
+  /** Overall status: 'ok' if any partition returned chunks; otherwise the worst partition status. */
+  status: RetrievalStatus;
+  /** Per-partition outcome, for logs and the pipeline result. */
+  partitions: Record<string, { status: RetrievalStatus; count: number; http?: number; detail?: string }>;
 }
 
 const EMPTY_PACK: RetrievalPack = {
@@ -137,15 +170,17 @@ const EMPTY_PACK: RetrievalPack = {
   projects: [],
   linkedinHistory: [],
   assembled: '',
+  status: 'disabled',
+  partitions: {},
 };
 
-/** Single-partition fetch — internal helper. Returns [] on any failure. */
+/** Single-partition fetch — internal helper. Never throws; the outcome carries the reason. */
 async function fetchPartition(
   vectorEngineUrl: string,
   query: string,
   partition: string,
   nResults: number
-): Promise<string[]> {
+): Promise<PartitionOutcome> {
   try {
     const res = await fetch(`${vectorEngineUrl}/query`, {
       method: 'POST',
@@ -153,41 +188,116 @@ async function fetchPartition(
       body: JSON.stringify({ query, partitions: [partition], n_results: nResults }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data?.context_chunks ?? [];
-  } catch {
-    return [];
+    if (!res.ok) {
+      return {
+        partition,
+        status: res.status >= 500 ? 'upstream_error' : 'rejected',
+        chunks: [],
+        http: res.status,
+      };
+    }
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      return { partition, status: 'malformed', chunks: [], http: res.status, detail: 'non-JSON body' };
+    }
+    const raw = (data as { context_chunks?: unknown } | null)?.context_chunks;
+    if (!Array.isArray(raw)) {
+      return { partition, status: 'malformed', chunks: [], http: res.status, detail: 'context_chunks missing or not an array' };
+    }
+    const chunks = raw.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+    if (chunks.length !== raw.length) {
+      return {
+        partition,
+        status: 'malformed',
+        chunks: [],
+        http: res.status,
+        detail: `${raw.length - chunks.length}/${raw.length} chunk(s) not non-empty strings`,
+      };
+    }
+    return { partition, status: chunks.length > 0 ? 'ok' : 'empty', chunks, http: res.status };
+  } catch (err: unknown) {
+    const name = err instanceof Error ? err.name : '';
+    const isTimeout = name === 'TimeoutError' || name === 'AbortError';
+    return {
+      partition,
+      status: isTimeout ? 'timeout' : 'unreachable',
+      chunks: [],
+      detail: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+const STATUS_SEVERITY: Record<RetrievalStatus, number> = {
+  ok: 0, empty: 1, disabled: 2, rejected: 3, malformed: 4, timeout: 5, upstream_error: 6, unreachable: 7,
+};
+
+function worstStatus(outcomes: PartitionOutcome[]): RetrievalStatus {
+  return outcomes.reduce<RetrievalStatus>(
+    (worst, o) => (STATUS_SEVERITY[o.status] > STATUS_SEVERITY[worst] ? o.status : worst),
+    'ok'
+  );
 }
 
 /**
  * ASSEMBLE RETRIEVAL PACK — fan out to 3 partitions in parallel,
  * return one structured prompt payload for the Writer.
  *
- * Gracefully returns EMPTY_PACK if VECTOR_ENGINE_URL is not set
- * or the engine is unreachable — pipeline continues with identity.json seed.
+ * Degrades OBSERVABLY: the pipeline still continues with the identity.json
+ * seed when retrieval fails, but `status` / `partitions` say exactly why, and a
+ * structured `retrieval_degraded` warning is logged for anything that is not
+ * 'ok' across the board.
  */
 export async function assembleRetrievalPack(
   query: string,
   _platform: string = 'narrative'
 ): Promise<RetrievalPack> {
   const vectorEngineUrl = process.env.VECTOR_ENGINE_URL;
-  if (!vectorEngineUrl || !query?.trim()) return EMPTY_PACK;
+  if (!vectorEngineUrl || !query?.trim()) {
+    console.warn(JSON.stringify({
+      event: 'retrieval_degraded',
+      status: 'disabled',
+      detail: !vectorEngineUrl ? 'VECTOR_ENGINE_URL unset' : 'blank query',
+    }));
+    return EMPTY_PACK;
+  }
 
   const q = query.trim();
 
-  const [identity, styleExamples, projects, linkedinHistory] = await Promise.all([
+  const outcomes = await Promise.all([
     fetchPartition(vectorEngineUrl, q, 'cv_personal', 3),
     fetchPartition(vectorEngineUrl, q, 'business_seatrace', 2),
     fetchPartition(vectorEngineUrl, q, 'cv_projects', 3),
     fetchPartition(vectorEngineUrl, q, 'linkedin_history', 5),
   ]);
+  const [identityO, styleO, projectsO, linkedinO] = outcomes;
+  const identity = identityO.chunks;
+  const styleExamples = styleO.chunks;
+  const projects = projectsO.chunks;
+  const linkedinHistory = linkedinO.chunks;
 
+  const partitions: RetrievalPack['partitions'] = {};
+  for (const o of outcomes) {
+    partitions[o.partition] = { status: o.status, count: o.chunks.length, ...(o.http !== undefined && { http: o.http }), ...(o.detail && { detail: o.detail }) };
+  }
+
+  const degraded = outcomes.filter(o => o.status !== 'ok');
   const total = identity.length + styleExamples.length + projects.length + linkedinHistory.length;
-  if (total === 0) return EMPTY_PACK;
+  const status: RetrievalStatus = total > 0 ? 'ok' : worstStatus(outcomes);
 
-  console.log(`[RetrievalPack] ${identity.length} identity · ${styleExamples.length} style · ${projects.length} project · ${linkedinHistory.length} linkedin chunks`);
+  if (degraded.length > 0) {
+    console.warn(JSON.stringify({
+      event: 'retrieval_degraded',
+      status,
+      degraded: degraded.map(o => ({ partition: o.partition, status: o.status, http: o.http, detail: o.detail })),
+      vectorEngineUrl,
+    }));
+  }
+
+  if (total === 0) return { ...EMPTY_PACK, status, partitions };
+
+  console.log(`[RetrievalPack] status=${status} · ${identity.length} identity · ${styleExamples.length} style · ${projects.length} project · ${linkedinHistory.length} linkedin chunks`);
 
   const sections: string[] = ['RETRIEVED KNOWLEDGE PACK (CV — verified context):'];
 
@@ -212,7 +322,7 @@ export async function assembleRetrievalPack(
     projects.forEach(c => sections.push(c.trim()));
   }
 
-  return { identity, styleExamples, projects, linkedinHistory, assembled: sections.join('\n') };
+  return { identity, styleExamples, projects, linkedinHistory, assembled: sections.join('\n'), status, partitions };
 }
 
 /** Legacy single-partition query — kept for backwards compat. Use assembleRetrievalPack() for new work. */
