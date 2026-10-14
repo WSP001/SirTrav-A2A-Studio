@@ -50,6 +50,7 @@ Copy-Item "C:\Users\Roberto002\OneDrive\Scott CV\092322CURRICULUM VITAE OF ROBER
 
 ## Current State
 
+- **🆕 2026-06-23 — Claude Code (CC-P6):** Branch `claude/merge-main-progress-blobs-Noplt` is build-green and pushed, **awaiting human to open PR→main**. Adds ESLint v10 flat config + lint/typecheck scripts, applies safe `npm audit fix` (50→36 vulns), verifies BOTH render paths (Gemini/Veo + Remotion/Lambda). Remaining 36 vulns need breaking major bumps (`netlify-cli 24→26`) — parked for own ticket. **Full handoff: `plans/HANDOFF_CLAUDECODE_PR_TO_MAIN.md`**
 - **M8:** ✅ FROZEN at `0d220f72` — do NOT re-open without a bug ticket
 - **M9:** 🔴 Deployed but runtime blocked — HO-007 (Remotion AWS keys) + HO-006 (ElevenLabs) not yet confirmed in Netlify Dashboard. Function env changes require redeploy.
 - **M10:** 📋 Scoped to X + YouTube only; Instagram/TikTok parked

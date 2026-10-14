@@ -7,6 +7,7 @@
 
 ## Claim Log
 
+- 2026-06-23 | Claude Code | DONE | CC-P6-LINT + CC-P6-AUDIT — ESLint v10 flat config, lint/typecheck scripts, safe npm audit fix (50→36), dual-render verification (Gemini/Veo + Remotion/Lambda). Build green, pushed, awaiting human to open PR→main. **Full context: `plans/HANDOFF_CLAUDECODE_PR_TO_MAIN.md`** | Branch: `claude/merge-main-progress-blobs-Noplt`
 - 2026-03-13 | Codex #2 | CLAIMED | CX-022 Producer Brief UI inspection and lane check | Branch: `codex/cx-022-producer-brief`
 
 ---
